@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
-import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart } from './components/Charts';
+import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage } from './services/geminiService';
 import { Trade, Account, DisciplineLog, CalendarEvent, TradeDirection, TradeOutcome, TradingSession, ChatMessage } from './types';
 import { 
@@ -455,7 +455,7 @@ const AddTradeModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm animate-fade-in">
             <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-white/50 dark:border-cyan-500/30 shadow-2xl relative flex flex-col">
                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 dark:hover:text-white"><X /></button>
                 
@@ -638,6 +638,21 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [taglineIndex, setTaglineIndex] = useState(0);
+
+  const taglines = [
+      "Master your psychology",
+      "Find your edge",
+      "Track your discipline",
+      "Scale your capital"
+  ];
+
+  useEffect(() => {
+      const interval = setInterval(() => {
+          setTaglineIndex(prev => (prev + 1) % taglines.length);
+      }, 3000);
+      return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -662,78 +677,177 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-cyan-500/10">
-            <AppLogo className="w-12 h-12" />
-          </div>
-          <h2 className="mt-6 text-3xl font-bold text-slate-900 dark:text-white">
-            {isRegister ? 'Create Account' : 'Welcome Back'}
-          </h2>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            {isRegister ? 'Start your trading journey' : 'Sign in to access your journal'}
-          </p>
-        </div>
-        <Card className="p-8">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm">
-                {error}
-              </div>
-            )}
-            {isRegister && (
-               <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Trader Name" required />
-              </div>
-            )}
-            <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
-            </div>
-             <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
-              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
-            </div>
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#030712] text-white selection:bg-cyan-500/30">
+      {/* Starfield Effect */}
+      <div className="absolute inset-0 z-0">
+         {[...Array(50)].map((_, i) => (
+             <div key={i} className="absolute bg-white rounded-full animate-pulse" 
+                style={{
+                    top: `${Math.random() * 100}%`,
+                    left: `${Math.random() * 100}%`,
+                    width: `${Math.random() * 3}px`,
+                    height: `${Math.random() * 3}px`,
+                    opacity: Math.random() * 0.5,
+                    animationDuration: `${Math.random() * 3 + 2}s`
+                }}
+             />
+         ))}
+      </div>
 
-            <Button type="submit" variant="neon" className="w-full" disabled={loading}>
-              {loading ? 'Processing...' : isRegister ? 'Sign Up' : 'Sign In'}
-            </Button>
-          </form>
-          <div className="mt-6 text-center">
-            <button 
-              onClick={() => setIsRegister(!isRegister)}
-              className="text-sm text-cyan-600 dark:text-cyan-400 hover:underline"
-            >
-              {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-            </button>
-          </div>
-        </Card>
+      {/* Cyber Grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] z-0" />
+      
+      {/* Glows */}
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-cyan-500/20 rounded-full blur-[150px] z-0" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-[150px] z-0" />
+
+      <div className="relative z-10 w-full max-w-[450px] p-6 perspective-1000">
+        {/* Logo Header */}
+        <div className="text-center mb-8 animate-fade-in">
+            <div className="relative inline-block group">
+                 <div className="absolute inset-0 bg-cyan-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                 <div className="relative z-10 inline-flex items-center justify-center w-20 h-20 mb-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 shadow-[0_0_30px_rgba(6,182,212,0.1)] backdrop-blur-xl">
+                    <AppLogo className="w-12 h-12 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                 </div>
+            </div>
+            <h1 className="text-5xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 tracking-tighter mb-2">
+                TradeFlow
+            </h1>
+            <div className="h-6 flex justify-center items-center gap-2 text-cyan-400/80 font-mono text-sm">
+                <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                <p key={taglineIndex} className="animate-slide-up">
+                   {taglines[taglineIndex]}
+                </p>
+            </div>
+        </div>
+
+        {/* 3D Card Container */}
+        <div className="backdrop-blur-xl bg-slate-900/70 border border-white/10 rounded-3xl p-8 shadow-[0_0_60px_rgba(0,0,0,0.6)] relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_40px_rgba(6,182,212,0.1)] hover:border-cyan-500/20 group">
+            
+            {/* Scanning Line Animation */}
+            <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-30 animate-scan pointer-events-none" />
+            
+            {/* CRT Scanlines */}
+            <div className="absolute inset-0 scanline opacity-5 pointer-events-none" />
+
+            <div className="relative z-10">
+                {/* Toggle Switch */}
+                <div className="flex p-1 rounded-xl bg-black/40 border border-white/5 mb-8 relative">
+                    <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-slate-800 rounded-lg shadow-lg transition-all duration-300 ${isRegister ? 'left-[calc(50%+2px)]' : 'left-1'}`} />
+                    <button 
+                        onClick={() => setIsRegister(false)}
+                        className={`flex-1 py-2.5 text-sm font-bold z-10 relative transition-colors ${!isRegister ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Log In
+                    </button>
+                    <button 
+                        onClick={() => setIsRegister(true)}
+                        className={`flex-1 py-2.5 text-sm font-bold z-10 relative transition-colors ${isRegister ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Register
+                    </button>
+                </div>
+
+                <form className="space-y-5" onSubmit={handleSubmit}>
+                    {error && (
+                    <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 animate-shake">
+                        <AlertTriangle size={14} /> {error}
+                    </div>
+                    )}
+                    
+                    {isRegister && (
+                        <div className="group">
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors">
+                                    <UserIcon size={18} />
+                                </div>
+                                <input 
+                                    value={name} 
+                                    onChange={e => setName(e.target.value)} 
+                                    placeholder="Trader Name" 
+                                    className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all group-hover:border-white/20"
+                                    required 
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="group">
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors">
+                                <Mail size={18} />
+                            </div>
+                            <input 
+                                type="email"
+                                value={email} 
+                                onChange={e => setEmail(e.target.value)} 
+                                placeholder="Email Access" 
+                                className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all group-hover:border-white/20"
+                                required 
+                            />
+                        </div>
+                    </div>
+
+                    <div className="group">
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors">
+                                <Lock size={18} />
+                            </div>
+                            <input 
+                                type="password"
+                                value={password} 
+                                onChange={e => setPassword(e.target.value)} 
+                                placeholder="Secure Token" 
+                                className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all group-hover:border-white/20"
+                                required 
+                            />
+                        </div>
+                    </div>
+
+                    <Button type="submit" variant="neon" className="w-full py-4 text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_40px_rgba(6,182,212,0.5)] active:scale-[0.98] font-display uppercase tracking-wider" disabled={loading}>
+                        {loading ? (
+                            <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Authenticating...</span>
+                        ) : isRegister ? 'Initialize Terminal' : 'Access System'}
+                    </Button>
+                </form>
+            </div>
+        </div>
+        
+        <div className="text-center mt-8 flex flex-col gap-2 opacity-50 hover:opacity-80 transition-opacity">
+             <div className="text-[10px] tracking-[0.2em] text-slate-400 uppercase">Secure Connection</div>
+             <div className="flex justify-center gap-4 text-slate-500">
+                 <Shield size={14} />
+                 <Globe size={14} />
+                 <Zap size={14} />
+             </div>
+        </div>
       </div>
     </div>
   );
 };
 
-const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[] }> = ({ trades, accounts }) => {
+const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[], selectedAccount: string }> = ({ trades, accounts, selectedAccount }) => {
     const [aiReview, setAiReview] = useState('');
     const [loadingReview, setLoadingReview] = useState(false);
 
-    // Use filtered trades passed from parent (which handles selectedAccount)
-    const filteredTrades = trades; 
-
-    const accountBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const filteredTrades = selectedAccount === 'all' 
+        ? trades 
+        : trades.filter(t => t.accountId === selectedAccount);
+    
+    const relevantAccounts = selectedAccount === 'all' ? accounts : accounts.filter(a => a.id === selectedAccount);
+    const startingBalance = relevantAccounts.reduce((sum, acc) => sum + acc.balance, 0);
     const totalPnL = filteredTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+    const currentEquity = startingBalance + totalPnL;
+
     const winRate = (filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length / (filteredTrades.length || 1)) * 100;
     
-    // Calculate Max Drawdown
     let peak = 0;
     let maxDD = 0;
-    let currentEq = 0;
+    let runningEq = 0;
     [...filteredTrades].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(t => {
-        currentEq += (t.pnl || 0);
-        if (currentEq > peak) peak = currentEq;
-        const dd = peak - currentEq;
+        runningEq += (t.pnl || 0);
+        if (runningEq > peak) peak = runningEq;
+        const dd = peak - runningEq;
         if (dd > maxDD) maxDD = dd;
     });
 
@@ -744,16 +858,15 @@ const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[] }> = ({ tra
         setLoadingReview(false);
     };
 
-    // Calendar Data Generator
     const getCalendarDays = () => {
         const today = new Date();
         const year = today.getFullYear();
-        const month = today.getMonth(); // 0-11
+        const month = today.getMonth(); 
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const firstDay = new Date(year, month, 1).getDay(); // 0-6 Sun-Sat
+        const firstDay = new Date(year, month, 1).getDay(); 
 
         const days = [];
-        for (let i = 0; i < firstDay; i++) days.push(null); // Empty slots
+        for (let i = 0; i < firstDay; i++) days.push(null); 
         for (let i = 1; i <= daysInMonth; i++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
             const dayTrades = filteredTrades.filter(t => t.date.startsWith(dateStr));
@@ -774,19 +887,18 @@ const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[] }> = ({ tra
                 </Button>
             </div>
 
-            {/* Account Health Card */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white border-none">
-                    <div className="text-blue-100 text-sm mb-1">Total Balance</div>
-                    <div className="text-3xl font-bold tracking-tight">${accountBalance.toLocaleString()}</div>
+                    <div className="text-blue-100 text-sm mb-1">Current Equity</div>
+                    <div className="text-3xl font-bold tracking-tight">${currentEquity.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                     <div className="text-xs text-blue-200 mt-2 flex items-center gap-1">
-                        <Activity size={12} /> current equity
+                        <Activity size={12} /> Includes open/closed PnL
                     </div>
                 </Card>
                 <Card>
                     <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Net PnL</div>
                     <div className={`text-3xl font-bold tracking-tight ${totalPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString()}
+                        {totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
                     <div className="text-xs text-slate-400 mt-2">Selected range profit/loss</div>
                 </Card>
@@ -803,11 +915,9 @@ const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[] }> = ({ tra
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Simulator (New Cool Feature) */}
                 <div className="lg:col-span-1">
-                    <EquitySimulator currentBalance={accountBalance} />
+                    <EquitySimulator currentBalance={currentEquity} />
                 </div>
-                {/* Charts Row 1 */}
                 <Card className="lg:col-span-2 h-96 flex flex-col">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-cyan-500"/> Equity Curve</h3>
                     <div className="flex-1 min-h-0">
@@ -830,14 +940,13 @@ const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[] }> = ({ tra
                     </div>
                 </Card>
                  <Card className="h-80 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Best Day to Trade</h3>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Strategy Performance</h3>
                     <div className="flex-1 min-h-0">
-                        <DayOfWeekChart trades={filteredTrades} />
+                        <StrategyChart trades={filteredTrades} />
                     </div>
                 </Card>
             </div>
 
-            {/* Calendar & Daily Stats */}
             <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
                 <Card className="h-full min-h-[400px]">
                     <div className="flex justify-between items-center mb-4">
@@ -985,7 +1094,6 @@ const DisciplineView: React.FC<{ logs: DisciplineLog[], userId: string }> = ({ l
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    {/* New Zen Mode Widget */}
                     <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-cyan-500/20">
                          <div className="flex justify-between items-center mb-4">
                              <h3 className="font-bold text-white flex items-center gap-2"><RotateCcw className="text-cyan-500"/> Zen Mode</h3>
@@ -1166,35 +1274,6 @@ const DisciplineView: React.FC<{ logs: DisciplineLog[], userId: string }> = ({ l
     );
 };
 
-const NewsView = () => (
-    <div className="space-y-6 animate-fade-in pb-20">
-         <div className="flex justify-between items-end">
-            <div>
-                 <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                     <Flame className="text-rose-500 fill-rose-500/20 animate-pulse" /> Red Folder News
-                 </h2>
-                 <p className="text-slate-500 dark:text-slate-400 mt-2">High-impact events that move the markets.</p>
-            </div>
-            <Badge color="red" >LIVE IMPACT</Badge>
-         </div>
-         
-         <MarketSessionClocks />
-
-         <div className="grid gap-4">
-              <Card className="bg-slate-900/50 border-rose-500/20 p-0 overflow-hidden">
-                  <div className="p-4 bg-rose-500/10 border-b border-rose-500/20 flex justify-between items-center">
-                        <span className="text-rose-500 font-bold uppercase tracking-wider text-xs">Upcoming Major Events</span>
-                        <span className="text-xs text-slate-400">ForexFactory Data Source</span>
-                  </div>
-                  <div className="divide-y divide-white/5">
-                        {/* Placeholder events or map through news.events */}
-                        {/* We need to access the 'news' state from parent, passing it down */}
-                  </div>
-              </Card>
-         </div>
-    </div>
-);
-
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('journal');
@@ -1208,6 +1287,9 @@ const App: React.FC = () => {
   const [isAddTradeOpen, setIsAddTradeOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Partial<Trade> | undefined>(undefined);
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
+  const [newAccountName, setNewAccountName] = useState('');
+  const [newAccountBroker, setNewAccountBroker] = useState('');
+  const [newAccountBalance, setNewAccountBalance] = useState('');
 
   useEffect(() => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
@@ -1264,6 +1346,29 @@ const App: React.FC = () => {
         await deleteTradeFromDb(id);
     }
   }
+  
+  const handleAddAccount = async () => {
+      if (!newAccountName || !newAccountBalance) return;
+      const account: Account = {
+          id: Date.now().toString(),
+          name: newAccountName,
+          broker: newAccountBroker || 'Custom',
+          balance: parseFloat(newAccountBalance),
+          currency: 'USD',
+          userId: user?.uid
+      };
+      await addAccountToDb(account, user!.uid);
+      setNewAccountName('');
+      setNewAccountBroker('');
+      setNewAccountBalance('');
+  };
+
+  const handleDeleteAccount = async (id: string) => {
+      if(window.confirm('Are you sure? This will delete the account.')) {
+          await deleteAccountFromDb(id);
+          if (selectedAccount === id) setSelectedAccount('all');
+      }
+  };
 
   // --- Updated NewsView within App ---
   const NewsView = () => (
@@ -1333,17 +1438,7 @@ const App: React.FC = () => {
   if (!user) {
     return (
         <ThemeContext.Provider value={{ theme, toggleTheme }}>
-            <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors duration-300`}>
-                 <BackgroundBlobs />
-                 <div className="relative z-10">
-                     <div className="absolute top-4 right-4">
-                         <Button variant="ghost" onClick={toggleTheme} className="rounded-full p-2">
-                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                         </Button>
-                     </div>
-                     <LoginScreen onLogin={() => {}} />
-                 </div>
-            </div>
+            <LoginScreen onLogin={() => {}} />
         </ThemeContext.Provider>
     );
   }
@@ -1358,6 +1453,16 @@ const App: React.FC = () => {
 
       const [magicInput, setMagicInput] = useState('');
       const [isParsing, setIsParsing] = useState(false);
+      const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
+
+      // Stats Calculation
+      const totalPnL = filteredTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+      const winCount = filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length;
+      const winRate = filteredTrades.length > 0 ? (winCount / filteredTrades.length) * 100 : 0;
+      const bestPair = Object.entries(filteredTrades.reduce((acc, t) => {
+          acc[t.pair] = (acc[t.pair] || 0) + (t.pnl || 0);
+          return acc;
+      }, {} as Record<string, number>)).sort((a,b) => b[1] - a[1])[0];
 
       const handleMagicLog = async () => {
           if(!magicInput) return;
@@ -1369,11 +1474,57 @@ const App: React.FC = () => {
           setIsParsing(false);
       }
 
+      const handleExportCSV = () => {
+          const headers = ['Date', 'Pair', 'Direction', 'Outcome', 'PnL', 'Setup', 'Notes'];
+          const rows = sortedTrades.map(t => [
+              new Date(t.date).toLocaleDateString(),
+              t.pair,
+              t.direction,
+              t.outcome,
+              t.pnl,
+              t.setup,
+              `"${t.notes}"`
+          ]);
+          const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+          const encodedUri = encodeURI(csvContent);
+          const link = document.createElement("a");
+          link.setAttribute("href", encodedUri);
+          link.setAttribute("download", "trade_journal.csv");
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      };
+
       return (
           <div className="space-y-6 animate-fade-in pb-20">
+              {/* Journal Stats Bar */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="glass-panel p-4 rounded-xl border-l-4 border-l-cyan-500">
+                      <div className="text-xs text-slate-500 uppercase font-bold">Net PnL</div>
+                      <div className={`text-xl font-bold font-mono ${totalPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
+                      </div>
+                  </div>
+                  <div className="glass-panel p-4 rounded-xl border-l-4 border-l-purple-500">
+                      <div className="text-xs text-slate-500 uppercase font-bold">Win Rate</div>
+                      <div className="text-xl font-bold text-slate-800 dark:text-white">{winRate.toFixed(1)}%</div>
+                  </div>
+                   <div className="glass-panel p-4 rounded-xl border-l-4 border-l-amber-500">
+                      <div className="text-xs text-slate-500 uppercase font-bold">Best Pair</div>
+                      <div className="text-xl font-bold text-slate-800 dark:text-white">{bestPair ? bestPair[0] : '--'}</div>
+                  </div>
+                  <div className="glass-panel p-4 rounded-xl border-l-4 border-l-blue-500">
+                      <div className="text-xs text-slate-500 uppercase font-bold">Total Trades</div>
+                      <div className="text-xl font-bold text-slate-800 dark:text-white">{filteredTrades.length}</div>
+                  </div>
+              </div>
+
               <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
                   <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Trade Journal</h2>
                   <div className="flex gap-3">
+                     <Button variant="secondary" onClick={handleExportCSV} size="sm">
+                        <Download size={16} /> Export CSV
+                     </Button>
                      <Button onClick={() => { setEditingTrade(undefined); setIsAddTradeOpen(true); }} variant="neon">
                         <Plus size={18} /> Log Trade
                      </Button>
@@ -1381,7 +1532,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Magic Input Bar */}
-              <div className="relative">
+              <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Sparkles className={`text-cyan-500 ${isParsing ? 'animate-spin' : ''}`} size={18} />
                   </div>
@@ -1393,49 +1544,121 @@ const App: React.FC = () => {
                       placeholder="Magic Log: 'Long BTCUSD at 65k, sold at 68k, felt great...'"
                       className="w-full pl-10 pr-4 py-4 bg-white dark:bg-slate-900/60 border-2 border-transparent focus:border-cyan-500/50 rounded-2xl shadow-lg focus:outline-none text-lg transition-all placeholder-slate-400 dark:text-white backdrop-blur-xl"
                   />
-                  <div className="absolute inset-y-0 right-2 flex items-center">
+                  <div className="absolute inset-y-0 right-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button size="sm" variant="ghost" onClick={handleMagicLog} disabled={!magicInput}>
                           <ArrowRight size={18}/>
                       </Button>
                   </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
+              {/* List View Table */}
+              <div className="glass-panel rounded-2xl overflow-hidden border border-white/10">
+                  <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/10 text-xs font-bold uppercase text-slate-500 tracking-wider">
+                      <div className="col-span-2">Date</div>
+                      <div className="col-span-3">Pair / Strategy</div>
+                      <div className="col-span-2 text-center">Outcome</div>
+                      <div className="col-span-3 text-right">PnL / R</div>
+                      <div className="col-span-2 text-right">Actions</div>
+                  </div>
+                  
+                  {sortedTrades.length === 0 && (
+                       <div className="text-center py-20 text-slate-500">No trades logged yet. Start your journey!</div>
+                  )}
+
                   {sortedTrades.map(trade => (
-                      <Card key={trade.id} className="hover:border-cyan-500/50 transition-all group">
-                          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                  <div className={`p-3 rounded-xl ${trade.outcome === TradeOutcome.WIN ? 'bg-emerald-500/20 text-emerald-500' : trade.outcome === TradeOutcome.LOSS ? 'bg-rose-500/20 text-rose-500' : 'bg-slate-500/20 text-slate-500'}`}>
-                                      {trade.outcome === TradeOutcome.WIN ? <TrendingUp size={24}/> : <Activity size={24}/>}
-                                  </div>
-                                  <div>
-                                      <div className="flex items-center gap-2">
-                                          <span className="font-bold text-lg text-slate-800 dark:text-white">{trade.pair}</span>
-                                          <Badge color={trade.direction === TradeDirection.BUY ? 'green' : 'red'}>{trade.direction}</Badge>
-                                          <span className="text-xs text-slate-400">{new Date(trade.date).toLocaleDateString()}</span>
-                                      </div>
-                                      <div className="text-sm text-slate-500 line-clamp-1">{trade.notes || "No notes."}</div>
-                                  </div>
+                      <div key={trade.id} className="group border-b border-white/5 last:border-0 transition-colors hover:bg-white/5">
+                          {/* Main Row */}
+                          <div 
+                            className="grid grid-cols-12 gap-4 p-4 items-center cursor-pointer"
+                            onClick={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
+                          >
+                              <div className="col-span-2 text-sm text-slate-400 font-mono">
+                                  {new Date(trade.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                                  <span className="block text-xs opacity-50">{new Date(trade.date).toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'})}</span>
                               </div>
                               
-                              <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
-                                  <div className="text-right">
-                                      <div className={`font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-500' : trade.pnl && trade.pnl < 0 ? 'text-rose-500' : 'text-slate-500'}`}>
-                                          {trade.pnl ? `$${trade.pnl}` : '$0.00'}
-                                      </div>
-                                      <div className="text-xs text-slate-400">{trade.checklistScore} Grade</div>
+                              <div className="col-span-3">
+                                  <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+                                      {trade.pair}
+                                      <span className={`text-[10px] px-1.5 rounded border ${trade.direction === TradeDirection.BUY ? 'border-emerald-500 text-emerald-500' : 'border-rose-500 text-rose-500'}`}>
+                                          {trade.direction}
+                                      </span>
                                   </div>
-                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Button size="sm" variant="ghost" onClick={() => { setEditingTrade(trade); setIsAddTradeOpen(true); }}><Edit2 size={16}/></Button>
-                                      <Button size="sm" variant="ghost" onClick={() => handleDeleteTrade(trade.id)} className="text-rose-500 hover:bg-rose-500/10"><Trash2 size={16}/></Button>
+                                  {trade.setup && <div className="text-xs text-slate-500 mt-1">{trade.setup}</div>}
+                              </div>
+
+                              <div className="col-span-2 text-center">
+                                  <Badge color={trade.outcome === TradeOutcome.WIN ? 'green' : trade.outcome === TradeOutcome.LOSS ? 'red' : 'gray'}>
+                                      {trade.outcome}
+                                  </Badge>
+                              </div>
+
+                              <div className="col-span-3 text-right">
+                                  <div className={`font-mono font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                                      {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl}` : '--'}
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                      {trade.rMultiple ? `${trade.rMultiple}R` : ''}
+                                      {trade.riskPercentage ? ` • ${trade.riskPercentage}%` : ''}
                                   </div>
                               </div>
+
+                              <div className="col-span-2 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
+                                      <Edit2 size={14} />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteTrade(trade.id); }} className="text-rose-500 hover:text-rose-600">
+                                      <Trash2 size={14} />
+                                  </Button>
+                                  <ChevronDown size={16} className={`text-slate-500 transition-transform duration-300 ${expandedTradeId === trade.id ? 'rotate-180' : ''}`} />
+                              </div>
                           </div>
-                      </Card>
+
+                          {/* Expanded Details */}
+                          {expandedTradeId === trade.id && (
+                              <div className="px-4 pb-6 pt-0 animate-slide-up bg-black/20">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 border-t border-white/10 pt-4">
+                                      <div className="space-y-4">
+                                          <div>
+                                              <div className="text-xs uppercase text-slate-500 font-bold mb-1">Notes & Learnings</div>
+                                              <p className="text-sm text-slate-300 leading-relaxed bg-black/20 p-3 rounded-lg border border-white/5 italic">
+                                                  "{trade.notes || 'No notes added.'}"
+                                              </p>
+                                          </div>
+                                          <div className="flex gap-4">
+                                              <div>
+                                                  <div className="text-xs uppercase text-slate-500 font-bold mb-1">Execution Grade</div>
+                                                  <div className={`text-2xl font-bold ${trade.checklistScore === 'A' ? 'text-emerald-500' : 'text-yellow-500'}`}>{trade.checklistScore}</div>
+                                              </div>
+                                              <div>
+                                                   <div className="text-xs uppercase text-slate-500 font-bold mb-1">Session</div>
+                                                   <div className="text-sm text-white">{trade.session}</div>
+                                              </div>
+                                          </div>
+                                          {trade.aiAnalysis && (
+                                              <div className="bg-cyan-500/10 border border-cyan-500/20 p-3 rounded-lg">
+                                                  <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1"><Bot size={12}/> AI Insight</div>
+                                                  <p className="text-xs text-slate-300">{trade.aiAnalysis}</p>
+                                              </div>
+                                          )}
+                                      </div>
+                                      
+                                      <div>
+                                          <div className="text-xs uppercase text-slate-500 font-bold mb-2">Chart Screenshot</div>
+                                          {trade.screenshot ? (
+                                              <img src={trade.screenshot} alt="Chart" className="w-full rounded-lg border border-white/10 hover:scale-105 transition-transform cursor-pointer" onClick={() => window.open(trade.screenshot, '_blank')} />
+                                          ) : (
+                                              <div className="w-full h-40 bg-slate-800/50 rounded-lg flex flex-col items-center justify-center text-slate-600 border border-dashed border-slate-700">
+                                                  <ImageIcon size={24} className="mb-2"/>
+                                                  <span className="text-xs">No chart uploaded</span>
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                              </div>
+                          )}
+                      </div>
                   ))}
-                  {sortedTrades.length === 0 && (
-                      <div className="text-center py-20 text-slate-500">No trades logged yet. Start your journey!</div>
-                  )}
               </div>
           </div>
       );
@@ -1598,33 +1821,99 @@ const App: React.FC = () => {
                  </div>
 
                  {activeTab === 'journal' && <JournalView />}
-                 {activeTab === 'analytics' && <AnalyticsView trades={trades} accounts={accounts} />}
+                 {activeTab === 'analytics' && <AnalyticsView trades={trades} accounts={accounts} selectedAccount={selectedAccount} />}
                  {activeTab === 'discipline' && <DisciplineView logs={disciplineLogs} userId={user.uid} />}
                  {activeTab === 'news' && <NewsView />}
                  {activeTab === 'ai-coach' && <AICoachView />}
                  {activeTab === 'profile' && (
-                     <div className="space-y-6 animate-fade-in">
+                     <div className="space-y-6 animate-fade-in pb-20">
                         <h2 className="text-3xl font-display font-bold">Profile & Settings</h2>
-                        <Card>
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-2xl font-bold text-white">
-                                    {user.displayName ? user.displayName[0] : 'T'}
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                             <Card>
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-2xl font-bold text-white">
+                                        {user.displayName ? user.displayName[0] : 'T'}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold">{user.displayName || 'Trader'}</h3>
+                                        <p className="text-slate-500">{user.email}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-xl font-bold">{user.displayName || 'Trader'}</h3>
-                                    <p className="text-slate-500">{user.email}</p>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                                        <span className="flex items-center gap-2"><Sun size={18}/> Theme Preference</span>
+                                        <button onClick={toggleTheme} className={`w-12 h-6 rounded-full transition-colors relative ${theme === 'dark' ? 'bg-cyan-600' : 'bg-slate-300'}`}>
+                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${theme === 'dark' ? 'left-7' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+                                    <Button onClick={handleLogout} variant="danger" className="w-full">Sign Out</Button>
                                 </div>
-                            </div>
-                            <div className="space-y-4 max-w-md">
-                                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                                    <span className="flex items-center gap-2"><Sun size={18}/> Theme</span>
-                                    <button onClick={toggleTheme} className={`w-12 h-6 rounded-full transition-colors relative ${theme === 'dark' ? 'bg-cyan-600' : 'bg-slate-300'}`}>
-                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${theme === 'dark' ? 'left-7' : 'left-1'}`} />
-                                    </button>
+                            </Card>
+
+                            <Card>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="font-bold text-xl flex items-center gap-2"><Wallet className="text-cyan-500"/> Trading Accounts</h3>
+                                    <Badge color="blue">{accounts.length} Active</Badge>
                                 </div>
-                                <Button onClick={handleLogout} variant="danger" className="w-full">Sign Out</Button>
-                            </div>
-                        </Card>
+
+                                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                                    {accounts.map(acc => (
+                                        <div key={acc.id} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group transition-all hover:border-rose-500/30 hover:bg-rose-500/5 relative overflow-hidden">
+                                            <div>
+                                                <div className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                                    {acc.name} 
+                                                    {selectedAccount === acc.id && <Badge color="green">Active</Badge>}
+                                                </div>
+                                                <div className="text-xs text-slate-500">{acc.broker} • {acc.currency}</div>
+                                            </div>
+                                            <div className="flex items-center gap-4 z-10 relative">
+                                                <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">${acc.balance.toLocaleString()}</span>
+                                                <button 
+                                                    onClick={() => handleDeleteAccount(acc.id)}
+                                                    className="bg-rose-500/10 text-rose-500 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"
+                                                    title="Delete Account"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                                    <div className="text-sm font-bold mb-3 text-slate-500">Add New Account</div>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <Input 
+                                            placeholder="Account Name (e.g. FTMO 100k)" 
+                                            value={newAccountName} 
+                                            onChange={e => setNewAccountName(e.target.value)}
+                                        />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Input 
+                                                placeholder="Broker" 
+                                                value={newAccountBroker} 
+                                                onChange={e => setNewAccountBroker(e.target.value)}
+                                            />
+                                            <Input 
+                                                placeholder="Starting Balance" 
+                                                type="number" 
+                                                value={newAccountBalance} 
+                                                onChange={e => setNewAccountBalance(e.target.value)}
+                                            />
+                                        </div>
+                                        <Button 
+                                            onClick={handleAddAccount} 
+                                            variant="secondary" 
+                                            disabled={!newAccountName || !newAccountBalance}
+                                            className="w-full"
+                                        >
+                                            <Plus size={18}/> Create Account
+                                        </Button>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
                      </div>
                  )}
              </main>
