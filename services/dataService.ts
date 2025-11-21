@@ -18,6 +18,7 @@ import {
     updateProfile,
     signOut, 
     onAuthStateChanged,
+    deleteUser,
     User
 } from "firebase/auth";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
@@ -28,7 +29,7 @@ import { Trade, Account, DisciplineLog } from "../types";
 const handleFirestoreError = (error: any) => {
     console.error("Firestore Error:", error);
     if (error.code === 'permission-denied') {
-        alert("⚠️ Database Permission Denied\n\nPlease go to Firebase Console > Firestore Database > Rules and change them to:\n\nallow read, write: if request.auth != null;");
+        console.warn("Database Permission Denied. Ensure Rules are: allow read, write: if request.auth != null;");
     }
 };
 
@@ -69,25 +70,49 @@ export const registerUser = async (email: string, pass: string, username: string
         return;
     }
 
-    // 1. Check if username is unique
     const cleanUsername = username.trim().toLowerCase();
     if (cleanUsername.length < 3) throw new Error("Username must be at least 3 chars");
 
-    const usernameRef = doc(db, "usernames", cleanUsername);
-    const usernameSnap = await getDoc(usernameRef);
-
-    if (usernameSnap.exists()) {
-        throw new Error("Username is already taken. Please choose another.");
-    }
-
-    // 2. Create Auth User
+    // 1. Create Auth User FIRST (So we are authenticated for DB checks)
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    
-    // 3. Update Profile
-    await updateProfile(userCredential.user, { displayName: username });
+    const user = userCredential.user;
 
-    // 4. Reserve Username in DB
-    await setDoc(usernameRef, { uid: userCredential.user.uid });
+    try {
+        // 2. Check if username is unique (Now allowed because request.auth is not null)
+        const usernameRef = doc(db, "usernames", cleanUsername);
+        const usernameSnap = await getDoc(usernameRef);
+
+        if (usernameSnap.exists()) {
+            // ROLLBACK: Delete the auth user if username is taken
+            await deleteUser(user);
+            throw new Error("Username is already taken. Please choose another.");
+        }
+
+        // 3. Reserve Username & Update Profile
+        await setDoc(usernameRef, { uid: user.uid });
+        await updateProfile(user, { displayName: username });
+
+        // 4. Create Default Account
+        const defaultAccount = { 
+            name: 'Main Account', 
+            broker: 'Default', 
+            balance: 10000, 
+            currency: 'USD', 
+            userId: user.uid 
+        };
+        // @ts-ignore
+        await addAccountToDb(defaultAccount, user.uid);
+
+    } catch (error: any) {
+        // If username check failed or DB failed, we need to handle it
+        if (error.message.includes("Username is already taken")) {
+            throw error;
+        }
+        // If we created the user but DB failed, we strictly shouldn't leave them hanging, 
+        // but for now we just throw the error so the UI shows it.
+        console.error("Registration Flow Error:", error);
+        throw error;
+    }
 };
 
 export const logoutUser = async () => {
@@ -179,8 +204,8 @@ export const subscribeToAccounts = (userId: string, callback: (accounts: Account
     const q = query(collection(db, "accounts"), where("userId", "==", userId));
     return onSnapshot(q, async (snapshot) => {
         if (snapshot.empty) {
-            const defaultAccount = { name: 'Main Account', broker: 'Default', balance: 10000, currency: 'USD', userId };
-            await addDoc(collection(db, "accounts"), defaultAccount);
+            // Do nothing here, wait for manual creation or registerUser to handle it
+            callback([]); 
         } else {
             const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
             callback(accounts);
