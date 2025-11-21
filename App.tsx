@@ -639,104 +639,124 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-900">
-      {/* Modern clean gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(6,182,212,0.15),transparent_50%)]" />
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#030712] selection:bg-cyan-500/30">
+      {/* Animated Background Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-600/30 rounded-full blur-3xl animate-pulse-slow" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-cyan-600/30 rounded-full blur-3xl animate-pulse-slow animation-delay-2000" />
       
+      {/* Grid Overlay */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)]" />
+
       <div className="relative z-10 w-full max-w-md p-6 animate-fade-in">
+        {/* Logo & Branding */}
         <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/20">
-                <AppLogo className="w-10 h-10 text-white" />
+            <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-3xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/20 border border-white/10 backdrop-blur-xl shadow-[0_0_30px_rgba(6,182,212,0.3)] relative">
+                <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full" />
+                <AppLogo className="w-12 h-12 text-white relative z-10" />
             </div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">
+            <h1 className="text-4xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-blue-400 tracking-tight mb-2">
                 TradeFlow
             </h1>
-            <p className="text-slate-400 mt-2">Your journey to profitability starts here.</p>
+            <p className="text-slate-400 font-light tracking-wide">Identify Your Edge. Master Your Mind.</p>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-            {/* Toggle */}
-            <div className="flex p-1 rounded-lg bg-black/20 mb-8">
+        {/* Auth Card */}
+        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+            {/* Scanning Border Effect */}
+            <div className="absolute inset-0 border border-cyan-500/0 group-hover:border-cyan-500/20 transition-all duration-500 rounded-3xl" />
+            
+            {/* Toggle Switch */}
+            <div className="relative flex p-1 rounded-xl bg-black/40 mb-8 border border-white/5">
+                <div className={`absolute inset-y-1 w-[calc(50%-4px)] bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg transition-all duration-300 ease-out shadow-lg ${isRegister ? 'left-[calc(50%+2px)]' : 'left-1'}`} />
                 <button 
                     onClick={() => setIsRegister(false)}
-                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${!isRegister ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`relative z-10 flex-1 py-2.5 text-sm font-bold transition-colors ${!isRegister ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                    Log In
+                    Sign In
                 </button>
                 <button 
                     onClick={() => setIsRegister(true)}
-                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${isRegister ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`relative z-10 flex-1 py-2.5 text-sm font-bold transition-colors ${isRegister ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                    Sign Up
+                    Create Account
                 </button>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
+            <form className="space-y-5" onSubmit={handleSubmit}>
                 {error && (
-                    <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-                        <AlertTriangle size={14} /> {error}
+                    <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm flex items-start gap-3 animate-slide-up">
+                        <AlertTriangle size={18} className="shrink-0 mt-0.5" /> 
+                        <span>{error}</span>
                     </div>
                 )}
 
-                {isRegister && (
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-400 uppercase">Username</label>
+                <div className={`space-y-5 transition-all duration-300 ${isRegister ? 'opacity-100' : 'opacity-100'}`}>
+                    {isRegister && (
+                        <div className="group/input space-y-1.5 animate-slide-up">
+                            <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Username</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 w-10 flex items-center justify-center text-slate-500 group-focus-within/input:text-cyan-400 transition-colors">
+                                    <UserIcon size={18} />
+                                </div>
+                                <input 
+                                    value={username} 
+                                    onChange={e => setUsername(e.target.value)} 
+                                    placeholder="Choose a unique handle"
+                                    className="w-full bg-black/30 border border-white/10 rounded-xl py-3.5 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:bg-black/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                                    required={isRegister}
+                                    minLength={3}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="group/input space-y-1.5">
+                        <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Email</label>
                         <div className="relative">
-                            <UserIcon className="absolute left-3 top-3.5 text-slate-500" size={18} />
+                            <div className="absolute inset-y-0 left-0 w-10 flex items-center justify-center text-slate-500 group-focus-within/input:text-cyan-400 transition-colors">
+                                <Mail size={18} />
+                            </div>
                             <input 
-                                value={username} 
-                                onChange={e => setUsername(e.target.value)} 
-                                placeholder="Unique Username"
-                                className="w-full bg-black/20 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                                type="email"
+                                value={email} 
+                                onChange={e => setEmail(e.target.value)} 
+                                placeholder="trader@example.com" 
+                                className="w-full bg-black/30 border border-white/10 rounded-xl py-3.5 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:bg-black/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                                 required 
-                                minLength={3}
                             />
                         </div>
                     </div>
-                )}
 
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-400 uppercase">Email Address</label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-3.5 text-slate-500" size={18} />
-                        <input 
-                            type="email"
-                            value={email} 
-                            onChange={e => setEmail(e.target.value)} 
-                            placeholder="name@example.com" 
-                            className="w-full bg-black/20 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
-                            required 
-                        />
+                    <div className="group/input space-y-1.5">
+                        <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Password</label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 w-10 flex items-center justify-center text-slate-500 group-focus-within/input:text-cyan-400 transition-colors">
+                                <Lock size={18} />
+                            </div>
+                            <input 
+                                type="password"
+                                value={password} 
+                                onChange={e => setPassword(e.target.value)} 
+                                placeholder="••••••••" 
+                                className="w-full bg-black/30 border border-white/10 rounded-xl py-3.5 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:bg-black/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                                required 
+                                minLength={6}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-400 uppercase">Password</label>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-3.5 text-slate-500" size={18} />
-                        <input 
-                            type="password"
-                            value={password} 
-                            onChange={e => setPassword(e.target.value)} 
-                            placeholder="••••••••" 
-                            className="w-full bg-black/20 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
-                            required 
-                            minLength={6}
-                        />
-                    </div>
-                </div>
-
-                <Button type="submit" variant="neon" className="w-full mt-6" disabled={loading}>
+                <Button type="submit" variant="neon" className="w-full mt-8 h-12 text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:scale-[1.02]" disabled={loading}>
                     {loading ? (
-                        <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</span>
-                    ) : isRegister ? 'Create Account' : 'Sign In'}
+                        <span className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Accessing Mainframe...</span>
+                    ) : isRegister ? 'Initialize Account' : 'Access Terminal'}
                 </Button>
             </form>
         </div>
         
-        <div className="text-center mt-8 text-xs text-slate-500">
-             &copy; 2025 TradeFlow. All rights reserved.
+        <div className="text-center mt-8 text-xs text-slate-600 mix-blend-plus-lighter">
+             Encrypted Connection • 256-bit SSL • TradeFlow Systems v2.0
         </div>
       </div>
     </div>
@@ -1744,8 +1764,17 @@ const App: React.FC = () => {
              <main className="md:pl-24 p-4 md:p-8 relative z-10 max-w-7xl mx-auto min-h-screen pb-24">
                  {/* Header with Account Switcher */}
                  <div className="flex justify-between items-center mb-6">
-                      <div className="flex-1 md:hidden">
-                           <Button variant="ghost" onClick={toggleTheme} className="rounded-full p-2 bg-white/10 backdrop-blur-md">
+                      {/* Mobile Header Left Side: Profile + Theme */}
+                      <div className="flex-1 md:hidden flex items-center gap-3">
+                           <button 
+                                onClick={() => setActiveTab('profile')}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg transition-transform active:scale-95 border-2 ${activeTab === 'profile' ? 'border-cyan-400' : 'border-transparent'}`}
+                                style={{ background: 'linear-gradient(135deg, #06b6d4, #2563eb)' }}
+                           >
+                                {user?.displayName ? user.displayName[0].toUpperCase() : <UserIcon size={18}/>}
+                           </button>
+
+                           <Button variant="ghost" onClick={toggleTheme} className="rounded-full p-2 bg-white/10 backdrop-blur-md border border-white/10">
                                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                            </Button>
                       </div>
