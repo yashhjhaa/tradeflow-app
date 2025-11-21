@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { Trade, TradeOutcome } from '../types';
 
 export const EquityCurve: React.FC<{ trades: Trade[] }> = ({ trades }) => {
@@ -122,6 +122,42 @@ export const PairPerformanceChart: React.FC<{ trades: Trade[] }> = ({ trades }) 
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
                         {data.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.value >= 0 ? '#3b82f6' : '#f43f5e'} />
+                        ))}
+                    </Bar>
+                </BarChart>
+             </ResponsiveContainer>
+        </div>
+    );
+};
+
+export const StrategyChart: React.FC<{ trades: Trade[] }> = ({ trades }) => {
+    const strategyStats = trades.reduce((acc, trade) => {
+        const setup = trade.setup || 'No Setup';
+        if (!acc[setup]) acc[setup] = 0;
+        acc[setup] += trade.pnl || 0;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const data = Object.entries(strategyStats)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6);
+
+    return (
+        <div className="h-64 w-full">
+             <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} vertical={false} />
+                    <XAxis dataKey="name" tick={{fill: '#94a3b8', fontSize: 10}} />
+                    <YAxis tick={{fill: '#94a3b8', fontSize: 10}} />
+                    <Tooltip 
+                        cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
+                        formatter={(value: number) => [`$${value.toFixed(2)}`, 'PnL']}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+                         {data.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.value >= 0 ? '#8b5cf6' : '#f43f5e'} />
                         ))}
                     </Bar>
                 </BarChart>
