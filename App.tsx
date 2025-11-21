@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage } from './services/geminiService';
@@ -97,64 +97,41 @@ const Navigation: React.FC<{ activeTab: string; setActiveTab: (t: string) => voi
   );
 };
 
-const MobileFloatingNav: React.FC<{ activeTab: string; setActiveTab: (t: string) => void; onLogout: () => void }> = ({ activeTab, setActiveTab, onLogout }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  
+const MobileBottomNav: React.FC<{ activeTab: string; setActiveTab: (t: string) => void }> = ({ activeTab, setActiveTab }) => {
   const navItems = [
-    { id: 'journal', label: 'Journal', icon: BookOpen, color: 'text-cyan-600 dark:text-cyan-400' },
-    { id: 'analytics', label: 'Stats', icon: PieChart, color: 'text-purple-600 dark:text-purple-400' },
-    { id: 'discipline', label: 'Mindset', icon: Zap, color: 'text-amber-600 dark:text-yellow-400' },
-    { id: 'news', label: 'Red Folder', icon: Flame, color: 'text-rose-600 dark:text-rose-500' },
-    { id: 'ai-coach', label: 'AI Coach', icon: Bot, color: 'text-pink-600 dark:text-pink-400' },
-    { id: 'profile', label: 'Profile', icon: UserIcon, color: 'text-blue-600 dark:text-blue-400' },
+    { id: 'journal', icon: Home },
+    { id: 'analytics', icon: PieChart },
+    { id: 'ai-coach', icon: Bot },
+    { id: 'news', icon: Flame },
+    { id: 'discipline', icon: Zap },
   ];
 
   return (
-    <div className="md:hidden fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
-      {isOpen && (
-        <div className="flex flex-col gap-3 mb-2 animate-slide-up origin-bottom-right">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setIsOpen(false);
-              }}
-              className={`flex items-center justify-end gap-3 group`}
-            >
-              <span className="bg-white/90 dark:bg-black/80 dark:text-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-lg backdrop-blur-md shadow-lg border border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                {item.label}
-              </span>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center glass-card transition-all duration-200 shadow-lg ${activeTab === item.id ? 'bg-slate-100 dark:bg-white/15 border-cyan-500/50' : ''}`}>
-                <item.icon size={20} className={`${item.color}`} />
-              </div>
-            </button>
-          ))}
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-white/90 dark:bg-[#030712]/90 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex items-center justify-around z-50 px-2 pb-safe">
+      {navItems.map((item) => {
+        const isActive = activeTab === item.id;
+        return (
           <button
-            onClick={onLogout}
-             className={`flex items-center justify-end gap-3 group`}
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={`relative flex flex-col items-center justify-center w-16 h-full transition-all duration-300 ${
+              isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+            }`}
           >
-             <span className="bg-white/90 dark:bg-black/80 dark:text-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-lg backdrop-blur-md shadow-lg border border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                Logout
-              </span>
-             <div className="w-12 h-12 rounded-full flex items-center justify-center bg-rose-500/10 border border-rose-500/30 text-rose-500 shadow-lg glass-card">
-                <LogOut size={20} />
-             </div>
+            <div className={`relative transition-transform duration-300 ${isActive ? '-translate-y-1' : ''}`}>
+                <item.icon 
+                    size={isActive ? 26 : 24} 
+                    strokeWidth={isActive ? 2.5 : 2}
+                    className={`${isActive ? 'drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]' : ''}`}
+                />
+                {isActive && (
+                    <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-1 h-1 bg-cyan-500 rounded-full animate-fade-in" />
+                )}
+            </div>
           </button>
-        </div>
-      )}
-
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl shadow-cyan-500/20 dark:shadow-[0_0_20px_rgba(0,243,255,0.3)] transition-all duration-300 z-50 ${isOpen ? 'bg-slate-100 dark:bg-slate-800 rotate-90 border border-slate-300 dark:border-slate-600' : 'bg-gradient-to-tr from-cyan-600 to-blue-600 dark:from-cyan-500 dark:to-blue-600 border border-white/20 text-white'}`}
-      >
-        {isOpen ? <X size={28} className="text-slate-600 dark:text-slate-300" /> : <AppLogo className="w-8 h-8" />}
-      </button>
-
-      {isOpen && (
-        <div className="fixed inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-sm z-[-1]" onClick={() => setIsOpen(false)} />
-      )}
-    </div>
+        );
+      })}
+    </nav>
   );
 };
 
@@ -1781,9 +1758,9 @@ const App: React.FC = () => {
         <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors duration-300 font-sans selection:bg-cyan-500/30`}>
              <BackgroundBlobs />
              <Navigation activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
-             <MobileFloatingNav activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
+             <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
              
-             <main className="md:pl-24 p-4 md:p-8 relative z-10 max-w-7xl mx-auto min-h-screen">
+             <main className="md:pl-24 p-4 md:p-8 relative z-10 max-w-7xl mx-auto min-h-screen pb-24">
                  {/* Header with Account Switcher */}
                  <div className="flex justify-between items-center mb-6">
                       <div className="flex-1 md:hidden">
