@@ -612,24 +612,9 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [taglineIndex, setTaglineIndex] = useState(0);
-
-  const taglines = [
-      "Master your psychology",
-      "Find your edge",
-      "Track your discipline",
-      "Scale your capital"
-  ];
-
-  useEffect(() => {
-      const interval = setInterval(() => {
-          setTaglineIndex(prev => (prev + 1) % taglines.length);
-      }, 3000);
-      return () => clearInterval(interval);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -637,7 +622,7 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
     setLoading(true);
     try {
       if (isRegister) {
-        await registerUser(email, password, name);
+        await registerUser(email, password, username);
       } else {
         await loginUser(email, password);
       }
@@ -654,149 +639,104 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#030712] text-white selection:bg-cyan-500/30">
-      {/* Starfield Effect */}
-      <div className="absolute inset-0 z-0">
-         {[...Array(50)].map((_, i) => (
-             <div key={i} className="absolute bg-white rounded-full animate-pulse" 
-                style={{
-                    top: `${Math.random() * 100}%`,
-                    left: `${Math.random() * 100}%`,
-                    width: `${Math.random() * 3}px`,
-                    height: `${Math.random() * 3}px`,
-                    opacity: Math.random() * 0.5,
-                    animationDuration: `${Math.random() * 3 + 2}s`
-                }}
-             />
-         ))}
-      </div>
-
-      {/* Cyber Grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] z-0" />
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-900">
+      {/* Modern clean gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(6,182,212,0.15),transparent_50%)]" />
       
-      {/* Glows */}
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-cyan-500/20 rounded-full blur-[150px] z-0" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-[150px] z-0" />
-
-      <div className="relative z-10 w-full max-w-[450px] p-6 perspective-1000">
-        {/* Logo Header */}
-        <div className="text-center mb-8 animate-fade-in">
-            <div className="relative inline-block group">
-                 <div className="absolute inset-0 bg-cyan-500/50 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                 <div className="relative z-10 inline-flex items-center justify-center w-20 h-20 mb-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 shadow-[0_0_30px_rgba(6,182,212,0.1)] backdrop-blur-xl">
-                    <AppLogo className="w-12 h-12 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
-                 </div>
+      <div className="relative z-10 w-full max-w-md p-6 animate-fade-in">
+        <div className="text-center mb-10">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/20">
+                <AppLogo className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-5xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 tracking-tighter mb-2">
+            <h1 className="text-3xl font-display font-bold text-white tracking-tight">
                 TradeFlow
             </h1>
-            <div className="h-6 flex justify-center items-center gap-2 text-cyan-400/80 font-mono text-sm">
-                <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-                <p key={taglineIndex} className="animate-slide-up">
-                   {taglines[taglineIndex]}
-                </p>
-            </div>
+            <p className="text-slate-400 mt-2">Your journey to profitability starts here.</p>
         </div>
 
-        {/* 3D Card Container */}
-        <div className="backdrop-blur-xl bg-slate-900/70 border border-white/10 rounded-3xl p-8 shadow-[0_0_60px_rgba(0,0,0,0.6)] relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_40px_rgba(6,182,212,0.1)] hover:border-cyan-500/20 group">
-            
-            {/* Scanning Line Animation */}
-            <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-30 animate-scan pointer-events-none" />
-            
-            {/* CRT Scanlines */}
-            <div className="absolute inset-0 scanline opacity-5 pointer-events-none" />
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+            {/* Toggle */}
+            <div className="flex p-1 rounded-lg bg-black/20 mb-8">
+                <button 
+                    onClick={() => setIsRegister(false)}
+                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${!isRegister ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                    Log In
+                </button>
+                <button 
+                    onClick={() => setIsRegister(true)}
+                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${isRegister ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                    Sign Up
+                </button>
+            </div>
 
-            <div className="relative z-10">
-                {/* Toggle Switch */}
-                <div className="flex p-1 rounded-xl bg-black/40 border border-white/5 mb-8 relative">
-                    <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-slate-800 rounded-lg shadow-lg transition-all duration-300 ${isRegister ? 'left-[calc(50%+2px)]' : 'left-1'}`} />
-                    <button 
-                        onClick={() => setIsRegister(false)}
-                        className={`flex-1 py-2.5 text-sm font-bold z-10 relative transition-colors ${!isRegister ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Log In
-                    </button>
-                    <button 
-                        onClick={() => setIsRegister(true)}
-                        className={`flex-1 py-2.5 text-sm font-bold z-10 relative transition-colors ${isRegister ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        Register
-                    </button>
-                </div>
-
-                <form className="space-y-5" onSubmit={handleSubmit}>
-                    {error && (
-                    <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 animate-shake">
+            <form className="space-y-4" onSubmit={handleSubmit}>
+                {error && (
+                    <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
                         <AlertTriangle size={14} /> {error}
                     </div>
-                    )}
-                    
-                    {isRegister && (
-                        <div className="group">
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors">
-                                    <UserIcon size={18} />
-                                </div>
-                                <input 
-                                    value={name} 
-                                    onChange={e => setName(e.target.value)} 
-                                    placeholder="Trader Name" 
-                                    className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all group-hover:border-white/20"
-                                    required 
-                                />
-                            </div>
-                        </div>
-                    )}
+                )}
 
-                    <div className="group">
+                {isRegister && (
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-slate-400 uppercase">Username</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors">
-                                <Mail size={18} />
-                            </div>
+                            <UserIcon className="absolute left-3 top-3.5 text-slate-500" size={18} />
                             <input 
-                                type="email"
-                                value={email} 
-                                onChange={e => setEmail(e.target.value)} 
-                                placeholder="Email Access" 
-                                className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all group-hover:border-white/20"
+                                value={username} 
+                                onChange={e => setUsername(e.target.value)} 
+                                placeholder="Unique Username"
+                                className="w-full bg-black/20 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
                                 required 
+                                minLength={3}
                             />
                         </div>
                     </div>
+                )}
 
-                    <div className="group">
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors">
-                                <Lock size={18} />
-                            </div>
-                            <input 
-                                type="password"
-                                value={password} 
-                                onChange={e => setPassword(e.target.value)} 
-                                placeholder="Secure Token" 
-                                className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all group-hover:border-white/20"
-                                required 
-                            />
-                        </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-400 uppercase">Email Address</label>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-3.5 text-slate-500" size={18} />
+                        <input 
+                            type="email"
+                            value={email} 
+                            onChange={e => setEmail(e.target.value)} 
+                            placeholder="name@example.com" 
+                            className="w-full bg-black/20 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                            required 
+                        />
                     </div>
+                </div>
 
-                    <Button type="submit" variant="neon" className="w-full py-4 text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_40px_rgba(6,182,212,0.5)] active:scale-[0.98] font-display uppercase tracking-wider" disabled={loading}>
-                        {loading ? (
-                            <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Authenticating...</span>
-                        ) : isRegister ? 'Initialize Terminal' : 'Access System'}
-                    </Button>
-                </form>
-            </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-400 uppercase">Password</label>
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-3.5 text-slate-500" size={18} />
+                        <input 
+                            type="password"
+                            value={password} 
+                            onChange={e => setPassword(e.target.value)} 
+                            placeholder="••••••••" 
+                            className="w-full bg-black/20 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                            required 
+                            minLength={6}
+                        />
+                    </div>
+                </div>
+
+                <Button type="submit" variant="neon" className="w-full mt-6" disabled={loading}>
+                    {loading ? (
+                        <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</span>
+                    ) : isRegister ? 'Create Account' : 'Sign In'}
+                </Button>
+            </form>
         </div>
         
-        <div className="text-center mt-8 flex flex-col gap-2 opacity-50 hover:opacity-80 transition-opacity">
-             <div className="text-[10px] tracking-[0.2em] text-slate-400 uppercase">Secure Connection</div>
-             <div className="flex justify-center gap-4 text-slate-500">
-                 <Shield size={14} />
-                 <Globe size={14} />
-                 <Zap size={14} />
-             </div>
+        <div className="text-center mt-8 text-xs text-slate-500">
+             &copy; 2025 TradeFlow. All rights reserved.
         </div>
       </div>
     </div>
@@ -1498,11 +1438,11 @@ const App: React.FC = () => {
 
               <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
                   <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Trade Journal</h2>
-                  <div className="flex gap-3">
-                     <Button variant="secondary" onClick={handleExportCSV} size="sm">
-                        <Download size={16} /> Export CSV
+                  <div className="flex gap-3 w-full md:w-auto">
+                     <Button variant="secondary" onClick={handleExportCSV} size="sm" className="flex-1 md:flex-none">
+                        <Download size={16} /> Export
                      </Button>
-                     <Button onClick={() => { setEditingTrade(undefined); setIsAddTradeOpen(true); }} variant="neon">
+                     <Button onClick={() => { setEditingTrade(undefined); setIsAddTradeOpen(true); }} variant="neon" className="flex-1 md:flex-none">
                         <Plus size={18} /> Log Trade
                      </Button>
                   </div>
@@ -1519,7 +1459,7 @@ const App: React.FC = () => {
                       onChange={e => setMagicInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleMagicLog()}
                       placeholder="Magic Log: 'Long BTCUSD at 65k, sold at 68k, felt great...'"
-                      className="w-full pl-10 pr-4 py-4 bg-white dark:bg-slate-900/60 border-2 border-transparent focus:border-cyan-500/50 rounded-2xl shadow-lg focus:outline-none text-lg transition-all placeholder-slate-400 dark:text-white backdrop-blur-xl"
+                      className="w-full pl-10 pr-4 py-4 bg-white dark:bg-slate-900/60 border-2 border-transparent focus:border-cyan-500/50 rounded-2xl shadow-lg focus:outline-none text-base md:text-lg transition-all placeholder-slate-400 dark:text-white backdrop-blur-xl"
                   />
                   <div className="absolute inset-y-0 right-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button size="sm" variant="ghost" onClick={handleMagicLog} disabled={!magicInput}>
@@ -1528,9 +1468,10 @@ const App: React.FC = () => {
                   </div>
               </div>
 
-              {/* List View Table */}
+              {/* Responsive List View Table */}
               <div className="glass-panel rounded-2xl overflow-hidden border border-white/10">
-                  <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/10 text-xs font-bold uppercase text-slate-500 tracking-wider">
+                  {/* Desktop Header (Hidden on Mobile) */}
+                  <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-white/10 text-xs font-bold uppercase text-slate-500 tracking-wider">
                       <div className="col-span-2">Date</div>
                       <div className="col-span-3">Pair / Strategy</div>
                       <div className="col-span-2 text-center">Outcome</div>
@@ -1544,57 +1485,97 @@ const App: React.FC = () => {
 
                   {sortedTrades.map(trade => (
                       <div key={trade.id} className="group border-b border-white/5 last:border-0 transition-colors hover:bg-white/5">
-                          {/* Main Row */}
+                          {/* Row Container */}
                           <div 
-                            className="grid grid-cols-12 gap-4 p-4 items-center cursor-pointer"
+                            className="p-4 cursor-pointer"
                             onClick={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
                           >
-                              <div className="col-span-2 text-sm text-slate-400 font-mono">
-                                  {new Date(trade.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
-                                  <span className="block text-xs opacity-50">{new Date(trade.date).toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'})}</span>
-                              </div>
-                              
-                              <div className="col-span-3">
-                                  <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
-                                      {trade.pair}
-                                      <span className={`text-[10px] px-1.5 rounded border ${trade.direction === TradeDirection.BUY ? 'border-emerald-500 text-emerald-500' : 'border-rose-500 text-rose-500'}`}>
-                                          {trade.direction}
-                                      </span>
+                              {/* DESKTOP LAYOUT (Hidden on mobile) */}
+                              <div className="hidden md:grid grid-cols-12 gap-4 items-center">
+                                  <div className="col-span-2 text-sm text-slate-400 font-mono">
+                                      {new Date(trade.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                                      <span className="block text-xs opacity-50">{new Date(trade.date).toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'})}</span>
                                   </div>
-                                  {trade.setup && <div className="text-xs text-slate-500 mt-1">{trade.setup}</div>}
+                                  
+                                  <div className="col-span-3">
+                                      <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+                                          {trade.pair}
+                                          <span className={`text-[10px] px-1.5 rounded border ${trade.direction === TradeDirection.BUY ? 'border-emerald-500 text-emerald-500' : 'border-rose-500 text-rose-500'}`}>
+                                              {trade.direction}
+                                          </span>
+                                      </div>
+                                      {trade.setup && <div className="text-xs text-slate-500 mt-1">{trade.setup}</div>}
+                                  </div>
+
+                                  <div className="col-span-2 text-center">
+                                      <Badge color={trade.outcome === TradeOutcome.WIN ? 'green' : trade.outcome === TradeOutcome.LOSS ? 'red' : 'gray'}>
+                                          {trade.outcome}
+                                      </Badge>
+                                  </div>
+
+                                  <div className="col-span-3 text-right">
+                                      <div className={`font-mono font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                                          {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl}` : '--'}
+                                      </div>
+                                      <div className="text-xs text-slate-500">
+                                          {trade.rMultiple ? `${trade.rMultiple}R` : ''}
+                                          {trade.riskPercentage ? ` • ${trade.riskPercentage}%` : ''}
+                                      </div>
+                                  </div>
+
+                                  <div className="col-span-2 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
+                                          <Edit2 size={14} />
+                                      </Button>
+                                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteTrade(trade.id); }} className="text-rose-500 hover:text-rose-600">
+                                          <Trash2 size={14} />
+                                      </Button>
+                                      <ChevronDown size={16} className={`text-slate-500 transition-transform duration-300 ${expandedTradeId === trade.id ? 'rotate-180' : ''}`} />
+                                  </div>
                               </div>
 
-                              <div className="col-span-2 text-center">
-                                  <Badge color={trade.outcome === TradeOutcome.WIN ? 'green' : trade.outcome === TradeOutcome.LOSS ? 'red' : 'gray'}>
-                                      {trade.outcome}
-                                  </Badge>
-                              </div>
-
-                              <div className="col-span-3 text-right">
-                                  <div className={`font-mono font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                                      {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl}` : '--'}
-                                  </div>
-                                  <div className="text-xs text-slate-500">
-                                      {trade.rMultiple ? `${trade.rMultiple}R` : ''}
-                                      {trade.riskPercentage ? ` • ${trade.riskPercentage}%` : ''}
-                                  </div>
-                              </div>
-
-                              <div className="col-span-2 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
-                                      <Edit2 size={14} />
-                                  </Button>
-                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteTrade(trade.id); }} className="text-rose-500 hover:text-rose-600">
-                                      <Trash2 size={14} />
-                                  </Button>
-                                  <ChevronDown size={16} className={`text-slate-500 transition-transform duration-300 ${expandedTradeId === trade.id ? 'rotate-180' : ''}`} />
+                              {/* MOBILE LAYOUT (Visible only on mobile) */}
+                              <div className="md:hidden flex flex-col gap-2">
+                                   <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-lg text-slate-900 dark:text-white">{trade.pair}</span>
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${trade.direction === TradeDirection.BUY ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                {trade.direction}
+                                            </span>
+                                        </div>
+                                        <div className={`font-mono font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                                            {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl}` : '--'}
+                                        </div>
+                                   </div>
+                                   <div className="flex justify-between items-center text-sm text-slate-500">
+                                        <div className="flex flex-col">
+                                            <span>{new Date(trade.date).toLocaleDateString()}</span>
+                                            {trade.setup && <span className="text-xs opacity-70">{trade.setup}</span>}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                             {trade.rMultiple ? <span className="text-xs font-mono">{trade.rMultiple}R</span> : null}
+                                             <Badge color={trade.outcome === TradeOutcome.WIN ? 'green' : trade.outcome === TradeOutcome.LOSS ? 'red' : 'gray'}>
+                                                 {trade.outcome}
+                                             </Badge>
+                                        </div>
+                                   </div>
                               </div>
                           </div>
 
                           {/* Expanded Details */}
                           {expandedTradeId === trade.id && (
                               <div className="px-4 pb-6 pt-0 animate-slide-up bg-black/20">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 border-t border-white/10 pt-4">
+                                  {/* Mobile Actions Row */}
+                                  <div className="md:hidden flex gap-2 pt-4 pb-2 border-b border-white/10 mb-4">
+                                      <Button variant="secondary" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
+                                          <Edit2 size={16} /> Edit
+                                      </Button>
+                                      <Button variant="danger" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); handleDeleteTrade(trade.id); }}>
+                                          <Trash2 size={16} /> Delete
+                                      </Button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 md:border-t border-white/10 pt-4">
                                       <div className="space-y-4">
                                           <div>
                                               <div className="text-xs uppercase text-slate-500 font-bold mb-1">Notes & Learnings</div>
