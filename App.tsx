@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage } from './services/geminiService';
@@ -10,7 +10,7 @@ import {
     addTradeToDb, deleteTradeFromDb, subscribeToAccounts, 
     addAccountToDb, deleteAccountFromDb, updateAccountBalance, 
     subscribeToDiscipline, updateDisciplineLog, initializeTodayLog,
-    uploadScreenshotToStorage, updateTradeInDb
+    uploadScreenshotToStorage, updateTradeInDb, resetPassword
 } from './services/dataService';
 import { User } from 'firebase/auth';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts';
@@ -206,7 +206,6 @@ const MarketSessionClocks: React.FC = () => {
     }, []);
 
     const getSessionStatus = (tz: string, start: number, end: number) => {
-        // Simplified session logic
         const hour = parseInt(time.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', hour12: false }));
         const isOpen = hour >= start && hour < end;
         return isOpen;
@@ -608,34 +607,79 @@ const AddTradeModal: React.FC<{
     );
 };
 
+// New Toast Component for Welcome Message
+const WelcomeToast: React.FC<{ username: string, visible: boolean }> = ({ username, visible }) => {
+    if (!visible) return null;
+    return (
+        <div className="fixed top-6 right-6 z-[100] animate-slide-up">
+            <div className="glass-panel bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-6 py-4 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.2)] flex items-center gap-3 backdrop-blur-xl">
+                <div className="bg-emerald-500 text-white p-1.5 rounded-full">
+                    <Check size={16} strokeWidth={3} />
+                </div>
+                <div>
+                    <div className="font-bold text-sm">Access Granted</div>
+                    <div className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Welcome back, {username}</div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
+    
     try {
       if (isRegister) {
+        // Registration Flow
         await registerUser(email, password, username);
+        setSuccessMsg("Account initialized successfully. Please access terminal with credentials.");
+        setIsRegister(false); // Switch back to login
+        setEmail('');
+        setPassword('');
+        // Do NOT call onLogin() here, forcing them to log in manually
       } else {
+        // Login Flow
         await loginUser(email, password);
+        // onLogin will be handled by the auth state listener in App
       }
-      onLogin();
     } catch (err: any) {
         if (err.code === 'auth/operation-not-allowed') {
             setError("Please enable Email/Password Auth in your Firebase Console.");
         } else {
-            setError(err.message);
+            setError(err.message.replace('Firebase: ', ''));
         }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+      if (!email) {
+          setError("Please enter your email address to reset password.");
+          return;
+      }
+      try {
+          setLoading(true);
+          await resetPassword(email);
+          setSuccessMsg("Password reset link sent to neural net (Check Email).");
+          setError('');
+      } catch (e: any) {
+          setError(e.message);
+      } finally {
+          setLoading(false);
+      }
   };
 
   return (
@@ -663,23 +707,24 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
         {/* Auth Card */}
         <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
-            {/* Scanning Border Effect */}
             <div className="absolute inset-0 border border-cyan-500/0 group-hover:border-cyan-500/20 transition-all duration-500 rounded-3xl" />
             
             {/* Toggle Switch */}
             <div className="relative flex p-1 rounded-xl bg-black/40 mb-8 border border-white/5">
                 <div className={`absolute inset-y-1 w-[calc(50%-4px)] bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg transition-all duration-300 ease-out shadow-lg ${isRegister ? 'left-[calc(50%+2px)]' : 'left-1'}`} />
                 <button 
-                    onClick={() => setIsRegister(false)}
+                    type="button"
+                    onClick={() => { setIsRegister(false); setError(''); setSuccessMsg(''); }}
                     className={`relative z-10 flex-1 py-2.5 text-sm font-bold transition-colors ${!isRegister ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
                     Sign In
                 </button>
                 <button 
-                    onClick={() => setIsRegister(true)}
+                    type="button"
+                    onClick={() => { setIsRegister(true); setError(''); setSuccessMsg(''); }}
                     className={`relative z-10 flex-1 py-2.5 text-sm font-bold transition-colors ${isRegister ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                    Create Account
+                    Sign Up
                 </button>
             </div>
 
@@ -690,8 +735,15 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                         <span>{error}</span>
                     </div>
                 )}
+                
+                {successMsg && (
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm flex items-start gap-3 animate-slide-up">
+                        <CheckCircle size={18} className="shrink-0 mt-0.5" /> 
+                        <span>{successMsg}</span>
+                    </div>
+                )}
 
-                <div className={`space-y-5 transition-all duration-300 ${isRegister ? 'opacity-100' : 'opacity-100'}`}>
+                <div className={`space-y-5 transition-all duration-300`}>
                     {isRegister && (
                         <div className="group/input space-y-1.5 animate-slide-up">
                             <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Username</label>
@@ -729,7 +781,18 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                     </div>
 
                     <div className="group/input space-y-1.5">
-                        <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Password</label>
+                        <div className="flex justify-between">
+                            <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Password</label>
+                            {!isRegister && (
+                                <button 
+                                    type="button"
+                                    onClick={handleForgotPassword}
+                                    className="text-[10px] text-slate-400 hover:text-cyan-400 transition-colors uppercase font-bold tracking-wide"
+                                >
+                                    Forgot Password?
+                                </button>
+                            )}
+                        </div>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 w-10 flex items-center justify-center text-slate-500 group-focus-within/input:text-cyan-400 transition-colors">
                                 <Lock size={18} />
@@ -749,470 +812,322 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
                 <Button type="submit" variant="neon" className="w-full mt-8 h-12 text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:scale-[1.02]" disabled={loading}>
                     {loading ? (
-                        <span className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Accessing Mainframe...</span>
-                    ) : isRegister ? 'Initialize Account' : 'Access Terminal'}
+                        <span className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</span>
+                    ) : isRegister ? 'Sign Up' : 'Log In'}
                 </Button>
             </form>
         </div>
         
         <div className="text-center mt-8 text-xs text-slate-600 mix-blend-plus-lighter">
-             Encrypted Connection • 256-bit SSL • TradeFlow Systems v2.0
+             &copy; {new Date().getFullYear()} TradeFlow. All rights reserved.
         </div>
       </div>
     </div>
   );
 };
 
-const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[], selectedAccount: string }> = ({ trades, accounts, selectedAccount }) => {
-    const [aiReview, setAiReview] = useState('');
-    const [loadingReview, setLoadingReview] = useState(false);
-
-    const filteredTrades = selectedAccount === 'all' 
-        ? trades 
-        : trades.filter(t => t.accountId === selectedAccount);
-    
-    const relevantAccounts = selectedAccount === 'all' ? accounts : accounts.filter(a => a.id === selectedAccount);
-    const startingBalance = relevantAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const totalPnL = filteredTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-    const currentEquity = startingBalance + totalPnL;
-
-    const winRate = (filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length / (filteredTrades.length || 1)) * 100;
-    
-    let peak = 0;
-    let maxDD = 0;
-    let runningEq = 0;
-    [...filteredTrades].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(t => {
-        runningEq += (t.pnl || 0);
-        if (runningEq > peak) peak = runningEq;
-        const dd = peak - runningEq;
-        if (dd > maxDD) maxDD = dd;
-    });
-
-    const handleAiReview = async () => {
-        setLoadingReview(true);
-        const review = await generatePerformanceReview(filteredTrades);
-        setAiReview(review);
-        setLoadingReview(false);
-    };
-
-    const getCalendarDays = () => {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth(); 
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const firstDay = new Date(year, month, 1).getDay(); 
-
-        const days = [];
-        for (let i = 0; i < firstDay; i++) days.push(null); 
-        for (let i = 1; i <= daysInMonth; i++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-            const dayTrades = filteredTrades.filter(t => t.date.startsWith(dateStr));
-            const dayPnL = dayTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-            const count = dayTrades.length;
-            days.push({ date: i, pnl: dayPnL, count });
-        }
-        return days;
-    };
+const JournalView: React.FC<{
+    trades: Trade[];
+    accounts: Account[];
+    onAdd: () => void;
+    onEdit: (t: Trade) => void;
+    onDelete: (id: string) => void;
+}> = ({ trades, accounts, onAdd, onEdit, onDelete }) => {
+    // Sort by date desc
+    const sortedTrades = [...trades].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex justify-between items-center flex-wrap gap-4">
-                <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Analytics Center</h2>
-                <Button onClick={handleAiReview} variant="neon" size="sm" disabled={loadingReview}>
-                    {loadingReview ? <Sparkles className="animate-spin"/> : <BrainCircuit size={16} />} 
-                    AI Audit
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Trade Journal</h2>
+                    <p className="text-slate-500 dark:text-slate-400">Track your edge.</p>
+                </div>
+                <Button variant="neon" onClick={onAdd}>
+                    <Plus size={20} /> <span className="hidden md:inline">Log Trade</span>
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white border-none">
-                    <div className="text-blue-100 text-sm mb-1">Current Equity</div>
-                    <div className="text-3xl font-bold tracking-tight">${currentEquity.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                    <div className="text-xs text-blue-200 mt-2 flex items-center gap-1">
-                        <Activity size={12} /> Includes open/closed PnL
-                    </div>
-                </Card>
-                <Card>
-                    <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Net PnL</div>
-                    <div className={`text-3xl font-bold tracking-tight ${totalPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-2">Selected range profit/loss</div>
-                </Card>
-                <Card>
-                    <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Win Rate</div>
-                    <div className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">{winRate.toFixed(1)}%</div>
-                    <div className="text-xs text-slate-400 mt-2">{filteredTrades.length} trades total</div>
-                </Card>
-                <Card>
-                    <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Max Drawdown</div>
-                    <div className="text-3xl font-bold text-rose-500 tracking-tight">-${maxDD.toFixed(2)}</div>
-                    <div className="text-xs text-slate-400 mt-2">Peak to trough decline</div>
-                </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1">
-                    <EquitySimulator currentBalance={currentEquity} />
-                </div>
-                <Card className="lg:col-span-2 h-96 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-cyan-500"/> Equity Curve</h3>
-                    <div className="flex-1 min-h-0">
-                        <EquityCurve trades={filteredTrades} />
-                    </div>
-                </Card>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="h-80 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Win/Loss Ratio</h3>
-                    <div className="flex-1 min-h-0">
-                        <WinLossChart trades={filteredTrades} />
-                    </div>
-                </Card>
-                 <Card className="h-80 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Pair Performance</h3>
-                    <div className="flex-1 min-h-0">
-                        <PairPerformanceChart trades={filteredTrades} />
-                    </div>
-                </Card>
-                 <Card className="h-80 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Strategy Performance</h3>
-                    <div className="flex-1 min-h-0">
-                        <StrategyChart trades={filteredTrades} />
-                    </div>
-                </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-                <Card className="h-full min-h-[400px]">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2"><CalendarIcon size={18} className="text-purple-500"/> Monthly PnL</h3>
-                        <span className="text-sm text-slate-500">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                    </div>
-                    <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs text-slate-400 font-bold uppercase">
-                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                    </div>
-                    <div className="grid grid-cols-7 gap-2">
-                        {getCalendarDays().map((day, i) => (
-                            <div 
-                                key={i} 
-                                className={`aspect-square rounded-lg border border-slate-200 dark:border-slate-700/50 flex flex-col items-center justify-center relative transition-all hover:scale-105 ${
-                                    !day ? 'bg-transparent border-none' : 
-                                    day.pnl > 0 ? 'bg-emerald-500/20 border-emerald-500/30' : 
-                                    day.pnl < 0 ? 'bg-rose-500/20 border-rose-500/30' : 
-                                    'bg-slate-100 dark:bg-slate-800'
-                                }`}
-                            >
-                                {day && (
-                                    <>
-                                        <span className="absolute top-1 left-2 text-[10px] text-slate-400">{day.date}</span>
-                                        {day.count > 0 && (
-                                            <>
-                                                <span className={`text-xs font-bold ${day.pnl > 0 ? 'text-emerald-600 dark:text-emerald-400' : day.pnl < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>
-                                                    {day.pnl > 0 ? '+' : ''}{Math.round(day.pnl)}
-                                                </span>
-                                                <span className="text-[9px] text-slate-500">{day.count} trds</span>
-                                            </>
-                                        )}
-                                    </>
-                                )}
+            <div className="grid grid-cols-1 gap-4">
+                {sortedTrades.map(trade => {
+                    const account = accounts.find(a => a.id === trade.accountId);
+                    return (
+                        <Card key={trade.id} className="flex flex-col md:flex-row gap-4 hover:border-cyan-500/30 transition-all group" onClick={() => onEdit(trade)}>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <Badge color={trade.direction === TradeDirection.BUY ? 'green' : 'red'}>{trade.direction}</Badge>
+                                        <span className="font-bold text-lg text-slate-800 dark:text-white">{trade.pair}</span>
+                                        <span className="text-xs text-slate-500">{new Date(trade.date).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Badge color={
+                                            trade.outcome === TradeOutcome.WIN ? 'green' :
+                                            trade.outcome === TradeOutcome.LOSS ? 'red' :
+                                            trade.outcome === TradeOutcome.BREAKEVEN ? 'gray' : 'yellow'
+                                        }>{trade.outcome}</Badge>
+                                        <button onClick={(e) => { e.stopPropagation(); onDelete(trade.id); }} className="p-2 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-300">
+                                    <div className="flex items-center gap-1"><DollarSign size={14} className="text-cyan-500"/> {trade.pnl ? `$${trade.pnl}` : '--'}</div>
+                                    <div className="flex items-center gap-1"><TargetIcon size={14} className="text-purple-500"/> {trade.rMultiple ? `${trade.rMultiple}R` : '--'}</div>
+                                    <div className="flex items-center gap-1"><Wallet size={14} className="text-blue-500"/> {account?.name || 'Unknown'}</div>
+                                </div>
                             </div>
-                        ))}
+                        </Card>
+                    );
+                })}
+                {trades.length === 0 && (
+                    <div className="text-center py-20 text-slate-500">
+                        <BookOpen size={48} className="mx-auto mb-4 opacity-20" />
+                        <p>No trades logged yet. Start your journey.</p>
                     </div>
-                </Card>
+                )}
             </div>
+        </div>
+    );
+};
 
-            {aiReview && (
-                <div className="mt-8 animate-slide-up">
-                    <div className="p-6 rounded-2xl glass-panel border border-cyan-500/30 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-500 to-blue-600" />
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                            <Bot className="text-cyan-500" /> AI Performance Audit
-                        </h3>
-                        <div className="prose dark:prose-invert max-w-none text-sm text-slate-700 dark:text-slate-300">
-                            <div dangerouslySetInnerHTML={{ __html: aiReview.replace(/\*\*(.*?)\*\*/g, '<strong class="text-cyan-600 dark:text-cyan-400">$1</strong>').replace(/\n/g, '<br/>') }} />
-                        </div>
-                    </div>
-                </div>
-            )}
+const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[], selectedAccount: string }> = ({ trades, accounts, selectedAccount }) => {
+    const filteredTrades = selectedAccount === 'all' ? trades : trades.filter(t => t.accountId === selectedAccount);
+    
+    const totalPnL = filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+    const winRate = filteredTrades.length > 0 
+        ? (filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length / filteredTrades.filter(t => t.outcome !== TradeOutcome.PENDING).length * 100) 
+        : 0;
+
+    return (
+        <div className="space-y-6 animate-fade-in pb-20">
+             <h2 className="text-3xl font-display font-bold">Analytics</h2>
+             
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <Card className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-cyan-500/20">
+                     <div className="text-slate-500 text-sm mb-1">Net PnL</div>
+                     <div className={`text-3xl font-bold ${totalPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>${totalPnL.toFixed(2)}</div>
+                 </Card>
+                 <Card>
+                     <div className="text-slate-500 text-sm mb-1">Win Rate</div>
+                     <div className="text-3xl font-bold text-slate-800 dark:text-white">{winRate.toFixed(1)}%</div>
+                 </Card>
+                 <Card>
+                     <div className="text-slate-500 text-sm mb-1">Total Trades</div>
+                     <div className="text-3xl font-bold text-slate-800 dark:text-white">{filteredTrades.length}</div>
+                 </Card>
+             </div>
+
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 <Card className="min-h-[300px]">
+                     <h3 className="font-bold mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-cyan-500"/> Equity Curve</h3>
+                     <EquityCurve trades={filteredTrades} />
+                 </Card>
+                 <Card className="min-h-[300px]">
+                     <h3 className="font-bold mb-4 flex items-center gap-2"><PieChart size={18} className="text-purple-500"/> Win/Loss Ratio</h3>
+                     <WinLossChart trades={filteredTrades} />
+                 </Card>
+                 <Card className="min-h-[300px]">
+                     <h3 className="font-bold mb-4">Performance by Pair</h3>
+                     <PairPerformanceChart trades={filteredTrades} />
+                 </Card>
+                 <Card className="min-h-[300px]">
+                     <h3 className="font-bold mb-4">Strategy Performance</h3>
+                     <StrategyChart trades={filteredTrades} />
+                 </Card>
+             </div>
         </div>
     );
 };
 
 const DisciplineView: React.FC<{ logs: DisciplineLog[], userId: string }> = ({ logs, userId }) => {
-    const [todayLog, setTodayLog] = useState<DisciplineLog | null>(null);
-    const [quote, setQuote] = useState('');
+    const today = new Date().toISOString().split('T')[0];
+    const todayLog = logs.find(l => l.date === today);
     
-    const [localIntention, setLocalIntention] = useState('');
-    const [localNotes, setLocalNotes] = useState('');
-    const lastLoadedId = useRef<string>('');
-
-    useEffect(() => {
-        const quotes = [
-            "The goal of a successful trader is to make the best trades. Money is secondary.",
-            "Risk comes from not knowing what you are doing.",
-            "It's not whether you're right or wrong, but how much money you make when you're right and how much you lose when you're wrong.",
-            "Amateurs focus on how much they can make. Professionals focus on how much they can lose.",
-            "Trade what you see, not what you think.",
-            "The market can remain irrational longer than you can remain solvent.",
-            "Confidence is not 'I will profit on this trade'. Confidence is 'I will be fine if I don't'.",
-            "Discipline is doing what needs to be done, even if you don't want to do it.",
-        ];
-        setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
-    }, []);
-
-    useEffect(() => {
-        const today = new Date().toISOString().split('T')[0];
-        const existing = logs.find(l => l.date === today);
-        if (existing) {
-            setTodayLog(existing);
-        } else {
-             setTodayLog({
-                id: `${userId}_${today}`, userId, date: today,
-                followedPlan: false, noRevenge: false, calmEmotion: false, journaled: false,
-                notes: '', mood: 50, intention: ''
-            });
-        }
-    }, [logs, userId]);
-
-    useEffect(() => {
-        if (todayLog && todayLog.id !== lastLoadedId.current) {
-            setLocalIntention(todayLog.intention || '');
-            setLocalNotes(todayLog.notes || '');
-            lastLoadedId.current = todayLog.id;
-        }
-    }, [todayLog]);
-
-    const handleUpdate = async (updates: Partial<DisciplineLog>) => {
+    const handleCheck = async (field: keyof DisciplineLog) => {
         if (!todayLog) return;
-        const updated = { ...todayLog, ...updates };
-        setTodayLog(updated);
-        await updateDisciplineLog(updated, userId);
+        await updateDisciplineLog({ ...todayLog, [field]: !todayLog[field] }, userId);
     };
 
-    const getHeatmapData = () => {
-        const data = [];
-        for (let i = 13; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            const log = logs.find(l => l.date === dateStr);
-            data.push({ date: dateStr, log });
-        }
-        return data;
-    };
-
-    if (!todayLog) return <div>Loading...</div>;
-
-    const getMoodLabel = (val: number) => {
-        if (val < 20) return { label: "Fear / Tilt", icon: Frown, color: "text-rose-500" };
-        if (val < 45) return { label: "Anxious", icon: Meh, color: "text-orange-500" };
-        if (val < 65) return { label: "Neutral / Calm", icon: Smile, color: "text-cyan-500" };
-        if (val < 85) return { label: "Confident", icon: Smile, color: "text-emerald-500" };
-        return { label: "Greed / Overconfident", icon: Activity, color: "text-purple-500" };
-    };
-
-    const moodInfo = getMoodLabel(todayLog.mood || 50);
-
-    const historyLogs = [...logs]
-        .filter(l => l.date !== todayLog!.date)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    useEffect(() => {
+        initializeTodayLog(userId);
+    }, [userId]);
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex justify-between items-end">
-                <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Mindset & Discipline</h2>
-                <div className="text-right hidden md:block">
-                    <div className="text-xs text-slate-500 uppercase tracking-widest font-bold">Current Streak</div>
-                    <div className="text-3xl font-bold text-cyan-500">{logs.filter(l => l.followedPlan && l.noRevenge).length} Days</div>
-                </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-cyan-500/20">
-                         <div className="flex justify-between items-center mb-4">
-                             <h3 className="font-bold text-white flex items-center gap-2"><RotateCcw className="text-cyan-500"/> Zen Mode</h3>
-                             <Badge color="blue">Box Breathing</Badge>
-                         </div>
-                         <BreathingExercise />
-                    </Card>
+             <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-display font-bold">Mindset & Discipline</h2>
+                <BreathingExercise />
+             </div>
 
-                    <Card className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                <Zap className="text-amber-500" /> Daily Checklist
-                            </h3>
-                            <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-500">{todayLog.date}</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {[
-                                { key: 'followedPlan', label: 'Followed Trading Plan', icon: Target },
-                                { key: 'noRevenge', label: 'No Revenge Trading', icon: Shield },
-                                { key: 'calmEmotion', label: 'Maintained Calm State', icon: BrainCircuit },
-                                { key: 'journaled', label: 'Journaled All Trades', icon: BookOpen },
-                            ].map((item) => (
-                                <div 
-                                    key={item.key}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <Card className="relative overflow-hidden">
+                     <div className="absolute top-0 right-0 p-3 opacity-10"><Zap size={100} /></div>
+                     <h3 className="font-bold text-xl mb-4">Daily Commitment</h3>
+                     <div className="space-y-3">
+                         {[
+                             { id: 'followedPlan', label: 'Followed Trading Plan' },
+                             { id: 'noRevenge', label: 'No Revenge Trading' },
+                             { id: 'calmEmotion', label: 'Maintained Emotional Balance' },
+                             { id: 'journaled', label: 'Journaled All Trades' },
+                         ].map((item) => (
+                             <div key={item.id} 
+                                onClick={() => handleCheck(item.id as keyof DisciplineLog)}
+                                className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
                                     // @ts-ignore
-                                    onClick={() => handleUpdate({ [item.key]: !todayLog[item.key] })}
-                                    // @ts-ignore
-                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${todayLog[item.key] ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-cyan-500/50'}`}
-                                >
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                        // @ts-ignore
-                                        todayLog[item.key] ? 'bg-cyan-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
-                                    }`}>
-                                        <CheckSquare size={14} />
-                                    </div>
-                                    <span className={`font-medium ${
-                                        // @ts-ignore
-                                        todayLog[item.key] ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-600 dark:text-slate-400'
-                                    }`}>{item.label}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
-                             <div>
-                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Daily Intention</label>
-                                 <Input 
-                                    value={localIntention} 
-                                    onChange={e => setLocalIntention(e.target.value)} 
-                                    onBlur={() => handleUpdate({ intention: localIntention })}
-                                    placeholder="My goal for today is..." 
-                                />
-                            </div>
-                             <div>
-                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">End of Day Reflection</label>
-                                 <textarea 
-                                    value={localNotes}
-                                    onChange={e => setLocalNotes(e.target.value)}
-                                    onBlur={() => handleUpdate({ notes: localNotes })}
-                                    className="w-full bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 h-24 resize-none"
-                                    placeholder="How did you feel? What can you improve?"
-                                />
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-                
-                <div className="space-y-6">
-                     <Card>
-                        <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                            <Activity className="text-cyan-500" size={18}/> Emotional State
-                        </h3>
-                        <div className="text-center py-4">
-                             <moodInfo.icon className={`w-12 h-12 mx-auto mb-2 ${moodInfo.color}`} />
-                             <div className={`text-lg font-bold ${moodInfo.color}`}>{moodInfo.label}</div>
-                             <div className="text-xs text-slate-500 mb-6">How are you feeling right now?</div>
-                             
-                             <input 
-                                type="range" 
-                                min="0" max="100" 
-                                value={todayLog.mood || 50}
-                                onChange={e => handleUpdate({ mood: parseInt(e.target.value) })}
-                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                             />
-                             <div className="flex justify-between text-xs text-slate-400 mt-2 px-1">
-                                 <span>Fear</span>
-                                 <span>Neutral</span>
-                                 <span>Greed</span>
+                                    todayLog?.[item.id] 
+                                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                                    : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 text-slate-400'
+                                }`}
+                             >
+                                 <span className="font-semibold">{item.label}</span>
+                                 {/* @ts-ignore */}
+                                 {todayLog?.[item.id] ? <CheckCircle className="text-emerald-500"/> : <div className="w-6 h-6 rounded-full border-2 border-slate-600" />}
                              </div>
-                        </div>
-                    </Card>
+                         ))}
+                     </div>
+                 </Card>
+                 
+                 <Card>
+                     <h3 className="font-bold text-xl mb-4">Streak</h3>
+                     <div className="flex items-center gap-2">
+                         {logs.slice(-7).map(log => {
+                             const score = [log.followedPlan, log.noRevenge, log.calmEmotion, log.journaled].filter(Boolean).length;
+                             return (
+                                 <div key={log.id} className="flex-1 flex flex-col items-center gap-2">
+                                     <div className={`w-full aspect-square rounded-lg ${
+                                         score === 4 ? 'bg-emerald-500' : 
+                                         score === 3 ? 'bg-emerald-500/50' :
+                                         score > 0 ? 'bg-emerald-500/20' : 'bg-slate-800'
+                                     }`} />
+                                     <span className="text-xs text-slate-500">{new Date(log.date).getDate()}</span>
+                                 </div>
+                             )
+                         })}
+                     </div>
+                 </Card>
+             </div>
+        </div>
+    );
+};
 
-                    <Card>
-                        <h3 className="font-bold text-slate-800 dark:text-white mb-4">Consistency (14 Days)</h3>
-                        <div className="flex gap-2 justify-center">
-                            {getHeatmapData().map((d, i) => (
-                                <div 
-                                    key={i}
-                                    title={`${d.date}: ${d.log ? (d.log.followedPlan ? 'Disciplined' : 'Undisciplined') : 'No Log'}`}
-                                    className={`w-3 h-8 rounded-sm ${
-                                        !d.log ? 'bg-slate-200 dark:bg-slate-800' :
-                                        d.log.followedPlan && d.log.noRevenge ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
-                                        d.log.followedPlan ? 'bg-emerald-500/60' :
-                                        'bg-rose-500'
-                                    }`}
-                                />
-                            ))}
-                        </div>
-                        <div className="flex justify-between text-xs text-slate-400 mt-3">
-                            <span>2 Weeks Ago</span>
-                            <span>Today</span>
-                        </div>
-                    </Card>
-
-                    <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-none relative overflow-hidden">
-                        <div className="absolute -right-4 -top-4 opacity-10"><Quote size={100} /></div>
-                        <h3 className="font-bold text-indigo-300 text-xs uppercase tracking-wider mb-3">Daily Wisdom</h3>
-                        <p className="font-display text-lg leading-relaxed italic">
-                            "{quote}"
-                        </p>
-                    </Card>
+const NewsView: React.FC<{ news: { sentiment: string, events: CalendarEvent[] } }> = ({ news }) => {
+    return (
+        <div className="space-y-6 animate-fade-in pb-20">
+            <h2 className="text-3xl font-display font-bold">Market Intelligence</h2>
+            
+            <Card className="bg-gradient-to-r from-indigo-900/50 to-purple-900/50 border-indigo-500/30">
+                <h3 className="font-bold text-lg text-indigo-300 mb-2 flex items-center gap-2"><Sparkles size={18}/> AI Market Sentiment</h3>
+                <div className="text-slate-200 leading-relaxed whitespace-pre-line">
+                    {news.sentiment || "Analyzing market conditions..."}
                 </div>
-            </div>
+            </Card>
 
-            <div className="pt-8 border-t border-slate-200 dark:border-slate-800">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                    <Layers size={20} className="text-purple-500"/> Previous Days
-                </h3>
-                <div className="space-y-3">
-                    {historyLogs.length === 0 ? (
-                        <div className="text-center text-slate-500 py-8 bg-slate-50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                            No history logs yet. Keep showing up!
+            <MarketSessionClocks />
+
+            <h3 className="font-bold text-xl mt-8 mb-4">High Impact Events (This Week)</h3>
+            <div className="space-y-3">
+                {news.events.length > 0 ? news.events.map((event, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 text-center">
+                                <div className="text-xs text-slate-500">{event.time.split(' ')[0]}</div>
+                                <div className="font-bold text-slate-200">{event.time.split(' ').slice(1).join(' ')}</div>
+                            </div>
+                            <Badge color="red">{event.currency}</Badge>
+                            <div>
+                                <div className="font-bold text-slate-200">{event.event}</div>
+                                <div className="text-xs text-slate-500">Forecast: {event.forecast} • Prev: {event.previous}</div>
+                            </div>
                         </div>
-                    ) : (
-                        historyLogs.map(log => {
-                            const mood = getMoodLabel(log.mood || 50);
-                            const score = [log.followedPlan, log.noRevenge, log.calmEmotion, log.journaled].filter(Boolean).length;
-                            
-                            return (
-                                <Card key={log.id} className="flex flex-col md:flex-row gap-4 md:items-center justify-between p-4 hover:border-cyan-500/30 transition-colors">
-                                    <div className="flex items-center gap-4 min-w-[150px]">
-                                        <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-center min-w-[60px]">
-                                            <div className="text-xs text-slate-500 uppercase font-bold">{new Date(log.date).toLocaleDateString('en-US', {weekday: 'short'})}</div>
-                                            <div className="font-bold text-lg text-slate-800 dark:text-white">{new Date(log.date).getDate()}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-sm text-slate-500">{new Date(log.date).toLocaleDateString('en-US', {month: 'short', year: 'numeric'})}</div>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                {score === 4 ? <Badge color="green">Perfect Day</Badge> : <Badge color="gray">{score}/4 Rules</Badge>}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 dark:bg-slate-800/30 p-3 rounded-lg">
-                                            <div className="text-xs text-slate-400 uppercase font-bold mb-1">Intention</div>
-                                            <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">{log.intention || "No intention set."}</p>
-                                        </div>
-                                        <div className="bg-slate-50 dark:bg-slate-800/30 p-3 rounded-lg">
-                                            <div className="text-xs text-slate-400 uppercase font-bold mb-1">Reflection</div>
-                                            <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">{log.notes || "No reflection."}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col items-center justify-center pl-4 border-l border-slate-200 dark:border-slate-700 min-w-[100px]">
-                                        <mood.icon className={`w-6 h-6 mb-1 ${mood.color}`} />
-                                        <span className={`text-xs font-bold ${mood.color}`}>{mood.label}</span>
-                                        <span className="text-[10px] text-slate-400">{log.mood}%</span>
-                                    </div>
-                                </Card>
-                            );
-                        })
-                    )}
-                </div>
+                        <div className="text-right">
+                            <div className={`font-mono font-bold ${event.isBetter ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {event.actual || '--'}
+                            </div>
+                            <div className="text-xs text-slate-500">Actual</div>
+                        </div>
+                    </div>
+                )) : (
+                    <div className="text-center p-8 text-slate-500">Loading calendar data...</div>
+                )}
             </div>
+        </div>
+    );
+};
+
+const AICoachView: React.FC<{ 
+    chatHistory: ChatMessage[]; 
+    onSend: (msg: string, img?: string) => Promise<void>;
+    isTyping: boolean;
+}> = ({ chatHistory, onSend, isTyping }) => {
+    const [input, setInput] = useState('');
+    const bottomRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatHistory]);
+
+    const handleSend = () => {
+        if (!input.trim()) return;
+        onSend(input);
+        setInput('');
+    };
+
+    return (
+        <div className="h-[calc(100vh-140px)] flex flex-col animate-fade-in">
+             <h2 className="text-3xl font-display font-bold mb-4">AI Trading Coach</h2>
+             <Card className="flex-1 flex flex-col overflow-hidden p-0 bg-slate-900/80 backdrop-blur-xl border-slate-800">
+                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                     {chatHistory.length === 0 && (
+                         <div className="text-center py-20 opacity-50">
+                             <Bot size={64} className="mx-auto mb-4 text-cyan-500" />
+                             <p>Ask me about your trades, psychology, or market analysis.</p>
+                         </div>
+                     )}
+                     {chatHistory.map(msg => (
+                         <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                             <div className={`max-w-[80%] p-4 rounded-2xl ${
+                                 msg.role === 'user' 
+                                 ? 'bg-cyan-600 text-white rounded-tr-none' 
+                                 : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
+                             }`}>
+                                 <div className="whitespace-pre-wrap">{msg.text}</div>
+                             </div>
+                         </div>
+                     ))}
+                     {isTyping && (
+                         <div className="flex justify-start">
+                             <div className="bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-700 flex gap-2">
+                                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" />
+                                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce delay-75" />
+                                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce delay-150" />
+                             </div>
+                         </div>
+                     )}
+                     <div ref={bottomRef} />
+                 </div>
+                 <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+                     <div className="flex gap-2">
+                         <Input 
+                            value={input} 
+                            onChange={e => setInput(e.target.value)} 
+                            onKeyDown={e => e.key === 'Enter' && handleSend()}
+                            placeholder="Ask your coach..." 
+                            className="flex-1"
+                         />
+                         <Button onClick={handleSend} variant="neon" disabled={!input.trim() || isTyping}>
+                             <Send size={20} />
+                         </Button>
+                     </div>
+                 </div>
+             </Card>
         </div>
     );
 };
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [activeTab, setActiveTab] = useState('journal');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -1220,6 +1135,7 @@ const App: React.FC = () => {
   const [disciplineLogs, setDisciplineLogs] = useState<DisciplineLog[]>([]);
   const [news, setNews] = useState<{sentiment: string, events: CalendarEvent[]}>({ sentiment: '', events: [] });
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
   
   const [isAddTradeOpen, setIsAddTradeOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Partial<Trade> | undefined>(undefined);
@@ -1228,54 +1144,63 @@ const App: React.FC = () => {
   const [newAccountBroker, setNewAccountBroker] = useState('');
   const [newAccountBalance, setNewAccountBalance] = useState('');
 
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+  };
+
   useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      setTheme('light');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.remove('dark', 'light');
-    document.documentElement.classList.add(theme);
   }, [theme]);
-
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   useEffect(() => {
     const unsubscribe = subscribeToAuth((u) => {
+      if (u && !user) {
+          // User just logged in
+          setShowWelcome(true);
+          setTimeout(() => setShowWelcome(false), 5000);
+      }
       setUser(u);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    if (user) {
+      if (!user) return;
       const unsubTrades = subscribeToTrades(user.uid, setTrades);
       const unsubAccounts = subscribeToAccounts(user.uid, setAccounts);
       const unsubDiscipline = subscribeToDiscipline(user.uid, setDisciplineLogs);
-      initializeTodayLog(user.uid);
       
-      getLiveMarketNews().then(setNews);
+      const loadNews = async () => {
+          const data = await getLiveMarketNews();
+          setNews(data);
+      }
+      loadNews();
 
       return () => {
-        unsubTrades();
-        unsubAccounts();
-        unsubDiscipline();
+          unsubTrades();
+          unsubAccounts();
+          unsubDiscipline();
       };
-    }
   }, [user]);
 
   const handleLogout = () => {
     logoutUser();
     setUser(null);
   };
-
+  
   const handleSaveTrade = async (trade: Trade) => {
     if (trade.id) {
        await updateTradeInDb(trade);
     } else {
        await addTradeToDb(trade, user!.uid);
     }
+    setEditingTrade(undefined);
+    setIsAddTradeOpen(false);
   };
 
   const handleDeleteTrade = async (id: string) => {
@@ -1307,70 +1232,17 @@ const App: React.FC = () => {
       }
   };
 
-  // --- Updated NewsView within App ---
-  const NewsView = () => (
-      <div className="space-y-6 animate-fade-in pb-20">
-           <div className="flex justify-between items-end">
-              <div>
-                   <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                       <Flame className="text-rose-500 fill-rose-500/20 animate-pulse" /> Red Folder News
-                   </h2>
-                   <p className="text-slate-500 dark:text-slate-400 mt-2">High-impact events that move the markets.</p>
-              </div>
-              <div className="flex gap-2">
-                  <Badge color="red">HIGH IMPACT ONLY</Badge>
-              </div>
-           </div>
-           
-           <MarketSessionClocks />
-
-           <div className="grid gap-4">
-                {news.events.length === 0 ? (
-                    <div className="text-center py-10 text-slate-500">No high impact news found for this week.</div>
-                ) : (
-                    news.events.map(event => (
-                        <Card key={event.id} className="flex items-center justify-between p-4 group hover:bg-slate-800/50 transition-colors border-l-4 border-l-rose-500 relative overflow-hidden">
-                            {/* Glow Effect */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                            
-                            <div className="flex items-center gap-6 relative z-10">
-                                <div className="text-center min-w-[80px]">
-                                    <div className="text-lg font-bold text-slate-800 dark:text-white font-display">{event.time}</div>
-                                    <div className="flex justify-center mt-2">
-                                        <Badge color="red" >HIGH</Badge>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-                                        <span className="text-2xl">{event.currency === 'USD' ? '🇺🇸' : event.currency === 'EUR' ? '🇪🇺' : event.currency === 'GBP' ? '🇬🇧' : event.currency === 'JPY' ? '🇯🇵' : '🌍'}</span>
-                                        {event.event}
-                                    </div>
-                                    <div className="text-sm text-slate-500 mt-1 flex gap-4">
-                                        <span>Fcst: <span className="text-slate-300 font-mono">{event.forecast || '--'}</span></span>
-                                        <span>Prev: <span className="text-slate-300 font-mono">{event.previous || '--'}</span></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-right relative z-10">
-                                 <div className={`font-mono font-bold text-2xl ${event.isBetter ? 'text-emerald-400' : event.actual ? 'text-rose-400' : 'text-slate-500'}`}>
-                                    {event.actual || '--'}
-                                 </div>
-                                 <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mt-1">Actual</div>
-                            </div>
-                        </Card>
-                    ))
-                )}
-           </div>
-           
-           {news.sentiment && (
-                <div className="mt-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
-                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Bot size={18} className="text-indigo-400"/> Weekly Market Outlook</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">{news.sentiment.split('\n\nSources')[0]}</p>
-                </div>
-           )}
-      </div>
-  );
+  const handleSendChat = async (text: string, image?: string) => {
+      const newUserMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text, timestamp: Date.now(), image };
+      setChatHistory(prev => [...prev, newUserMsg]);
+      setIsTyping(true);
+      
+      const response = await chatWithTradeCoach(chatHistory, text, image);
+      
+      const newAiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'assistant', text: response, timestamp: Date.now() };
+      setChatHistory(prev => [...prev, newAiMsg]);
+      setIsTyping(false);
+  };
 
   if (!user) {
     return (
@@ -1382,389 +1254,16 @@ const App: React.FC = () => {
 
   const currentAccount = accounts[0] || { id: 'default', name: 'Default', balance: 0, currency: 'USD' };
 
-  const JournalView = () => {
-      const filteredTrades = selectedAccount === 'all' 
-        ? trades 
-        : trades.filter(t => t.accountId === selectedAccount);
-      const sortedTrades = [...filteredTrades].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      const [magicInput, setMagicInput] = useState('');
-      const [isParsing, setIsParsing] = useState(false);
-      const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
-
-      // Stats Calculation
-      const totalPnL = filteredTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-      const winCount = filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length;
-      const winRate = filteredTrades.length > 0 ? (winCount / filteredTrades.length) * 100 : 0;
-      const bestPair = Object.entries(filteredTrades.reduce((acc, t) => {
-          acc[t.pair] = (acc[t.pair] || 0) + (t.pnl || 0);
-          return acc;
-      }, {} as Record<string, number>)).sort((a,b) => b[1] - a[1])[0];
-
-      const handleMagicLog = async () => {
-          if(!magicInput) return;
-          setIsParsing(true);
-          const data = await parseTradeFromNaturalLanguage(magicInput);
-          setEditingTrade(data);
-          setIsAddTradeOpen(true);
-          setMagicInput('');
-          setIsParsing(false);
-      }
-
-      const handleExportCSV = () => {
-          const headers = ['Date', 'Pair', 'Direction', 'Outcome', 'PnL', 'Setup', 'Notes'];
-          const rows = sortedTrades.map(t => [
-              new Date(t.date).toLocaleDateString(),
-              t.pair,
-              t.direction,
-              t.outcome,
-              t.pnl,
-              t.setup,
-              `"${t.notes}"`
-          ]);
-          const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-          const encodedUri = encodeURI(csvContent);
-          const link = document.createElement("a");
-          link.setAttribute("href", encodedUri);
-          link.setAttribute("download", "trade_journal.csv");
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-      };
-
-      return (
-          <div className="space-y-6 animate-fade-in pb-20">
-              {/* Journal Stats Bar */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="glass-panel p-4 rounded-xl border-l-4 border-l-cyan-500">
-                      <div className="text-xs text-slate-500 uppercase font-bold">Net PnL</div>
-                      <div className={`text-xl font-bold font-mono ${totalPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                          {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
-                      </div>
-                  </div>
-                  <div className="glass-panel p-4 rounded-xl border-l-4 border-l-purple-500">
-                      <div className="text-xs text-slate-500 uppercase font-bold">Win Rate</div>
-                      <div className="text-xl font-bold text-slate-800 dark:text-white">{winRate.toFixed(1)}%</div>
-                  </div>
-                   <div className="glass-panel p-4 rounded-xl border-l-4 border-l-amber-500">
-                      <div className="text-xs text-slate-500 uppercase font-bold">Best Pair</div>
-                      <div className="text-xl font-bold text-slate-800 dark:text-white">{bestPair ? bestPair[0] : '--'}</div>
-                  </div>
-                  <div className="glass-panel p-4 rounded-xl border-l-4 border-l-blue-500">
-                      <div className="text-xs text-slate-500 uppercase font-bold">Total Trades</div>
-                      <div className="text-xl font-bold text-slate-800 dark:text-white">{filteredTrades.length}</div>
-                  </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
-                  <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Trade Journal</h2>
-                  <div className="flex gap-3 w-full md:w-auto">
-                     <Button variant="secondary" onClick={handleExportCSV} size="sm" className="flex-1 md:flex-none">
-                        <Download size={16} /> Export
-                     </Button>
-                     <Button onClick={() => { setEditingTrade(undefined); setIsAddTradeOpen(true); }} variant="neon" className="flex-1 md:flex-none">
-                        <Plus size={18} /> Log Trade
-                     </Button>
-                  </div>
-              </div>
-
-              {/* Magic Input Bar */}
-              <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Sparkles className={`text-cyan-500 ${isParsing ? 'animate-spin' : ''}`} size={18} />
-                  </div>
-                  <input 
-                      type="text" 
-                      value={magicInput}
-                      onChange={e => setMagicInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleMagicLog()}
-                      placeholder="Magic Log: 'Long BTCUSD at 65k, sold at 68k, felt great...'"
-                      className="w-full pl-10 pr-4 py-4 bg-white dark:bg-slate-900/60 border-2 border-transparent focus:border-cyan-500/50 rounded-2xl shadow-lg focus:outline-none text-base md:text-lg transition-all placeholder-slate-400 dark:text-white backdrop-blur-xl"
-                  />
-                  <div className="absolute inset-y-0 right-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="sm" variant="ghost" onClick={handleMagicLog} disabled={!magicInput}>
-                          <ArrowRight size={18}/>
-                      </Button>
-                  </div>
-              </div>
-
-              {/* Responsive List View Table */}
-              <div className="glass-panel rounded-2xl overflow-hidden border border-white/10">
-                  {/* Desktop Header (Hidden on Mobile) */}
-                  <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-white/10 text-xs font-bold uppercase text-slate-500 tracking-wider">
-                      <div className="col-span-2">Date</div>
-                      <div className="col-span-3">Pair / Strategy</div>
-                      <div className="col-span-2 text-center">Outcome</div>
-                      <div className="col-span-3 text-right">PnL / R</div>
-                      <div className="col-span-2 text-right">Actions</div>
-                  </div>
-                  
-                  {sortedTrades.length === 0 && (
-                       <div className="text-center py-20 text-slate-500">No trades logged yet. Start your journey!</div>
-                  )}
-
-                  {sortedTrades.map(trade => (
-                      <div key={trade.id} className="group border-b border-white/5 last:border-0 transition-colors hover:bg-white/5">
-                          {/* Row Container */}
-                          <div 
-                            className="p-4 cursor-pointer"
-                            onClick={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
-                          >
-                              {/* DESKTOP LAYOUT (Hidden on mobile) */}
-                              <div className="hidden md:grid grid-cols-12 gap-4 items-center">
-                                  <div className="col-span-2 text-sm text-slate-400 font-mono">
-                                      {new Date(trade.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
-                                      <span className="block text-xs opacity-50">{new Date(trade.date).toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'})}</span>
-                                  </div>
-                                  
-                                  <div className="col-span-3">
-                                      <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
-                                          {trade.pair}
-                                          <span className={`text-[10px] px-1.5 rounded border ${trade.direction === TradeDirection.BUY ? 'border-emerald-500 text-emerald-500' : 'border-rose-500 text-rose-500'}`}>
-                                              {trade.direction}
-                                          </span>
-                                      </div>
-                                      {trade.setup && <div className="text-xs text-slate-500 mt-1">{trade.setup}</div>}
-                                  </div>
-
-                                  <div className="col-span-2 text-center">
-                                      <Badge color={trade.outcome === TradeOutcome.WIN ? 'green' : trade.outcome === TradeOutcome.LOSS ? 'red' : 'gray'}>
-                                          {trade.outcome}
-                                      </Badge>
-                                  </div>
-
-                                  <div className="col-span-3 text-right">
-                                      <div className={`font-mono font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                                          {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl}` : '--'}
-                                      </div>
-                                      <div className="text-xs text-slate-500">
-                                          {trade.rMultiple ? `${trade.rMultiple}R` : ''}
-                                          {trade.riskPercentage ? ` • ${trade.riskPercentage}%` : ''}
-                                      </div>
-                                  </div>
-
-                                  <div className="col-span-2 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
-                                          <Edit2 size={14} />
-                                      </Button>
-                                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDeleteTrade(trade.id); }} className="text-rose-500 hover:text-rose-600">
-                                          <Trash2 size={14} />
-                                      </Button>
-                                      <ChevronDown size={16} className={`text-slate-500 transition-transform duration-300 ${expandedTradeId === trade.id ? 'rotate-180' : ''}`} />
-                                  </div>
-                              </div>
-
-                              {/* MOBILE LAYOUT (Visible only on mobile) */}
-                              <div className="md:hidden flex flex-col gap-2">
-                                   <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-lg text-slate-900 dark:text-white">{trade.pair}</span>
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${trade.direction === TradeDirection.BUY ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                                {trade.direction}
-                                            </span>
-                                        </div>
-                                        <div className={`font-mono font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                                            {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl}` : '--'}
-                                        </div>
-                                   </div>
-                                   <div className="flex justify-between items-center text-sm text-slate-500">
-                                        <div className="flex flex-col">
-                                            <span>{new Date(trade.date).toLocaleDateString()}</span>
-                                            {trade.setup && <span className="text-xs opacity-70">{trade.setup}</span>}
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                             {trade.rMultiple ? <span className="text-xs font-mono">{trade.rMultiple}R</span> : null}
-                                             <Badge color={trade.outcome === TradeOutcome.WIN ? 'green' : trade.outcome === TradeOutcome.LOSS ? 'red' : 'gray'}>
-                                                 {trade.outcome}
-                                             </Badge>
-                                        </div>
-                                   </div>
-                              </div>
-                          </div>
-
-                          {/* Expanded Details */}
-                          {expandedTradeId === trade.id && (
-                              <div className="px-4 pb-6 pt-0 animate-slide-up bg-black/20">
-                                  {/* Mobile Actions Row */}
-                                  <div className="md:hidden flex gap-2 pt-4 pb-2 border-b border-white/10 mb-4">
-                                      <Button variant="secondary" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
-                                          <Edit2 size={16} /> Edit
-                                      </Button>
-                                      <Button variant="danger" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); handleDeleteTrade(trade.id); }}>
-                                          <Trash2 size={16} /> Delete
-                                      </Button>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 md:border-t border-white/10 pt-4">
-                                      <div className="space-y-4">
-                                          <div>
-                                              <div className="text-xs uppercase text-slate-500 font-bold mb-1">Notes & Learnings</div>
-                                              <p className="text-sm text-slate-300 leading-relaxed bg-black/20 p-3 rounded-lg border border-white/5 italic">
-                                                  "{trade.notes || 'No notes added.'}"
-                                              </p>
-                                          </div>
-                                          <div className="flex gap-4">
-                                              <div>
-                                                  <div className="text-xs uppercase text-slate-500 font-bold mb-1">Execution Grade</div>
-                                                  <div className={`text-2xl font-bold ${trade.checklistScore === 'A' ? 'text-emerald-500' : 'text-yellow-500'}`}>{trade.checklistScore}</div>
-                                              </div>
-                                              <div>
-                                                   <div className="text-xs uppercase text-slate-500 font-bold mb-1">Session</div>
-                                                   <div className="text-sm text-white">{trade.session}</div>
-                                              </div>
-                                          </div>
-                                          {trade.aiAnalysis && (
-                                              <div className="bg-cyan-500/10 border border-cyan-500/20 p-3 rounded-lg">
-                                                  <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1"><Bot size={12}/> AI Insight</div>
-                                                  <p className="text-xs text-slate-300">{trade.aiAnalysis}</p>
-                                              </div>
-                                          )}
-                                      </div>
-                                      
-                                      <div>
-                                          <div className="text-xs uppercase text-slate-500 font-bold mb-2">Chart Screenshot</div>
-                                          {trade.screenshot ? (
-                                              <img src={trade.screenshot} alt="Chart" className="w-full rounded-lg border border-white/10 hover:scale-105 transition-transform cursor-pointer" onClick={() => window.open(trade.screenshot, '_blank')} />
-                                          ) : (
-                                              <div className="w-full h-40 bg-slate-800/50 rounded-lg flex flex-col items-center justify-center text-slate-600 border border-dashed border-slate-700">
-                                                  <ImageIcon size={24} className="mb-2"/>
-                                                  <span className="text-xs">No chart uploaded</span>
-                                              </div>
-                                          )}
-                                      </div>
-                                  </div>
-                              </div>
-                          )}
-                      </div>
-                  ))}
-              </div>
-          </div>
-      );
-  };
-
-  const AICoachView = () => {
-     const [input, setInput] = useState('');
-     const [loading, setLoading] = useState(false);
-     const scrollRef = useRef<HTMLDivElement>(null);
-     const fileInputRef = useRef<HTMLInputElement>(null);
-     const [attachedImage, setAttachedImage] = useState<string>('');
-
-     const handleSend = async () => {
-         if ((!input.trim() && !attachedImage) || loading) return;
-         
-         const userMsg: ChatMessage = {
-             id: Date.now().toString(),
-             role: 'user',
-             text: input,
-             image: attachedImage,
-             timestamp: Date.now()
-         };
-         
-         const newHistory = [...chatHistory, userMsg];
-         setChatHistory(newHistory);
-         setInput('');
-         setAttachedImage('');
-         setLoading(true);
-
-         if (input.toLowerCase().includes('log this trade') || input.length > 100) {
-             const parsed = await parseTradeFromNaturalLanguage(input);
-             if (parsed && parsed.pair) {
-                 setEditingTrade(parsed);
-                 setIsAddTradeOpen(true);
-                 const botMsg: ChatMessage = { id: (Date.now()+1).toString(), role: 'assistant', text: "I've opened the trade log form with the details I extracted. Please verify and save.", timestamp: Date.now() };
-                 setChatHistory([...newHistory, botMsg]);
-                 setLoading(false);
-                 return;
-             }
-         }
-
-         const response = await chatWithTradeCoach(newHistory, userMsg.text, userMsg.image);
-         const botMsg: ChatMessage = {
-             id: (Date.now()+1).toString(),
-             role: 'assistant',
-             text: response,
-             timestamp: Date.now()
-         };
-         setChatHistory([...newHistory, botMsg]);
-         setLoading(false);
-     };
-
-     useEffect(() => {
-         if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-     }, [chatHistory]);
-
-     return (
-         <div className="flex flex-col h-[calc(100vh-2rem)] pb-20 md:pb-0">
-             <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white mb-4">AI Trading Coach</h2>
-             <Card className="flex-1 flex flex-col overflow-hidden p-0 bg-slate-50/50 dark:bg-slate-900/50">
-                 <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-                     {chatHistory.length === 0 && (
-                         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-50">
-                             <Bot size={64} className="mb-4"/>
-                             <p>Ask me to analyze a setup, review your psychology, or log a trade.</p>
-                         </div>
-                     )}
-                     {chatHistory.map(msg => (
-                         <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                             <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
-                                 {msg.image && <img src={msg.image} alt="Context" className="max-w-full rounded-lg mb-2 border border-white/20" />}
-                                 <div className="whitespace-pre-wrap text-sm">{msg.text}</div>
-                             </div>
-                         </div>
-                     ))}
-                     {loading && (
-                         <div className="flex justify-start">
-                             <div className="bg-white dark:bg-slate-800 rounded-2xl rounded-bl-none p-4 border border-slate-200 dark:border-slate-700 flex gap-2 items-center text-slate-500 text-sm">
-                                 <Bot size={16} className="animate-pulse"/> Thinking...
-                             </div>
-                         </div>
-                     )}
-                 </div>
-                 <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
-                     {attachedImage && (
-                         <div className="mb-2 inline-block relative">
-                             <img src={attachedImage} className="h-16 rounded border border-slate-300 dark:border-slate-600" alt="attachment"/>
-                             <button onClick={() => setAttachedImage('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-0.5"><X size={12}/></button>
-                         </div>
-                     )}
-                     <div className="flex gap-2">
-                         <button onClick={() => fileInputRef.current?.click()} className="p-3 text-slate-400 hover:text-cyan-500 transition-colors">
-                             <ImageIcon size={20}/>
-                             <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={(e) => {
-                                 const file = e.target.files?.[0];
-                                 if(file) {
-                                     const reader = new FileReader();
-                                     reader.onload = (ev) => setAttachedImage(ev.target?.result as string);
-                                     reader.readAsDataURL(file);
-                                 }
-                             }}/>
-                         </button>
-                         <Input 
-                            value={input} 
-                            onChange={e => setInput(e.target.value)} 
-                            onKeyDown={e => e.key === 'Enter' && handleSend()}
-                            placeholder="Describe a trade to log, or ask for advice..." 
-                            className="flex-1"
-                         />
-                         <Button onClick={handleSend} variant="neon" disabled={loading} className="px-4"><Send size={20}/></Button>
-                     </div>
-                 </div>
-             </Card>
-         </div>
-     );
-  };
-
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
         <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors duration-300 font-sans selection:bg-cyan-500/30`}>
              <BackgroundBlobs />
+             <WelcomeToast username={user.displayName || 'Trader'} visible={showWelcome} />
              <Navigation activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
              <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
              
              <main className="md:pl-24 p-4 md:p-8 relative z-10 max-w-7xl mx-auto min-h-screen pb-24">
-                 {/* Header with Account Switcher */}
                  <div className="flex justify-between items-center mb-6">
-                      {/* Mobile Header Left Side: Profile + Theme */}
                       <div className="flex-1 md:hidden flex items-center gap-3">
                            <button 
                                 onClick={() => setActiveTab('profile')}
@@ -1773,7 +1272,6 @@ const App: React.FC = () => {
                            >
                                 {user?.displayName ? user.displayName[0].toUpperCase() : <UserIcon size={18}/>}
                            </button>
-
                            <Button variant="ghost" onClick={toggleTheme} className="rounded-full p-2 bg-white/10 backdrop-blur-md border border-white/10">
                                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                            </Button>
@@ -1807,15 +1305,20 @@ const App: React.FC = () => {
                       </div>
                  </div>
 
-                 {activeTab === 'journal' && <JournalView />}
+                 {activeTab === 'journal' && <JournalView 
+                    trades={trades} 
+                    accounts={accounts} 
+                    onAdd={() => { setEditingTrade(undefined); setIsAddTradeOpen(true); }}
+                    onEdit={(t) => { setEditingTrade(t); setIsAddTradeOpen(true); }}
+                    onDelete={handleDeleteTrade}
+                 />}
                  {activeTab === 'analytics' && <AnalyticsView trades={trades} accounts={accounts} selectedAccount={selectedAccount} />}
                  {activeTab === 'discipline' && <DisciplineView logs={disciplineLogs} userId={user.uid} />}
-                 {activeTab === 'news' && <NewsView />}
-                 {activeTab === 'ai-coach' && <AICoachView />}
+                 {activeTab === 'news' && <NewsView news={news} />}
+                 {activeTab === 'ai-coach' && <AICoachView chatHistory={chatHistory} onSend={handleSendChat} isTyping={isTyping} />}
                  {activeTab === 'profile' && (
                      <div className="space-y-6 animate-fade-in pb-20">
                         <h2 className="text-3xl font-display font-bold">Profile & Settings</h2>
-                        
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                              <Card>
                                 <div className="flex items-center gap-4 mb-6">
