@@ -19,6 +19,7 @@ import {
     signOut, 
     onAuthStateChanged,
     deleteUser,
+    sendPasswordResetEmail,
     User
 } from "firebase/auth";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
@@ -103,16 +104,22 @@ export const registerUser = async (email: string, pass: string, username: string
         // @ts-ignore
         await addAccountToDb(defaultAccount, user.uid);
 
+        // 5. FORCE LOGOUT so they have to sign in manually
+        await signOut(auth);
+
     } catch (error: any) {
         // If username check failed or DB failed, we need to handle it
         if (error.message.includes("Username is already taken")) {
             throw error;
         }
-        // If we created the user but DB failed, we strictly shouldn't leave them hanging, 
-        // but for now we just throw the error so the UI shows it.
         console.error("Registration Flow Error:", error);
         throw error;
     }
+};
+
+export const resetPassword = async (email: string) => {
+    if (!isFirebaseReady || !auth) throw new Error("Backend not connected");
+    await sendPasswordResetEmail(auth, email);
 };
 
 export const logoutUser = async () => {
@@ -204,7 +211,6 @@ export const subscribeToAccounts = (userId: string, callback: (accounts: Account
     const q = query(collection(db, "accounts"), where("userId", "==", userId));
     return onSnapshot(q, async (snapshot) => {
         if (snapshot.empty) {
-            // Do nothing here, wait for manual creation or registerUser to handle it
             callback([]); 
         } else {
             const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
@@ -274,7 +280,6 @@ export const updateDisciplineLog = async (log: DisciplineLog, userId: string) =>
         window.dispatchEvent(new Event('localDataUpdate'));
         return;
     }
-    // Clean undefined values to prevent Firestore crash
     const cleanLog = cleanUndefined(log);
     await setDoc(doc(db, "discipline", log.id), { ...cleanLog, userId }, { merge: true });
 };
@@ -285,7 +290,6 @@ export const initializeTodayLog = async (userId: string) => {
     const today = new Date().toISOString().split('T')[0];
     const logId = `${userId}_${today}`;
     
-    // Check if exists
     const q = query(collection(db, "discipline"), where("__name__", "==", logId));
     const snap = await getDocs(q);
     
@@ -299,7 +303,7 @@ export const initializeTodayLog = async (userId: string) => {
             calmEmotion: false,
             journaled: false,
             notes: '',
-            mood: 50, // Neutral default
+            mood: 50,
             intention: ''
         });
     }
