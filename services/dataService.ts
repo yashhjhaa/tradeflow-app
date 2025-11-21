@@ -9,7 +9,8 @@ import {
     doc, 
     updateDoc, 
     setDoc,
-    getDocs
+    getDocs,
+    getDoc
 } from "firebase/firestore";
 import { 
     signInWithEmailAndPassword, 
@@ -60,17 +61,33 @@ export const loginUser = async (email: string, pass: string) => {
     await signInWithEmailAndPassword(auth, email, pass);
 };
 
-export const registerUser = async (email: string, pass: string, name: string) => {
-    if (!isFirebaseReady || !auth) {
+export const registerUser = async (email: string, pass: string, username: string) => {
+    if (!isFirebaseReady || !auth || !db) {
         localStorage.setItem('mockUser', 'true');
-        localStorage.setItem('mockUserName', name);
+        localStorage.setItem('mockUserName', username);
         window.location.reload();
         return;
     }
-    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    if (name) {
-        await updateProfile(userCredential.user, { displayName: name });
+
+    // 1. Check if username is unique
+    const cleanUsername = username.trim().toLowerCase();
+    if (cleanUsername.length < 3) throw new Error("Username must be at least 3 chars");
+
+    const usernameRef = doc(db, "usernames", cleanUsername);
+    const usernameSnap = await getDoc(usernameRef);
+
+    if (usernameSnap.exists()) {
+        throw new Error("Username is already taken. Please choose another.");
     }
+
+    // 2. Create Auth User
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    
+    // 3. Update Profile
+    await updateProfile(userCredential.user, { displayName: username });
+
+    // 4. Reserve Username in DB
+    await setDoc(usernameRef, { uid: userCredential.user.uid });
 };
 
 export const logoutUser = async () => {
