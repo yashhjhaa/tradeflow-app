@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
@@ -790,7 +791,6 @@ const JournalView: React.FC<{
     onEdit: (t: Trade) => void;
     onDelete: (id: string) => void;
 }> = ({ trades, accounts, onAdd, onEdit, onDelete }) => {
-    // Sort by date desc
     const sortedTrades = [...trades].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
@@ -1097,6 +1097,43 @@ const DisciplineView: React.FC<{ logs: DisciplineLog[], userId: string }> = ({ l
                     </Card>
                 </div>
             </div>
+
+             {/* History Log - Restored at Bottom */}
+             <Card>
+                 <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                    <Clock className="text-slate-500" size={18}/> History Log
+                 </h3>
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                                <th className="pb-3 pl-2">Date</th>
+                                <th className="pb-3">Mood</th>
+                                <th className="pb-3">Checklist</th>
+                                <th className="pb-3">Intention</th>
+                                <th className="pb-3">Reflection</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                            {logs.slice(0, 7).map(log => (
+                                <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                    <td className="py-3 pl-2 font-mono text-slate-400">{log.date}</td>
+                                    <td className="py-3">
+                                        <span className={`font-bold ${getMoodLabel(log.mood || 50).color}`}>{getMoodLabel(log.mood || 50).label}</span>
+                                    </td>
+                                    <td className="py-3">
+                                        <div className="flex gap-1">
+                                            {[log.followedPlan, log.noRevenge, log.calmEmotion, log.journaled].filter(Boolean).length}/4
+                                        </div>
+                                    </td>
+                                    <td className="py-3 text-slate-600 dark:text-slate-300 max-w-[200px] truncate">{log.intention || '-'}</td>
+                                    <td className="py-3 text-slate-600 dark:text-slate-300 max-w-[200px] truncate">{log.notes || '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                 </div>
+             </Card>
         </div>
     );
 };
