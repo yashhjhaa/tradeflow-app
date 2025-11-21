@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
@@ -162,37 +161,17 @@ const BreathingExercise: React.FC = () => {
     }, [active]);
 
     return (
-        <div className="flex flex-col items-center justify-center py-8 relative">
-            <div className={`relative w-48 h-48 flex items-center justify-center rounded-full transition-all duration-[4000ms] ease-in-out ${
-                !active ? 'scale-100 bg-slate-200 dark:bg-slate-800' :
-                phase === 'Inhale' ? 'scale-125 bg-cyan-500/20 shadow-[0_0_50px_rgba(6,182,212,0.4)]' :
-                phase === 'Exhale' ? 'scale-90 bg-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.2)]' :
-                'scale-110 bg-white/10 border border-white/20'
-            }`}>
-                <div className="text-center z-10">
-                    <div className={`text-2xl font-bold ${active ? 'text-white' : 'text-slate-400'}`}>
-                        {active ? phase : "Ready?"}
-                    </div>
-                    <div className="text-4xl font-mono mt-2 font-bold text-cyan-400">
-                        {active ? timer : "4-4-4"}
-                    </div>
-                </div>
-                
-                {active && (
-                    <div className="absolute inset-0 rounded-full border-2 border-cyan-500/30 animate-ping opacity-20" />
-                )}
+        <div className="flex items-center gap-4">
+            <div className={`text-sm font-mono transition-colors ${active ? 'text-cyan-400' : 'text-slate-500'}`}>
+                {active ? `${phase} (${timer}s)` : "Box Breathing"}
             </div>
-            
-            <div className="mt-8 flex gap-4">
-                <Button 
-                    variant={active ? 'danger' : 'neon'} 
-                    onClick={() => { setActive(!active); setTimer(4); setPhase('Inhale'); }}
-                    className="min-w-[140px]"
-                >
-                    {active ? <><Pause size={18} /> Stop</> : <><Play size={18} /> Start Zen Mode</>}
-                </Button>
-            </div>
-            <p className="mt-4 text-xs text-slate-500 max-w-xs text-center">Box breathing (4s In, 4s Hold, 4s Out, 4s Hold) resets your nervous system and reduces tilt.</p>
+            <Button 
+                variant={active ? 'danger' : 'neon'} 
+                size="sm"
+                onClick={() => { setActive(!active); setTimer(4); setPhase('Inhale'); }}
+            >
+                {active ? <Pause size={14} /> : <Play size={14} />}
+            </Button>
         </div>
     );
 };
@@ -215,24 +194,23 @@ const MarketSessionClocks: React.FC = () => {
         { name: 'London', tz: 'Europe/London', start: 8, end: 16, icon: '🇬🇧' },
         { name: 'New York', tz: 'America/New_York', start: 8, end: 17, icon: '🇺🇸' },
         { name: 'Tokyo', tz: 'Asia/Tokyo', start: 9, end: 15, icon: '🇯🇵' },
-        { name: 'Sydney', tz: 'Australia/Sydney', start: 10, end: 16, icon: '🇦🇺' },
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-8">
             {sessions.map(s => {
                 const isOpen = getSessionStatus(s.tz, s.start, s.end);
                 const localTime = time.toLocaleTimeString('en-US', { timeZone: s.tz, hour: '2-digit', minute:'2-digit' });
                 
                 return (
-                    <Card key={s.name} className={`relative overflow-hidden border-0 ${isOpen ? 'bg-gradient-to-b from-slate-800 to-slate-900 ring-1 ring-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-slate-900/50 opacity-60'}`}>
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="text-xl">{s.icon}</span>
-                            {isOpen && <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"/>}
+                    <Card key={s.name} className={`relative overflow-hidden border-0 p-4 ${isOpen ? 'bg-gradient-to-b from-slate-800 to-slate-900 ring-1 ring-emerald-500/50' : 'bg-slate-900/50 opacity-60'}`}>
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-lg">{s.icon}</span>
+                            {isOpen && <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"/>}
                         </div>
-                        <div className="text-2xl font-bold text-white font-mono tracking-wider">{localTime}</div>
-                        <div className={`text-xs uppercase font-bold mt-1 ${isOpen ? 'text-emerald-400' : 'text-slate-500'}`}>
-                            {s.name} {isOpen ? 'OPEN' : 'CLOSED'}
+                        <div className="text-lg font-bold text-white font-mono">{localTime}</div>
+                        <div className={`text-[10px] uppercase font-bold ${isOpen ? 'text-emerald-400' : 'text-slate-500'}`}>
+                            {s.name}
                         </div>
                     </Card>
                 );
@@ -245,50 +223,39 @@ const EquitySimulator: React.FC<{ currentBalance: number }> = ({ currentBalance 
     const [winRate, setWinRate] = useState(50);
     const [rr, setRr] = useState(2);
     const [risk, setRisk] = useState(1);
+    const [data, setData] = useState<{trade:number, balance:number}[]>([]);
 
-    const generateProjection = () => {
+    useEffect(() => {
         let balance = currentBalance;
-        const data = [{ trade: 0, balance }];
-        
+        const d = [{ trade: 0, balance }];
         for (let i = 1; i <= 50; i++) {
             const isWin = Math.random() * 100 < winRate;
             const riskAmt = balance * (risk / 100);
             const outcome = isWin ? riskAmt * rr : -riskAmt;
             balance += outcome;
-            data.push({ trade: i, balance });
+            d.push({ trade: i, balance });
         }
-        return data;
-    };
-
-    const [data, setData] = useState(generateProjection());
-
-    useEffect(() => {
-        setData(generateProjection());
-    }, [winRate, rr, risk]);
+        setData(d);
+    }, [winRate, rr, risk, currentBalance]);
 
     return (
         <Card className="h-full flex flex-col bg-slate-900/50 border-cyan-500/20">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-white flex items-center gap-2"><Wand2 className="text-purple-500"/> What-If Simulator</h3>
-                <Button size="sm" variant="ghost" onClick={() => setData(generateProjection())}><RotateCcw size={14}/></Button>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-white flex items-center gap-2"><Wand2 className="text-purple-500"/> Simulator</h3>
             </div>
             
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="space-y-4 mb-4">
                 <div>
-                    <label className="text-xs text-slate-400 mb-1 block">Win Rate: {winRate}%</label>
+                    <label className="text-xs text-slate-400 block">Win Rate: {winRate}%</label>
                     <input type="range" min="20" max="80" value={winRate} onChange={e => setWinRate(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                 </div>
                 <div>
-                    <label className="text-xs text-slate-400 mb-1 block">Risk/Reward: 1:{rr}</label>
+                    <label className="text-xs text-slate-400 block">Risk/Reward: 1:{rr}</label>
                     <input type="range" min="0.5" max="5" step="0.1" value={rr} onChange={e => setRr(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
-                </div>
-                <div>
-                    <label className="text-xs text-slate-400 mb-1 block">Risk Per Trade: {risk}%</label>
-                    <input type="range" min="0.25" max="5" step="0.25" value={risk} onChange={e => setRisk(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500" />
                 </div>
             </div>
 
-            <div className="flex-1 min-h-[200px]">
+            <div className="flex-1 min-h-[150px]">
                  <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data}>
                         <defs>
@@ -297,19 +264,9 @@ const EquitySimulator: React.FC<{ currentBalance: number }> = ({ currentBalance 
                                 <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.2} />
-                        <XAxis dataKey="trade" hide />
-                        <YAxis hide domain={['auto', 'auto']} />
-                        <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9', fontSize: '12px' }}
-                            formatter={(value: number) => [`$${value.toFixed(0)}`, 'Proj. Balance']}
-                        />
                         <Area type="monotone" dataKey="balance" stroke="#a855f7" strokeWidth={2} fill="url(#colorSim)" />
                     </AreaChart>
                 </ResponsiveContainer>
-            </div>
-            <div className="text-center text-xs text-slate-500 mt-2">
-                Projected growth over next 50 trades based on parameters (Monte Carlo Lite)
             </div>
         </Card>
     );
@@ -717,7 +674,7 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                     onClick={() => { setIsRegister(false); setError(''); setSuccessMsg(''); }}
                     className={`relative z-10 flex-1 py-2.5 text-sm font-bold transition-colors ${!isRegister ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                    Sign In
+                    Log In
                 </button>
                 <button 
                     type="button"
@@ -941,72 +898,205 @@ const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[], selectedAc
 };
 
 const DisciplineView: React.FC<{ logs: DisciplineLog[], userId: string }> = ({ logs, userId }) => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayLog = logs.find(l => l.date === today);
+    const [todayLog, setTodayLog] = useState<DisciplineLog | null>(null);
+    const [quote, setQuote] = useState('');
     
-    const handleCheck = async (field: keyof DisciplineLog) => {
-        if (!todayLog) return;
-        await updateDisciplineLog({ ...todayLog, [field]: !todayLog[field] }, userId);
-    };
+    const [localIntention, setLocalIntention] = useState('');
+    const [localNotes, setLocalNotes] = useState('');
+    const lastLoadedId = useRef<string>('');
 
     useEffect(() => {
-        initializeTodayLog(userId);
-    }, [userId]);
+        const quotes = [
+            "The goal of a successful trader is to make the best trades. Money is secondary.",
+            "Risk comes from not knowing what you are doing.",
+            "It's not whether you're right or wrong, but how much money you make when you're right and how much you lose when you're wrong.",
+            "Amateurs focus on how much they can make. Professionals focus on how much they can lose.",
+            "Trade what you see, not what you think.",
+            "The market can remain irrational longer than you can remain solvent.",
+            "Confidence is not 'I will profit on this trade'. Confidence is 'I will be fine if I don't'.",
+            "Discipline is doing what needs to be done, even if you don't want to do it.",
+        ];
+        setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+    }, []);
+
+    useEffect(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const existing = logs.find(l => l.date === today);
+        if (existing) {
+            setTodayLog(existing);
+        } else {
+             setTodayLog({
+                id: `${userId}_${today}`, userId, date: today,
+                followedPlan: false, noRevenge: false, calmEmotion: false, journaled: false,
+                notes: '', mood: 50, intention: ''
+            });
+        }
+    }, [logs, userId]);
+
+    useEffect(() => {
+        if (todayLog && todayLog.id !== lastLoadedId.current) {
+            setLocalIntention(todayLog.intention || '');
+            setLocalNotes(todayLog.notes || '');
+            lastLoadedId.current = todayLog.id;
+        }
+    }, [todayLog]);
+
+    const handleUpdate = async (updates: Partial<DisciplineLog>) => {
+        if (!todayLog) return;
+        const updated = { ...todayLog, ...updates };
+        setTodayLog(updated);
+        await updateDisciplineLog(updated, userId);
+    };
+
+    const getHeatmapData = () => {
+        const data = [];
+        for (let i = 13; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const log = logs.find(l => l.date === dateStr);
+            data.push({ date: dateStr, log });
+        }
+        return data;
+    };
+
+    if (!todayLog) return <div>Loading...</div>;
+
+    const getMoodLabel = (val: number) => {
+        if (val < 20) return { label: "Fear / Tilt", icon: Frown, color: "text-rose-500" };
+        if (val < 45) return { label: "Anxious", icon: Meh, color: "text-orange-500" };
+        if (val < 65) return { label: "Neutral / Calm", icon: Smile, color: "text-cyan-500" };
+        if (val < 85) return { label: "Confident", icon: Smile, color: "text-emerald-500" };
+        return { label: "Greed / Overconfident", icon: Activity, color: "text-purple-500" };
+    };
+
+    const moodInfo = getMoodLabel(todayLog.mood || 50);
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
-             <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-display font-bold">Mindset & Discipline</h2>
+            <div className="flex justify-between items-end">
+                <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Mindset & Discipline</h2>
                 <BreathingExercise />
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <Card className="relative overflow-hidden">
-                     <div className="absolute top-0 right-0 p-3 opacity-10"><Zap size={100} /></div>
-                     <h3 className="font-bold text-xl mb-4">Daily Commitment</h3>
-                     <div className="space-y-3">
-                         {[
-                             { id: 'followedPlan', label: 'Followed Trading Plan' },
-                             { id: 'noRevenge', label: 'No Revenge Trading' },
-                             { id: 'calmEmotion', label: 'Maintained Emotional Balance' },
-                             { id: 'journaled', label: 'Journaled All Trades' },
-                         ].map((item) => (
-                             <div key={item.id} 
-                                onClick={() => handleCheck(item.id as keyof DisciplineLog)}
-                                className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <Card className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Zap className="text-amber-500" /> Daily Checklist
+                            </h3>
+                            <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-500">{todayLog.date}</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[
+                                { key: 'followedPlan', label: 'Followed Trading Plan', icon: Target },
+                                { key: 'noRevenge', label: 'No Revenge Trading', icon: Shield },
+                                { key: 'calmEmotion', label: 'Maintained Calm State', icon: BrainCircuit },
+                                { key: 'journaled', label: 'Journaled All Trades', icon: BookOpen },
+                            ].map((item) => (
+                                <div 
+                                    key={item.key}
                                     // @ts-ignore
-                                    todayLog?.[item.id] 
-                                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
-                                    : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 text-slate-400'
-                                }`}
-                             >
-                                 <span className="font-semibold">{item.label}</span>
-                                 {/* @ts-ignore */}
-                                 {todayLog?.[item.id] ? <CheckCircle className="text-emerald-500"/> : <div className="w-6 h-6 rounded-full border-2 border-slate-600" />}
+                                    onClick={() => handleUpdate({ [item.key]: !todayLog[item.key] })}
+                                    // @ts-ignore
+                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${todayLog[item.key] ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-cyan-500/50'}`}
+                                >
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                        // @ts-ignore
+                                        todayLog[item.key] ? 'bg-cyan-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+                                    }`}>
+                                        <CheckSquare size={14} />
+                                    </div>
+                                    <span className={`font-medium ${
+                                        // @ts-ignore
+                                        todayLog[item.key] ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-600 dark:text-slate-400'
+                                    }`}>{item.label}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
+                             <div>
+                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Daily Intention</label>
+                                 <Input 
+                                    value={localIntention} 
+                                    onChange={e => setLocalIntention(e.target.value)} 
+                                    onBlur={() => handleUpdate({ intention: localIntention })}
+                                    placeholder="My goal for today is..." 
+                                />
+                            </div>
+                             <div>
+                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">End of Day Reflection</label>
+                                 <textarea 
+                                    value={localNotes}
+                                    onChange={e => setLocalNotes(e.target.value)}
+                                    onBlur={() => handleUpdate({ notes: localNotes })}
+                                    className="w-full bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 h-24 resize-none"
+                                    placeholder="How did you feel? What can you improve?"
+                                />
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+                
+                <div className="space-y-6">
+                     <Card>
+                        <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                            <Activity className="text-cyan-500" size={18}/> Emotional State
+                        </h3>
+                        <div className="text-center py-4">
+                             <moodInfo.icon className={`w-12 h-12 mx-auto mb-2 ${moodInfo.color}`} />
+                             <div className={`text-lg font-bold ${moodInfo.color}`}>{moodInfo.label}</div>
+                             <div className="text-xs text-slate-500 mb-6">How are you feeling right now?</div>
+                             
+                             <input 
+                                type="range" 
+                                min="0" max="100" 
+                                value={todayLog.mood || 50}
+                                onChange={e => handleUpdate({ mood: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                             />
+                             <div className="flex justify-between text-xs text-slate-400 mt-2 px-1">
+                                 <span>Fear</span>
+                                 <span>Neutral</span>
+                                 <span>Greed</span>
                              </div>
-                         ))}
-                     </div>
-                 </Card>
-                 
-                 <Card>
-                     <h3 className="font-bold text-xl mb-4">Streak</h3>
-                     <div className="flex items-center gap-2">
-                         {logs.slice(-7).map(log => {
-                             const score = [log.followedPlan, log.noRevenge, log.calmEmotion, log.journaled].filter(Boolean).length;
-                             return (
-                                 <div key={log.id} className="flex-1 flex flex-col items-center gap-2">
-                                     <div className={`w-full aspect-square rounded-lg ${
-                                         score === 4 ? 'bg-emerald-500' : 
-                                         score === 3 ? 'bg-emerald-500/50' :
-                                         score > 0 ? 'bg-emerald-500/20' : 'bg-slate-800'
-                                     }`} />
-                                     <span className="text-xs text-slate-500">{new Date(log.date).getDate()}</span>
-                                 </div>
-                             )
-                         })}
-                     </div>
-                 </Card>
-             </div>
+                        </div>
+                    </Card>
+
+                    <Card>
+                        <h3 className="font-bold text-slate-800 dark:text-white mb-4">Consistency (14 Days)</h3>
+                        <div className="flex gap-2 justify-center">
+                            {getHeatmapData().map((d, i) => (
+                                <div 
+                                    key={i}
+                                    title={`${d.date}: ${d.log ? (d.log.followedPlan ? 'Disciplined' : 'Undisciplined') : 'No Log'}`}
+                                    className={`w-3 h-8 rounded-sm ${
+                                        !d.log ? 'bg-slate-200 dark:bg-slate-800' :
+                                        d.log.followedPlan && d.log.noRevenge ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
+                                        d.log.followedPlan ? 'bg-emerald-500/60' :
+                                        'bg-rose-500'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                        <div className="flex justify-between text-xs text-slate-400 mt-3">
+                            <span>2 Weeks Ago</span>
+                            <span>Today</span>
+                        </div>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-none relative overflow-hidden">
+                        <div className="absolute -right-4 -top-4 opacity-10"><Quote size={100} /></div>
+                        <h3 className="font-bold text-indigo-300 text-xs uppercase tracking-wider mb-3">Daily Wisdom</h3>
+                        <p className="font-display text-lg leading-relaxed italic">
+                            "{quote}"
+                        </p>
+                    </Card>
+                </div>
+            </div>
         </div>
     );
 };
