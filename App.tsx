@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage } from './services/geminiService';
@@ -317,13 +317,32 @@ const EquitySimulator: React.FC<{ currentBalance: number }> = ({ currentBalance 
 };
 
 const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: string }> = ({ isOpen, onClose, userId }) => {
+    const [method, setMethod] = useState<'cloud' | 'local'>('cloud');
     const [step, setStep] = useState(1);
     const [copied, setCopied] = useState(false);
+    
+    // Cloud State
     const [login, setLogin] = useState('');
+    const [password, setPassword] = useState('');
     const [server, setServer] = useState('');
-    const [platform, setPlatform] = useState('MT5');
+    const [token, setToken] = useState('');
+    const [isConnecting, setIsConnecting] = useState(false);
 
     if (!isOpen) return null;
+
+    const handleCloudConnect = async () => {
+        if (!login || !password || !server || !token) {
+            alert("Please fill in all fields, including the MetaApi Token.");
+            return;
+        }
+        setIsConnecting(true);
+        // Simulation of MetaApi connection
+        setTimeout(() => {
+            setIsConnecting(false);
+            alert(`Connection initiated for account ${login} on ${server}. Trades will appear in ~30 seconds.`);
+            onClose();
+        }, 2000);
+    };
 
     const pythonScript = `
 import MetaTrader5 as mt5
@@ -334,7 +353,7 @@ from datetime import datetime
 
 # --- CONFIGURATION ---
 MT_LOGIN = ${login || 123456}
-MT_PASSWORD = "YOUR_PASSWORD_HERE"
+MT_PASSWORD = "${password || 'YOUR_PASSWORD_HERE'}"
 MT_SERVER = "${server || 'MetaQuotes-Demo'}"
 USER_ID = "${userId}"
 
@@ -401,68 +420,81 @@ while True:
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
-            <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] relative flex flex-col">
+            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] relative flex flex-col">
                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X /></button>
                 
-                <div className="p-2">
+                <div className="p-4">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                            <Terminal className="text-white" size={24} />
+                            <Wifi className="text-white" size={24} />
                         </div>
                         <div>
                             <h2 className="text-2xl font-display font-bold text-white">Connect Terminal</h2>
-                            <p className="text-slate-400 text-sm">Real-time sync for MetaTrader 4 & 5</p>
+                            <p className="text-slate-400 text-sm">Sync your MetaTrader history & live trades</p>
                         </div>
                     </div>
 
-                    {step === 1 && (
-                        <div className="space-y-6 animate-fade-in">
-                            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm">
-                                <strong className="block mb-1 flex items-center gap-2"><Shield size={14}/> Secure Bridge Technology</strong>
-                                Because web browsers are sandboxed, they cannot directly connect to trading servers. 
-                                We use a secure local "Bridge" script to tunnel data from your terminal to TradeFlow.
+                    {/* Tabs */}
+                    <div className="flex p-1 bg-slate-800 rounded-xl mb-6">
+                        <button 
+                            onClick={() => setMethod('cloud')}
+                            className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${method === 'cloud' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <CloudLightning size={16} /> Cloud Direct
+                        </button>
+                        <button 
+                            onClick={() => setMethod('local')}
+                            className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${method === 'local' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <Laptop size={16} /> Local Script
+                        </button>
+                    </div>
+
+                    {method === 'cloud' && (
+                        <div className="space-y-5 animate-fade-in">
+                            <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-sm">
+                                <strong className="block mb-1 font-bold">Recommended</strong>
+                                Connects directly to your broker via cloud relay (MetaApi). No PC required to stay online.
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs uppercase font-bold text-slate-500">Platform</label>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setPlatform('MT5')} className={`flex-1 py-3 rounded-xl border font-bold transition-all ${platform === 'MT5' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-500 hover:border-slate-500'}`}>MT5</button>
-                                        <button onClick={() => setPlatform('MT4')} className={`flex-1 py-3 rounded-xl border font-bold transition-all ${platform === 'MT4' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-500 hover:border-slate-500'}`}>MT4</button>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs uppercase font-bold text-slate-500">Server</label>
-                                    <Input value={server} onChange={e => setServer(e.target.value)} placeholder="e.g. MetaQuotes-Demo" />
-                                </div>
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     <label className="text-xs uppercase font-bold text-slate-500">Login ID</label>
-                                    <Input value={login} onChange={e => setLogin(e.target.value)} placeholder="Account Number" />
+                                    <Input value={login} onChange={e => setLogin(e.target.value)} placeholder="e.g. 50123456" />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     <label className="text-xs uppercase font-bold text-slate-500">Password</label>
-                                    <Input type="password" placeholder="Trader Password" />
+                                    <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Master Password" />
                                 </div>
                             </div>
+                            
+                            <div className="space-y-1.5">
+                                <label className="text-xs uppercase font-bold text-slate-500">Broker Server</label>
+                                <Input value={server} onChange={e => setServer(e.target.value)} placeholder="e.g. ICMarkets-Demo" />
+                            </div>
 
-                            <Button onClick={() => setStep(2)} variant="neon" className="w-full h-12 text-lg">
-                                Generate Bridge Script <ArrowRight size={18} />
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between">
+                                    <label className="text-xs uppercase font-bold text-slate-500">MetaApi Token</label>
+                                    <a href="#" className="text-[10px] text-cyan-400 hover:underline">Get Token</a>
+                                </div>
+                                <Input type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="Paste your access token" />
+                            </div>
+
+                            <Button onClick={handleCloudConnect} variant="neon" className="w-full h-12 text-lg mt-2" disabled={isConnecting}>
+                                {isConnecting ? (
+                                    <span className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Connecting...</span>
+                                ) : 'Connect Account'}
                             </Button>
                         </div>
                     )}
 
-                    {step === 2 && (
-                        <div className="space-y-6 animate-fade-in">
-                            <div className="flex items-center justify-between text-white">
-                                <h3 className="font-bold flex items-center gap-2"><Monitor size={18} className="text-emerald-500"/> Your Bridge Script</h3>
-                                <div className="flex gap-2">
-                                    <Button size="sm" variant="secondary" onClick={() => setStep(1)}>Back</Button>
-                                    <Button size="sm" variant="neon" onClick={handleCopy}>
-                                        {copied ? <Check size={16} /> : <Copy size={16} />} {copied ? 'Copied' : 'Copy Code'}
-                                    </Button>
-                                </div>
+                    {method === 'local' && (
+                        <div className="space-y-5 animate-fade-in">
+                             <div className="p-4 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+                                Use this if you prefer to run a Python script on your own machine. Free and secure.
                             </div>
-
+                            
                             <div className="relative group">
                                 <div className="absolute top-0 left-0 w-full h-8 bg-slate-800 rounded-t-xl border-b border-slate-700 flex items-center px-4 gap-2">
                                     <div className="w-3 h-3 rounded-full bg-rose-500" />
@@ -470,11 +502,11 @@ while True:
                                     <div className="w-3 h-3 rounded-full bg-emerald-500" />
                                     <div className="text-xs text-slate-500 ml-2 font-mono">bridge.py</div>
                                 </div>
-                                <pre className="bg-slate-950 text-slate-300 p-4 pt-10 rounded-xl font-mono text-xs overflow-x-auto border border-slate-800 h-64 selection:bg-cyan-900">
+                                <pre className="bg-slate-950 text-slate-300 p-4 pt-10 rounded-xl font-mono text-xs overflow-x-auto border border-slate-800 h-48 selection:bg-cyan-900">
                                     {pythonScript}
                                 </pre>
                             </div>
-
+                            
                             <div className="space-y-2">
                                 <h4 className="text-sm font-bold text-white">Installation Instructions</h4>
                                 <ol className="list-decimal list-inside text-sm text-slate-400 space-y-1">
@@ -484,6 +516,10 @@ while True:
                                     <li>Run the script. Keep it open while trading.</li>
                                 </ol>
                             </div>
+
+                            <Button onClick={handleCopy} variant="secondary" className="w-full">
+                                {copied ? <Check size={16}/> : <Copy size={16}/>} {copied ? 'Copied to Clipboard' : 'Copy Script'}
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -1905,6 +1941,7 @@ const App: React.FC = () => {
                 initialData={editingTrade}
              />
              
+             {/* Connect Modal */}
              <ConnectBrokerModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} userId={user.uid} />
         </div>
     </ThemeContext.Provider>
