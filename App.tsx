@@ -936,7 +936,7 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                     onClick={() => { setIsRegister(true); setError(''); setSuccessMsg(''); }}
                     className={`relative z-10 flex-1 py-2.5 text-sm font-bold transition-colors ${isRegister ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
-                    Create Account
+                    Sign Up
                 </button>
             </div>
 
@@ -1524,6 +1524,11 @@ const App: React.FC = () => {
       };
 
       const [formState, setFormState] = useState(todayLog);
+      
+      // Local state for textarea inputs to prevent cursor jumping/overwriting during Firestore sync
+      const [localNotes, setLocalNotes] = useState('');
+      const [localIntention, setLocalIntention] = useState('');
+      const lastLoadedId = useRef<string>('');
 
       useEffect(() => {
           const freshLog = logs.find(l => l.date === today);
@@ -1531,6 +1536,15 @@ const App: React.FC = () => {
               setFormState(prev => ({...freshLog}));
           }
       }, [logs, today]);
+
+      useEffect(() => {
+        // Only sync local inputs from DB when the log ID changes (initial load)
+        if (formState.id !== lastLoadedId.current) {
+            setLocalIntention(formState.intention || '');
+            setLocalNotes(formState.notes || '');
+            lastLoadedId.current = formState.id;
+        }
+      }, [formState.id, formState.intention, formState.notes]);
 
       const handleToggle = async (field: keyof DisciplineLog) => {
           const newVal = !formState[field];
@@ -1546,12 +1560,22 @@ const App: React.FC = () => {
           await updateDisciplineLog(updated, userId);
       };
       
-      const handleNotes = (val: string) => {
-           setFormState(prev => ({ ...prev, notes: val }));
+      const saveTextFields = async () => {
+          const updated = { ...formState, notes: localNotes, intention: localIntention };
+          setFormState(updated);
+          await updateDisciplineLog(updated, userId);
       };
 
-      const saveNotes = async () => {
-          await updateDisciplineLog(formState, userId);
+      const getHeatmapData = () => {
+        const data = [];
+        for (let i = 13; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const log = logs.find(l => l.date === dateStr);
+            data.push({ date: dateStr, log });
+        }
+        return data;
       };
 
       return (
@@ -1564,42 +1588,66 @@ const App: React.FC = () => {
                   <div className="text-right">
                       <div className="text-xs uppercase text-slate-500 font-bold">Current Streak</div>
                       <div className="text-2xl font-bold text-cyan-500">
-                          {logs.filter(l => l.followedPlan).length} Days
+                          {logs.filter(l => l.followedPlan && l.noRevenge).length} Days
                       </div>
                   </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-cyan-500/30 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-4 opacity-10"><BrainCircuit size={100} /></div>
-                      <h3 className="font-bold text-xl mb-6 relative z-10">Daily Checklist</h3>
-                      <div className="space-y-4 relative z-10">
-                          {[
-                              { id: 'followedPlan', label: 'Followed Trading Plan', icon: Target },
-                              { id: 'noRevenge', label: 'No Revenge Trading', icon: Shield },
-                              { id: 'calmEmotion', label: 'Stayed Calm & Focused', icon: Smile },
-                              { id: 'journaled', label: 'Journaled All Trades', icon: BookOpen },
-                          ].map(item => (
-                              <div 
-                                key={item.id}
-                                onClick={() => handleToggle(item.id as keyof DisciplineLog)}
-                                className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
-                                    // @ts-ignore
-                                    formState[item.id] 
-                                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' 
-                                    : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
-                                }`}
-                              >
-                                  <div className="flex items-center gap-3">
-                                      <item.icon size={20} />
-                                      <span className="font-bold">{item.label}</span>
-                                  </div>
-                                  {/* @ts-ignore */}
-                                  {formState[item.id] ? <CheckCircle size={24} className="text-emerald-500"/> : <div className="w-6 h-6 rounded-full border-2 border-slate-600" />}
-                              </div>
-                          ))}
-                      </div>
-                  </Card>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-6">
+                    <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-cyan-500/30 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><BrainCircuit size={100} /></div>
+                        <h3 className="font-bold text-xl mb-6 relative z-10">Daily Checklist</h3>
+                        <div className="space-y-4 relative z-10">
+                            {[
+                                { id: 'followedPlan', label: 'Followed Trading Plan', icon: Target },
+                                { id: 'noRevenge', label: 'No Revenge Trading', icon: Shield },
+                                { id: 'calmEmotion', label: 'Stayed Calm & Focused', icon: Smile },
+                                { id: 'journaled', label: 'Journaled All Trades', icon: BookOpen },
+                            ].map(item => (
+                                <div 
+                                    key={item.id}
+                                    onClick={() => handleToggle(item.id as keyof DisciplineLog)}
+                                    className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                                        // @ts-ignore
+                                        formState[item.id] 
+                                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' 
+                                        : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <item.icon size={20} />
+                                        <span className="font-bold">{item.label}</span>
+                                    </div>
+                                    {/* @ts-ignore */}
+                                    {formState[item.id] ? <CheckCircle size={24} className="text-emerald-500"/> : <div className="w-6 h-6 rounded-full border-2 border-slate-600" />}
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="mt-6 pt-6 border-t border-white/10 relative z-10">
+                             <label className="text-sm font-bold text-slate-400 mb-2 block">Daily Intention</label>
+                             <Input 
+                                value={localIntention}
+                                onChange={(e) => setLocalIntention(e.target.value)}
+                                onBlur={saveTextFields}
+                                placeholder="My goal for today is..."
+                                className="bg-black/20 border-white/10 text-white"
+                             />
+                        </div>
+                    </Card>
+
+                    <Card>
+                        <h3 className="font-bold text-slate-700 dark:text-white mb-4">End of Day Reflection</h3>
+                        <textarea 
+                                value={localNotes}
+                                onChange={(e) => setLocalNotes(e.target.value)}
+                                onBlur={saveTextFields}
+                                placeholder="How did you feel during the session? What did you do well? What needs improvement?"
+                                className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 h-32 focus:outline-none focus:border-cyan-500 resize-none"
+                        />
+                    </Card>
+                  </div>
 
                   <div className="space-y-6">
                        <Card>
@@ -1623,20 +1671,63 @@ const App: React.FC = () => {
                            </div>
                        </Card>
 
+                       <Card>
+                            <h3 className="font-bold text-slate-800 dark:text-white mb-4">Consistency (14 Days)</h3>
+                            <div className="flex gap-2 justify-center">
+                                {getHeatmapData().map((d, i) => (
+                                    <div 
+                                        key={i}
+                                        title={`${d.date}: ${d.log ? (d.log.followedPlan ? 'Disciplined' : 'Undisciplined') : 'No Log'}`}
+                                        className={`w-3 h-8 rounded-sm ${
+                                            !d.log ? 'bg-slate-200 dark:bg-slate-800' :
+                                            d.log.followedPlan && d.log.noRevenge ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
+                                            d.log.followedPlan ? 'bg-emerald-500/60' :
+                                            'bg-rose-500'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                            <div className="flex justify-between text-xs text-slate-400 mt-3">
+                                <span>2 Weeks Ago</span>
+                                <span>Today</span>
+                            </div>
+                        </Card>
+
                        <BreathingExercise />
                   </div>
               </div>
-
-              <Card>
-                  <h3 className="font-bold text-slate-700 dark:text-white mb-4">Daily Intention / Reflection</h3>
-                  <textarea 
-                        value={formState.notes}
-                        onChange={(e) => handleNotes(e.target.value)}
-                        onBlur={saveNotes}
-                        placeholder="What is your main focus today? How did you feel during the session?"
-                        className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 h-32 focus:outline-none focus:border-cyan-500 resize-none"
-                  />
-              </Card>
+              
+              {/* History Log Section */}
+              <div className="mt-8">
+                  <h3 className="text-xl font-bold mb-4 text-slate-800 dark:text-white">History Log</h3>
+                  <div className="glass-panel rounded-xl overflow-hidden">
+                      <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/10 bg-slate-50/50 dark:bg-white/5 text-xs font-bold uppercase text-slate-500">
+                          <div className="col-span-2">Date</div>
+                          <div className="col-span-2">Checklist</div>
+                          <div className="col-span-2">Mood</div>
+                          <div className="col-span-6">Reflection</div>
+                      </div>
+                      {logs.slice(0, 7).map(log => (
+                          <div key={log.id} className="grid grid-cols-12 gap-4 p-4 border-b border-white/5 text-sm items-center">
+                              <div className="col-span-2 text-slate-400">{log.date}</div>
+                              <div className="col-span-2">
+                                  {log.followedPlan && log.noRevenge 
+                                    ? <Badge color="green">Perfect</Badge> 
+                                    : log.followedPlan 
+                                        ? <Badge color="blue">Okay</Badge> 
+                                        : <Badge color="red">Poor</Badge>
+                                  }
+                              </div>
+                              <div className="col-span-2">
+                                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                      <div className={`h-full ${log.mood && log.mood > 50 ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${log.mood || 50}%` }}/>
+                                  </div>
+                              </div>
+                              <div className="col-span-6 text-slate-500 truncate">{log.notes || "No notes."}</div>
+                          </div>
+                      ))}
+                  </div>
+              </div>
           </div>
       );
   };
