@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage } from './services/geminiService';
@@ -10,7 +10,7 @@ import {
     addTradeToDb, deleteTradeFromDb, subscribeToAccounts, 
     addAccountToDb, deleteAccountFromDb, updateAccountBalance, 
     subscribeToDiscipline, updateDisciplineLog, initializeTodayLog,
-    uploadScreenshotToStorage, updateTradeInDb
+    uploadScreenshotToStorage, updateTradeInDb, resetPassword
 } from './services/dataService';
 import { User } from 'firebase/auth';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts';
@@ -316,6 +316,182 @@ const EquitySimulator: React.FC<{ currentBalance: number }> = ({ currentBalance 
     );
 };
 
+const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: string }> = ({ isOpen, onClose, userId }) => {
+    const [step, setStep] = useState(1);
+    const [copied, setCopied] = useState(false);
+    const [login, setLogin] = useState('');
+    const [server, setServer] = useState('');
+    const [platform, setPlatform] = useState('MT5');
+
+    if (!isOpen) return null;
+
+    const pythonScript = `
+import MetaTrader5 as mt5
+import firebase_admin
+from firebase_admin import credentials, firestore
+import time
+from datetime import datetime
+
+# --- CONFIGURATION ---
+MT_LOGIN = ${login || 123456}
+MT_PASSWORD = "YOUR_PASSWORD_HERE"
+MT_SERVER = "${server || 'MetaQuotes-Demo'}"
+USER_ID = "${userId}"
+
+# 1. Connect to Firebase
+# Download your key from: Project Settings > Service Accounts > Generate New Private Key
+cred = credentials.Certificate("path/to/serviceAccountKey.json") 
+firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+# 2. Connect to MT5
+if not mt5.initialize():
+    print("initialize() failed")
+    mt5.shutdown()
+
+print(f"Connecting to {MT_LOGIN}...")
+authorized = mt5.login(MT_LOGIN, password=MT_PASSWORD, server=MT_SERVER)
+
+if authorized:
+    print("Connected to MT5")
+else:
+    print("Failed to connect to MT5")
+
+# 3. Live Sync Loop
+print("Listening for trades...")
+known_tickets = set()
+
+while True:
+    # Get history for today
+    from_date = datetime.now().replace(hour=0, minute=0, second=0)
+    deals = mt5.history_deals_get(from_date)
+
+    if deals:
+        for deal in deals:
+            if deal.ticket in known_tickets: continue
+            known_tickets.add(deal.ticket)
+            
+            # Filter out non-entry deals if needed
+            if deal.entry == 0: # Entry In
+                direction = "BUY" if deal.type == 0 else "SELL"
+                
+                # Push to Firestore
+                doc_ref = db.collection('trades').document(str(deal.ticket))
+                doc_ref.set({
+                    'userId': USER_ID,
+                    'pair': deal.symbol,
+                    'direction': direction,
+                    'entryPrice': deal.price,
+                    'date': datetime.fromtimestamp(deal.time).isoformat(),
+                    'pnl': deal.profit,
+                    'outcome': 'PENDING' if deal.profit == 0 else ('WIN' if deal.profit > 0 else 'LOSS'),
+                    'setup': 'Live Sync',
+                    'status': 'Synced'
+                })
+                print(f"Synced Trade: {deal.symbol} {direction}")
+
+    time.sleep(5)
+    `;
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(pythonScript);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
+            <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] relative flex flex-col">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X /></button>
+                
+                <div className="p-2">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                            <Terminal className="text-white" size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-display font-bold text-white">Connect Terminal</h2>
+                            <p className="text-slate-400 text-sm">Real-time sync for MetaTrader 4 & 5</p>
+                        </div>
+                    </div>
+
+                    {step === 1 && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm">
+                                <strong className="block mb-1 flex items-center gap-2"><Shield size={14}/> Secure Bridge Technology</strong>
+                                Because web browsers are sandboxed, they cannot directly connect to trading servers. 
+                                We use a secure local "Bridge" script to tunnel data from your terminal to TradeFlow.
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase font-bold text-slate-500">Platform</label>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setPlatform('MT5')} className={`flex-1 py-3 rounded-xl border font-bold transition-all ${platform === 'MT5' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-500 hover:border-slate-500'}`}>MT5</button>
+                                        <button onClick={() => setPlatform('MT4')} className={`flex-1 py-3 rounded-xl border font-bold transition-all ${platform === 'MT4' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-500 hover:border-slate-500'}`}>MT4</button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase font-bold text-slate-500">Server</label>
+                                    <Input value={server} onChange={e => setServer(e.target.value)} placeholder="e.g. MetaQuotes-Demo" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase font-bold text-slate-500">Login ID</label>
+                                    <Input value={login} onChange={e => setLogin(e.target.value)} placeholder="Account Number" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase font-bold text-slate-500">Password</label>
+                                    <Input type="password" placeholder="Trader Password" />
+                                </div>
+                            </div>
+
+                            <Button onClick={() => setStep(2)} variant="neon" className="w-full h-12 text-lg">
+                                Generate Bridge Script <ArrowRight size={18} />
+                            </Button>
+                        </div>
+                    )}
+
+                    {step === 2 && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="flex items-center justify-between text-white">
+                                <h3 className="font-bold flex items-center gap-2"><Monitor size={18} className="text-emerald-500"/> Your Bridge Script</h3>
+                                <div className="flex gap-2">
+                                    <Button size="sm" variant="secondary" onClick={() => setStep(1)}>Back</Button>
+                                    <Button size="sm" variant="neon" onClick={handleCopy}>
+                                        {copied ? <Check size={16} /> : <Copy size={16} />} {copied ? 'Copied' : 'Copy Code'}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="relative group">
+                                <div className="absolute top-0 left-0 w-full h-8 bg-slate-800 rounded-t-xl border-b border-slate-700 flex items-center px-4 gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-rose-500" />
+                                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                                    <div className="text-xs text-slate-500 ml-2 font-mono">bridge.py</div>
+                                </div>
+                                <pre className="bg-slate-950 text-slate-300 p-4 pt-10 rounded-xl font-mono text-xs overflow-x-auto border border-slate-800 h-64 selection:bg-cyan-900">
+                                    {pythonScript}
+                                </pre>
+                            </div>
+
+                            <div className="space-y-2">
+                                <h4 className="text-sm font-bold text-white">Installation Instructions</h4>
+                                <ol className="list-decimal list-inside text-sm text-slate-400 space-y-1">
+                                    <li>Install Python 3.10+ on your PC.</li>
+                                    <li>Run <code className="bg-slate-800 px-1 py-0.5 rounded text-cyan-400">pip install MetaTrader5 firebase-admin</code> in terminal.</li>
+                                    <li>Download your Firebase Service Key (Project Settings &gt; Service Accounts).</li>
+                                    <li>Run the script. Keep it open while trading.</li>
+                                </ol>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </Card>
+        </div>
+    );
+};
+
 const AddTradeModal: React.FC<{ 
     isOpen: boolean, 
     onClose: () => void, 
@@ -608,34 +784,78 @@ const AddTradeModal: React.FC<{
     );
 };
 
+const WelcomeToast: React.FC<{ username: string, visible: boolean }> = ({ username, visible }) => {
+    if (!visible) return null;
+    return (
+        <div className="fixed top-6 right-6 z-[100] animate-slide-up">
+            <div className="glass-panel bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-6 py-4 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.2)] flex items-center gap-3 backdrop-blur-xl">
+                <div className="bg-emerald-500 text-white p-1.5 rounded-full">
+                    <Check size={16} strokeWidth={3} />
+                </div>
+                <div>
+                    <div className="font-bold text-sm">Access Granted</div>
+                    <div className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Welcome back, {username}</div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
+    
     try {
       if (isRegister) {
+        // Registration Flow
         await registerUser(email, password, username);
+        setSuccessMsg("Account initialized successfully. Please access terminal with credentials.");
+        setIsRegister(false); // Switch back to login
+        setEmail('');
+        setPassword('');
+        // Do NOT call onLogin() here, forcing them to log in manually
       } else {
+        // Login Flow
         await loginUser(email, password);
+        // onLogin will be handled by the auth state listener in App
       }
-      onLogin();
     } catch (err: any) {
         if (err.code === 'auth/operation-not-allowed') {
             setError("Please enable Email/Password Auth in your Firebase Console.");
         } else {
-            setError(err.message);
+            setError(err.message.replace('Firebase: ', ''));
         }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+      if (!email) {
+          setError("Please enter your email address to reset password.");
+          return;
+      }
+      try {
+          setLoading(true);
+          await resetPassword(email);
+          setSuccessMsg("Password reset link sent to neural net (Check Email).");
+          setError('');
+      } catch (e: any) {
+          setError(e.message);
+      } finally {
+          setLoading(false);
+      }
   };
 
   return (
@@ -663,20 +883,21 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
         {/* Auth Card */}
         <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden group">
-            {/* Scanning Border Effect */}
             <div className="absolute inset-0 border border-cyan-500/0 group-hover:border-cyan-500/20 transition-all duration-500 rounded-3xl" />
             
             {/* Toggle Switch */}
             <div className="relative flex p-1 rounded-xl bg-black/40 mb-8 border border-white/5">
                 <div className={`absolute inset-y-1 w-[calc(50%-4px)] bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg transition-all duration-300 ease-out shadow-lg ${isRegister ? 'left-[calc(50%+2px)]' : 'left-1'}`} />
                 <button 
-                    onClick={() => setIsRegister(false)}
+                    type="button"
+                    onClick={() => { setIsRegister(false); setError(''); setSuccessMsg(''); }}
                     className={`relative z-10 flex-1 py-2.5 text-sm font-bold transition-colors ${!isRegister ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
                     Sign In
                 </button>
                 <button 
-                    onClick={() => setIsRegister(true)}
+                    type="button"
+                    onClick={() => { setIsRegister(true); setError(''); setSuccessMsg(''); }}
                     className={`relative z-10 flex-1 py-2.5 text-sm font-bold transition-colors ${isRegister ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                 >
                     Create Account
@@ -690,8 +911,15 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                         <span>{error}</span>
                     </div>
                 )}
+                
+                {successMsg && (
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm flex items-start gap-3 animate-slide-up">
+                        <CheckCircle size={18} className="shrink-0 mt-0.5" /> 
+                        <span>{successMsg}</span>
+                    </div>
+                )}
 
-                <div className={`space-y-5 transition-all duration-300 ${isRegister ? 'opacity-100' : 'opacity-100'}`}>
+                <div className={`space-y-5 transition-all duration-300`}>
                     {isRegister && (
                         <div className="group/input space-y-1.5 animate-slide-up">
                             <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Username</label>
@@ -729,7 +957,18 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                     </div>
 
                     <div className="group/input space-y-1.5">
-                        <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Password</label>
+                        <div className="flex justify-between">
+                            <label className="text-xs font-bold text-cyan-300/80 uppercase tracking-wider ml-1">Password</label>
+                            {!isRegister && (
+                                <button 
+                                    type="button"
+                                    onClick={handleForgotPassword}
+                                    className="text-[10px] text-slate-400 hover:text-cyan-400 transition-colors uppercase font-bold tracking-wide"
+                                >
+                                    Forgot Password?
+                                </button>
+                            )}
+                        </div>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 w-10 flex items-center justify-center text-slate-500 group-focus-within/input:text-cyan-400 transition-colors">
                                 <Lock size={18} />
@@ -749,8 +988,8 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
                 <Button type="submit" variant="neon" className="w-full mt-8 h-12 text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:scale-[1.02]" disabled={loading}>
                     {loading ? (
-                        <span className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Accessing Mainframe...</span>
-                    ) : isRegister ? 'Initialize Account' : 'Access Terminal'}
+                        <span className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</span>
+                    ) : isRegister ? 'Sign Up' : 'Log In'}
                 </Button>
             </form>
         </div>
@@ -763,456 +1002,9 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   );
 };
 
-const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[], selectedAccount: string }> = ({ trades, accounts, selectedAccount }) => {
-    const [aiReview, setAiReview] = useState('');
-    const [loadingReview, setLoadingReview] = useState(false);
-
-    const filteredTrades = selectedAccount === 'all' 
-        ? trades 
-        : trades.filter(t => t.accountId === selectedAccount);
-    
-    const relevantAccounts = selectedAccount === 'all' ? accounts : accounts.filter(a => a.id === selectedAccount);
-    const startingBalance = relevantAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const totalPnL = filteredTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-    const currentEquity = startingBalance + totalPnL;
-
-    const winRate = (filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length / (filteredTrades.length || 1)) * 100;
-    
-    let peak = 0;
-    let maxDD = 0;
-    let runningEq = 0;
-    [...filteredTrades].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(t => {
-        runningEq += (t.pnl || 0);
-        if (runningEq > peak) peak = runningEq;
-        const dd = peak - runningEq;
-        if (dd > maxDD) maxDD = dd;
-    });
-
-    const handleAiReview = async () => {
-        setLoadingReview(true);
-        const review = await generatePerformanceReview(filteredTrades);
-        setAiReview(review);
-        setLoadingReview(false);
-    };
-
-    const getCalendarDays = () => {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth(); 
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const firstDay = new Date(year, month, 1).getDay(); 
-
-        const days = [];
-        for (let i = 0; i < firstDay; i++) days.push(null); 
-        for (let i = 1; i <= daysInMonth; i++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-            const dayTrades = filteredTrades.filter(t => t.date.startsWith(dateStr));
-            const dayPnL = dayTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-            const count = dayTrades.length;
-            days.push({ date: i, pnl: dayPnL, count });
-        }
-        return days;
-    };
-
-    return (
-        <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex justify-between items-center flex-wrap gap-4">
-                <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Analytics Center</h2>
-                <Button onClick={handleAiReview} variant="neon" size="sm" disabled={loadingReview}>
-                    {loadingReview ? <Sparkles className="animate-spin"/> : <BrainCircuit size={16} />} 
-                    AI Audit
-                </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white border-none">
-                    <div className="text-blue-100 text-sm mb-1">Current Equity</div>
-                    <div className="text-3xl font-bold tracking-tight">${currentEquity.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                    <div className="text-xs text-blue-200 mt-2 flex items-center gap-1">
-                        <Activity size={12} /> Includes open/closed PnL
-                    </div>
-                </Card>
-                <Card>
-                    <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Net PnL</div>
-                    <div className={`text-3xl font-bold tracking-tight ${totalPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-2">Selected range profit/loss</div>
-                </Card>
-                <Card>
-                    <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Win Rate</div>
-                    <div className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">{winRate.toFixed(1)}%</div>
-                    <div className="text-xs text-slate-400 mt-2">{filteredTrades.length} trades total</div>
-                </Card>
-                <Card>
-                    <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Max Drawdown</div>
-                    <div className="text-3xl font-bold text-rose-500 tracking-tight">-${maxDD.toFixed(2)}</div>
-                    <div className="text-xs text-slate-400 mt-2">Peak to trough decline</div>
-                </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1">
-                    <EquitySimulator currentBalance={currentEquity} />
-                </div>
-                <Card className="lg:col-span-2 h-96 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-cyan-500"/> Equity Curve</h3>
-                    <div className="flex-1 min-h-0">
-                        <EquityCurve trades={filteredTrades} />
-                    </div>
-                </Card>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="h-80 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Win/Loss Ratio</h3>
-                    <div className="flex-1 min-h-0">
-                        <WinLossChart trades={filteredTrades} />
-                    </div>
-                </Card>
-                 <Card className="h-80 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Pair Performance</h3>
-                    <div className="flex-1 min-h-0">
-                        <PairPerformanceChart trades={filteredTrades} />
-                    </div>
-                </Card>
-                 <Card className="h-80 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Strategy Performance</h3>
-                    <div className="flex-1 min-h-0">
-                        <StrategyChart trades={filteredTrades} />
-                    </div>
-                </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-                <Card className="h-full min-h-[400px]">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2"><CalendarIcon size={18} className="text-purple-500"/> Monthly PnL</h3>
-                        <span className="text-sm text-slate-500">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                    </div>
-                    <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs text-slate-400 font-bold uppercase">
-                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                    </div>
-                    <div className="grid grid-cols-7 gap-2">
-                        {getCalendarDays().map((day, i) => (
-                            <div 
-                                key={i} 
-                                className={`aspect-square rounded-lg border border-slate-200 dark:border-slate-700/50 flex flex-col items-center justify-center relative transition-all hover:scale-105 ${
-                                    !day ? 'bg-transparent border-none' : 
-                                    day.pnl > 0 ? 'bg-emerald-500/20 border-emerald-500/30' : 
-                                    day.pnl < 0 ? 'bg-rose-500/20 border-rose-500/30' : 
-                                    'bg-slate-100 dark:bg-slate-800'
-                                }`}
-                            >
-                                {day && (
-                                    <>
-                                        <span className="absolute top-1 left-2 text-[10px] text-slate-400">{day.date}</span>
-                                        {day.count > 0 && (
-                                            <>
-                                                <span className={`text-xs font-bold ${day.pnl > 0 ? 'text-emerald-600 dark:text-emerald-400' : day.pnl < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'}`}>
-                                                    {day.pnl > 0 ? '+' : ''}{Math.round(day.pnl)}
-                                                </span>
-                                                <span className="text-[9px] text-slate-500">{day.count} trds</span>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-            </div>
-
-            {aiReview && (
-                <div className="mt-8 animate-slide-up">
-                    <div className="p-6 rounded-2xl glass-panel border border-cyan-500/30 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-500 to-blue-600" />
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                            <Bot className="text-cyan-500" /> AI Performance Audit
-                        </h3>
-                        <div className="prose dark:prose-invert max-w-none text-sm text-slate-700 dark:text-slate-300">
-                            <div dangerouslySetInnerHTML={{ __html: aiReview.replace(/\*\*(.*?)\*\*/g, '<strong class="text-cyan-600 dark:text-cyan-400">$1</strong>').replace(/\n/g, '<br/>') }} />
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const DisciplineView: React.FC<{ logs: DisciplineLog[], userId: string }> = ({ logs, userId }) => {
-    const [todayLog, setTodayLog] = useState<DisciplineLog | null>(null);
-    const [quote, setQuote] = useState('');
-    
-    const [localIntention, setLocalIntention] = useState('');
-    const [localNotes, setLocalNotes] = useState('');
-    const lastLoadedId = useRef<string>('');
-
-    useEffect(() => {
-        const quotes = [
-            "The goal of a successful trader is to make the best trades. Money is secondary.",
-            "Risk comes from not knowing what you are doing.",
-            "It's not whether you're right or wrong, but how much money you make when you're right and how much you lose when you're wrong.",
-            "Amateurs focus on how much they can make. Professionals focus on how much they can lose.",
-            "Trade what you see, not what you think.",
-            "The market can remain irrational longer than you can remain solvent.",
-            "Confidence is not 'I will profit on this trade'. Confidence is 'I will be fine if I don't'.",
-            "Discipline is doing what needs to be done, even if you don't want to do it.",
-        ];
-        setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
-    }, []);
-
-    useEffect(() => {
-        const today = new Date().toISOString().split('T')[0];
-        const existing = logs.find(l => l.date === today);
-        if (existing) {
-            setTodayLog(existing);
-        } else {
-             setTodayLog({
-                id: `${userId}_${today}`, userId, date: today,
-                followedPlan: false, noRevenge: false, calmEmotion: false, journaled: false,
-                notes: '', mood: 50, intention: ''
-            });
-        }
-    }, [logs, userId]);
-
-    useEffect(() => {
-        if (todayLog && todayLog.id !== lastLoadedId.current) {
-            setLocalIntention(todayLog.intention || '');
-            setLocalNotes(todayLog.notes || '');
-            lastLoadedId.current = todayLog.id;
-        }
-    }, [todayLog]);
-
-    const handleUpdate = async (updates: Partial<DisciplineLog>) => {
-        if (!todayLog) return;
-        const updated = { ...todayLog, ...updates };
-        setTodayLog(updated);
-        await updateDisciplineLog(updated, userId);
-    };
-
-    const getHeatmapData = () => {
-        const data = [];
-        for (let i = 13; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            const log = logs.find(l => l.date === dateStr);
-            data.push({ date: dateStr, log });
-        }
-        return data;
-    };
-
-    if (!todayLog) return <div>Loading...</div>;
-
-    const getMoodLabel = (val: number) => {
-        if (val < 20) return { label: "Fear / Tilt", icon: Frown, color: "text-rose-500" };
-        if (val < 45) return { label: "Anxious", icon: Meh, color: "text-orange-500" };
-        if (val < 65) return { label: "Neutral / Calm", icon: Smile, color: "text-cyan-500" };
-        if (val < 85) return { label: "Confident", icon: Smile, color: "text-emerald-500" };
-        return { label: "Greed / Overconfident", icon: Activity, color: "text-purple-500" };
-    };
-
-    const moodInfo = getMoodLabel(todayLog.mood || 50);
-
-    const historyLogs = [...logs]
-        .filter(l => l.date !== todayLog!.date)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    return (
-        <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex justify-between items-end">
-                <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Mindset & Discipline</h2>
-                <div className="text-right hidden md:block">
-                    <div className="text-xs text-slate-500 uppercase tracking-widest font-bold">Current Streak</div>
-                    <div className="text-3xl font-bold text-cyan-500">{logs.filter(l => l.followedPlan && l.noRevenge).length} Days</div>
-                </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-cyan-500/20">
-                         <div className="flex justify-between items-center mb-4">
-                             <h3 className="font-bold text-white flex items-center gap-2"><RotateCcw className="text-cyan-500"/> Zen Mode</h3>
-                             <Badge color="blue">Box Breathing</Badge>
-                         </div>
-                         <BreathingExercise />
-                    </Card>
-
-                    <Card className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                <Zap className="text-amber-500" /> Daily Checklist
-                            </h3>
-                            <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-500">{todayLog.date}</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {[
-                                { key: 'followedPlan', label: 'Followed Trading Plan', icon: Target },
-                                { key: 'noRevenge', label: 'No Revenge Trading', icon: Shield },
-                                { key: 'calmEmotion', label: 'Maintained Calm State', icon: BrainCircuit },
-                                { key: 'journaled', label: 'Journaled All Trades', icon: BookOpen },
-                            ].map((item) => (
-                                <div 
-                                    key={item.key}
-                                    // @ts-ignore
-                                    onClick={() => handleUpdate({ [item.key]: !todayLog[item.key] })}
-                                    // @ts-ignore
-                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${todayLog[item.key] ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-cyan-500/50'}`}
-                                >
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                        // @ts-ignore
-                                        todayLog[item.key] ? 'bg-cyan-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
-                                    }`}>
-                                        <CheckSquare size={14} />
-                                    </div>
-                                    <span className={`font-medium ${
-                                        // @ts-ignore
-                                        todayLog[item.key] ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-600 dark:text-slate-400'
-                                    }`}>{item.label}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
-                             <div>
-                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Daily Intention</label>
-                                 <Input 
-                                    value={localIntention} 
-                                    onChange={e => setLocalIntention(e.target.value)} 
-                                    onBlur={() => handleUpdate({ intention: localIntention })}
-                                    placeholder="My goal for today is..." 
-                                />
-                            </div>
-                             <div>
-                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">End of Day Reflection</label>
-                                 <textarea 
-                                    value={localNotes}
-                                    onChange={e => setLocalNotes(e.target.value)}
-                                    onBlur={() => handleUpdate({ notes: localNotes })}
-                                    className="w-full bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 h-24 resize-none"
-                                    placeholder="How did you feel? What can you improve?"
-                                />
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-                
-                <div className="space-y-6">
-                     <Card>
-                        <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                            <Activity className="text-cyan-500" size={18}/> Emotional State
-                        </h3>
-                        <div className="text-center py-4">
-                             <moodInfo.icon className={`w-12 h-12 mx-auto mb-2 ${moodInfo.color}`} />
-                             <div className={`text-lg font-bold ${moodInfo.color}`}>{moodInfo.label}</div>
-                             <div className="text-xs text-slate-500 mb-6">How are you feeling right now?</div>
-                             
-                             <input 
-                                type="range" 
-                                min="0" max="100" 
-                                value={todayLog.mood || 50}
-                                onChange={e => handleUpdate({ mood: parseInt(e.target.value) })}
-                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                             />
-                             <div className="flex justify-between text-xs text-slate-400 mt-2 px-1">
-                                 <span>Fear</span>
-                                 <span>Neutral</span>
-                                 <span>Greed</span>
-                             </div>
-                        </div>
-                    </Card>
-
-                    <Card>
-                        <h3 className="font-bold text-slate-800 dark:text-white mb-4">Consistency (14 Days)</h3>
-                        <div className="flex gap-2 justify-center">
-                            {getHeatmapData().map((d, i) => (
-                                <div 
-                                    key={i}
-                                    title={`${d.date}: ${d.log ? (d.log.followedPlan ? 'Disciplined' : 'Undisciplined') : 'No Log'}`}
-                                    className={`w-3 h-8 rounded-sm ${
-                                        !d.log ? 'bg-slate-200 dark:bg-slate-800' :
-                                        d.log.followedPlan && d.log.noRevenge ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
-                                        d.log.followedPlan ? 'bg-emerald-500/60' :
-                                        'bg-rose-500'
-                                    }`}
-                                />
-                            ))}
-                        </div>
-                        <div className="flex justify-between text-xs text-slate-400 mt-3">
-                            <span>2 Weeks Ago</span>
-                            <span>Today</span>
-                        </div>
-                    </Card>
-
-                    <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-none relative overflow-hidden">
-                        <div className="absolute -right-4 -top-4 opacity-10"><Quote size={100} /></div>
-                        <h3 className="font-bold text-indigo-300 text-xs uppercase tracking-wider mb-3">Daily Wisdom</h3>
-                        <p className="font-display text-lg leading-relaxed italic">
-                            "{quote}"
-                        </p>
-                    </Card>
-                </div>
-            </div>
-
-            <div className="pt-8 border-t border-slate-200 dark:border-slate-800">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                    <Layers size={20} className="text-purple-500"/> Previous Days
-                </h3>
-                <div className="space-y-3">
-                    {historyLogs.length === 0 ? (
-                        <div className="text-center text-slate-500 py-8 bg-slate-50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                            No history logs yet. Keep showing up!
-                        </div>
-                    ) : (
-                        historyLogs.map(log => {
-                            const mood = getMoodLabel(log.mood || 50);
-                            const score = [log.followedPlan, log.noRevenge, log.calmEmotion, log.journaled].filter(Boolean).length;
-                            
-                            return (
-                                <Card key={log.id} className="flex flex-col md:flex-row gap-4 md:items-center justify-between p-4 hover:border-cyan-500/30 transition-colors">
-                                    <div className="flex items-center gap-4 min-w-[150px]">
-                                        <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-center min-w-[60px]">
-                                            <div className="text-xs text-slate-500 uppercase font-bold">{new Date(log.date).toLocaleDateString('en-US', {weekday: 'short'})}</div>
-                                            <div className="font-bold text-lg text-slate-800 dark:text-white">{new Date(log.date).getDate()}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-sm text-slate-500">{new Date(log.date).toLocaleDateString('en-US', {month: 'short', year: 'numeric'})}</div>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                {score === 4 ? <Badge color="green">Perfect Day</Badge> : <Badge color="gray">{score}/4 Rules</Badge>}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 dark:bg-slate-800/30 p-3 rounded-lg">
-                                            <div className="text-xs text-slate-400 uppercase font-bold mb-1">Intention</div>
-                                            <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">{log.intention || "No intention set."}</p>
-                                        </div>
-                                        <div className="bg-slate-50 dark:bg-slate-800/30 p-3 rounded-lg">
-                                            <div className="text-xs text-slate-400 uppercase font-bold mb-1">Reflection</div>
-                                            <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">{log.notes || "No reflection."}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col items-center justify-center pl-4 border-l border-slate-200 dark:border-slate-700 min-w-[100px]">
-                                        <mood.icon className={`w-6 h-6 mb-1 ${mood.color}`} />
-                                        <span className={`text-xs font-bold ${mood.color}`}>{mood.label}</span>
-                                        <span className="text-[10px] text-slate-400">{log.mood}%</span>
-                                    </div>
-                                </Card>
-                            );
-                        })
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [activeTab, setActiveTab] = useState('journal');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -1227,55 +1019,67 @@ const App: React.FC = () => {
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountBroker, setNewAccountBroker] = useState('');
   const [newAccountBalance, setNewAccountBalance] = useState('');
+  
+  // New State for Connect Modal
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+  };
 
   useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      setTheme('light');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.remove('dark', 'light');
-    document.documentElement.classList.add(theme);
   }, [theme]);
-
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   useEffect(() => {
     const unsubscribe = subscribeToAuth((u) => {
+      if (u && !user) {
+          setShowWelcome(true);
+          setTimeout(() => setShowWelcome(false), 5000);
+      }
       setUser(u);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    if (user) {
+      if (!user) return;
       const unsubTrades = subscribeToTrades(user.uid, setTrades);
       const unsubAccounts = subscribeToAccounts(user.uid, setAccounts);
       const unsubDiscipline = subscribeToDiscipline(user.uid, setDisciplineLogs);
       initializeTodayLog(user.uid);
       
-      getLiveMarketNews().then(setNews);
+      const loadNews = async () => {
+          const data = await getLiveMarketNews();
+          setNews(data);
+      }
+      loadNews();
 
       return () => {
-        unsubTrades();
-        unsubAccounts();
-        unsubDiscipline();
+          unsubTrades();
+          unsubAccounts();
+          unsubDiscipline();
       };
-    }
   }, [user]);
 
   const handleLogout = () => {
     logoutUser();
     setUser(null);
   };
-
+  
   const handleSaveTrade = async (trade: Trade) => {
     if (trade.id) {
        await updateTradeInDb(trade);
     } else {
        await addTradeToDb(trade, user!.uid);
     }
+    setEditingTrade(undefined);
+    setIsAddTradeOpen(false);
   };
 
   const handleDeleteTrade = async (id: string) => {
@@ -1307,81 +1111,7 @@ const App: React.FC = () => {
       }
   };
 
-  // --- Updated NewsView within App ---
-  const NewsView = () => (
-      <div className="space-y-6 animate-fade-in pb-20">
-           <div className="flex justify-between items-end">
-              <div>
-                   <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                       <Flame className="text-rose-500 fill-rose-500/20 animate-pulse" /> Red Folder News
-                   </h2>
-                   <p className="text-slate-500 dark:text-slate-400 mt-2">High-impact events that move the markets.</p>
-              </div>
-              <div className="flex gap-2">
-                  <Badge color="red">HIGH IMPACT ONLY</Badge>
-              </div>
-           </div>
-           
-           <MarketSessionClocks />
-
-           <div className="grid gap-4">
-                {news.events.length === 0 ? (
-                    <div className="text-center py-10 text-slate-500">No high impact news found for this week.</div>
-                ) : (
-                    news.events.map(event => (
-                        <Card key={event.id} className="flex items-center justify-between p-4 group hover:bg-slate-800/50 transition-colors border-l-4 border-l-rose-500 relative overflow-hidden">
-                            {/* Glow Effect */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                            
-                            <div className="flex items-center gap-6 relative z-10">
-                                <div className="text-center min-w-[80px]">
-                                    <div className="text-lg font-bold text-slate-800 dark:text-white font-display">{event.time}</div>
-                                    <div className="flex justify-center mt-2">
-                                        <Badge color="red" >HIGH</Badge>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-                                        <span className="text-2xl">{event.currency === 'USD' ? '🇺🇸' : event.currency === 'EUR' ? '🇪🇺' : event.currency === 'GBP' ? '🇬🇧' : event.currency === 'JPY' ? '🇯🇵' : '🌍'}</span>
-                                        {event.event}
-                                    </div>
-                                    <div className="text-sm text-slate-500 mt-1 flex gap-4">
-                                        <span>Fcst: <span className="text-slate-300 font-mono">{event.forecast || '--'}</span></span>
-                                        <span>Prev: <span className="text-slate-300 font-mono">{event.previous || '--'}</span></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-right relative z-10">
-                                 <div className={`font-mono font-bold text-2xl ${event.isBetter ? 'text-emerald-400' : event.actual ? 'text-rose-400' : 'text-slate-500'}`}>
-                                    {event.actual || '--'}
-                                 </div>
-                                 <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mt-1">Actual</div>
-                            </div>
-                        </Card>
-                    ))
-                )}
-           </div>
-           
-           {news.sentiment && (
-                <div className="mt-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
-                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Bot size={18} className="text-indigo-400"/> Weekly Market Outlook</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">{news.sentiment.split('\n\nSources')[0]}</p>
-                </div>
-           )}
-      </div>
-  );
-
-  if (!user) {
-    return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
-            <LoginScreen onLogin={() => {}} />
-        </ThemeContext.Provider>
-    );
-  }
-
-  const currentAccount = accounts[0] || { id: 'default', name: 'Default', balance: 0, currency: 'USD' };
-
+  // --- Views defined inside App to access state ---
   const JournalView = () => {
       const filteredTrades = selectedAccount === 'all' 
         ? trades 
@@ -1392,14 +1122,14 @@ const App: React.FC = () => {
       const [isParsing, setIsParsing] = useState(false);
       const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
 
-      // Stats Calculation
       const totalPnL = filteredTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
       const winCount = filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length;
-      const winRate = filteredTrades.length > 0 ? (winCount / filteredTrades.length) * 100 : 0;
-      const bestPair = Object.entries(filteredTrades.reduce((acc, t) => {
+      const winRate = filteredTrades.length > 0 ? (winCount / filteredTrades.filter(t => t.outcome !== TradeOutcome.PENDING).length) * 100 : 0;
+      const bestPairEntry = Object.entries(filteredTrades.reduce((acc, t) => {
           acc[t.pair] = (acc[t.pair] || 0) + (t.pnl || 0);
           return acc;
       }, {} as Record<string, number>)).sort((a,b) => b[1] - a[1])[0];
+      const bestPair = bestPairEntry ? bestPairEntry[0] : '--';
 
       const handleMagicLog = async () => {
           if(!magicInput) return;
@@ -1434,7 +1164,6 @@ const App: React.FC = () => {
 
       return (
           <div className="space-y-6 animate-fade-in pb-20">
-              {/* Journal Stats Bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="glass-panel p-4 rounded-xl border-l-4 border-l-cyan-500">
                       <div className="text-xs text-slate-500 uppercase font-bold">Net PnL</div>
@@ -1448,7 +1177,7 @@ const App: React.FC = () => {
                   </div>
                    <div className="glass-panel p-4 rounded-xl border-l-4 border-l-amber-500">
                       <div className="text-xs text-slate-500 uppercase font-bold">Best Pair</div>
-                      <div className="text-xl font-bold text-slate-800 dark:text-white">{bestPair ? bestPair[0] : '--'}</div>
+                      <div className="text-xl font-bold text-slate-800 dark:text-white">{bestPair}</div>
                   </div>
                   <div className="glass-panel p-4 rounded-xl border-l-4 border-l-blue-500">
                       <div className="text-xs text-slate-500 uppercase font-bold">Total Trades</div>
@@ -1468,7 +1197,6 @@ const App: React.FC = () => {
                   </div>
               </div>
 
-              {/* Magic Input Bar */}
               <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Sparkles className={`text-cyan-500 ${isParsing ? 'animate-spin' : ''}`} size={18} />
@@ -1488,9 +1216,7 @@ const App: React.FC = () => {
                   </div>
               </div>
 
-              {/* Responsive List View Table */}
               <div className="glass-panel rounded-2xl overflow-hidden border border-white/10">
-                  {/* Desktop Header (Hidden on Mobile) */}
                   <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-white/10 text-xs font-bold uppercase text-slate-500 tracking-wider">
                       <div className="col-span-2">Date</div>
                       <div className="col-span-3">Pair / Strategy</div>
@@ -1505,12 +1231,10 @@ const App: React.FC = () => {
 
                   {sortedTrades.map(trade => (
                       <div key={trade.id} className="group border-b border-white/5 last:border-0 transition-colors hover:bg-white/5">
-                          {/* Row Container */}
                           <div 
                             className="p-4 cursor-pointer"
                             onClick={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
                           >
-                              {/* DESKTOP LAYOUT (Hidden on mobile) */}
                               <div className="hidden md:grid grid-cols-12 gap-4 items-center">
                                   <div className="col-span-2 text-sm text-slate-400 font-mono">
                                       {new Date(trade.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
@@ -1554,7 +1278,6 @@ const App: React.FC = () => {
                                   </div>
                               </div>
 
-                              {/* MOBILE LAYOUT (Visible only on mobile) */}
                               <div className="md:hidden flex flex-col gap-2">
                                    <div className="flex justify-between items-center">
                                         <div className="flex items-center gap-2">
@@ -1582,10 +1305,8 @@ const App: React.FC = () => {
                               </div>
                           </div>
 
-                          {/* Expanded Details */}
                           {expandedTradeId === trade.id && (
                               <div className="px-4 pb-6 pt-0 animate-slide-up bg-black/20">
-                                  {/* Mobile Actions Row */}
                                   <div className="md:hidden flex gap-2 pt-4 pb-2 border-b border-white/10 mb-4">
                                       <Button variant="secondary" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
                                           <Edit2 size={16} /> Edit
@@ -1642,122 +1363,374 @@ const App: React.FC = () => {
       );
   };
 
-  const AICoachView = () => {
-     const [input, setInput] = useState('');
-     const [loading, setLoading] = useState(false);
-     const scrollRef = useRef<HTMLDivElement>(null);
-     const fileInputRef = useRef<HTMLInputElement>(null);
-     const [attachedImage, setAttachedImage] = useState<string>('');
+  const NewsView = () => (
+      <div className="space-y-6 animate-fade-in pb-20">
+           <div className="flex justify-between items-end">
+              <div>
+                   <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                       <Flame className="text-rose-500 fill-rose-500/20 animate-pulse" /> Red Folder News
+                   </h2>
+                   <p className="text-slate-500 dark:text-slate-400 mt-2">High-impact events that move the markets.</p>
+              </div>
+              <div className="flex gap-2">
+                  <Badge color="red">HIGH IMPACT ONLY</Badge>
+              </div>
+           </div>
+           
+           <MarketSessionClocks />
 
-     const handleSend = async () => {
-         if ((!input.trim() && !attachedImage) || loading) return;
-         
-         const userMsg: ChatMessage = {
-             id: Date.now().toString(),
-             role: 'user',
-             text: input,
-             image: attachedImage,
-             timestamp: Date.now()
-         };
-         
-         const newHistory = [...chatHistory, userMsg];
-         setChatHistory(newHistory);
-         setInput('');
-         setAttachedImage('');
-         setLoading(true);
+           <div className="grid gap-4">
+                {news.events.length === 0 ? (
+                    <div className="text-center py-10 text-slate-500">No high impact news found for this week.</div>
+                ) : (
+                    news.events.map(event => (
+                        <Card key={event.id} className="flex items-center justify-between p-4 group hover:bg-slate-800/50 transition-colors border-l-4 border-l-rose-500 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                            
+                            <div className="flex items-center gap-6 relative z-10">
+                                <div className="text-center min-w-[80px]">
+                                    <div className="text-lg font-bold text-slate-800 dark:text-white font-display">{event.time}</div>
+                                    <div className="flex justify-center mt-2">
+                                        <Badge color="red" >HIGH</Badge>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                                        <span className="text-2xl">{event.currency === 'USD' ? '🇺🇸' : event.currency === 'EUR' ? '🇪🇺' : event.currency === 'GBP' ? '🇬🇧' : event.currency === 'JPY' ? '🇯🇵' : '🌍'}</span>
+                                        {event.event}
+                                    </div>
+                                    <div className="text-sm text-slate-500 mt-1 flex gap-4">
+                                        <span>Fcst: <span className="text-slate-300 font-mono">{event.forecast || '--'}</span></span>
+                                        <span>Prev: <span className="text-slate-300 font-mono">{event.previous || '--'}</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="text-right relative z-10">
+                                 <div className={`font-mono font-bold text-2xl ${event.isBetter ? 'text-emerald-400' : event.actual ? 'text-rose-400' : 'text-slate-500'}`}>
+                                    {event.actual || '--'}
+                                 </div>
+                                 <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mt-1">Actual</div>
+                            </div>
+                        </Card>
+                    ))
+                )}
+           </div>
+           
+           {news.sentiment && (
+                <div className="mt-8 p-6 rounded-2xl bg-slate-900/50 border border-white/10 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
+                    <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Bot size={18} className="text-indigo-400"/> Weekly Market Outlook</h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">{news.sentiment.split('\n\nSources')[0]}</p>
+                </div>
+           )}
+      </div>
+  );
 
-         if (input.toLowerCase().includes('log this trade') || input.length > 100) {
-             const parsed = await parseTradeFromNaturalLanguage(input);
-             if (parsed && parsed.pair) {
-                 setEditingTrade(parsed);
-                 setIsAddTradeOpen(true);
-                 const botMsg: ChatMessage = { id: (Date.now()+1).toString(), role: 'assistant', text: "I've opened the trade log form with the details I extracted. Please verify and save.", timestamp: Date.now() };
-                 setChatHistory([...newHistory, botMsg]);
-                 setLoading(false);
-                 return;
-             }
-         }
+  const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[], selectedAccount: string }> = ({ trades, accounts, selectedAccount }) => {
+      const filteredTrades = selectedAccount === 'all'
+        ? trades
+        : trades.filter(t => t.accountId === selectedAccount);
+      
+      const currentBalance = selectedAccount === 'all' 
+          ? accounts.reduce((acc, a) => acc + a.balance, 0)
+          : accounts.find(a => a.id === selectedAccount)?.balance || 0;
 
-         const response = await chatWithTradeCoach(newHistory, userMsg.text, userMsg.image);
-         const botMsg: ChatMessage = {
-             id: (Date.now()+1).toString(),
-             role: 'assistant',
-             text: response,
-             timestamp: Date.now()
-         };
-         setChatHistory([...newHistory, botMsg]);
-         setLoading(false);
-     };
+      return (
+        <div className="space-y-6 animate-fade-in pb-20">
+            <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Analytics Dashboard</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="md:col-span-2 flex flex-col">
+                    <h3 className="font-bold text-slate-700 dark:text-white mb-4 flex items-center gap-2"><TrendingUp size={20} className="text-cyan-500"/> Equity Curve</h3>
+                    <div className="flex-1 min-h-[300px]">
+                        <EquityCurve trades={filteredTrades} />
+                    </div>
+                </Card>
+                
+                <EquitySimulator currentBalance={currentBalance} />
+            </div>
 
-     useEffect(() => {
-         if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-     }, [chatHistory]);
-
-     return (
-         <div className="flex flex-col h-[calc(100vh-2rem)] pb-20 md:pb-0">
-             <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white mb-4">AI Trading Coach</h2>
-             <Card className="flex-1 flex flex-col overflow-hidden p-0 bg-slate-50/50 dark:bg-slate-900/50">
-                 <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-                     {chatHistory.length === 0 && (
-                         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-50">
-                             <Bot size={64} className="mb-4"/>
-                             <p>Ask me to analyze a setup, review your psychology, or log a trade.</p>
-                         </div>
-                     )}
-                     {chatHistory.map(msg => (
-                         <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                             <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
-                                 {msg.image && <img src={msg.image} alt="Context" className="max-w-full rounded-lg mb-2 border border-white/20" />}
-                                 <div className="whitespace-pre-wrap text-sm">{msg.text}</div>
-                             </div>
-                         </div>
-                     ))}
-                     {loading && (
-                         <div className="flex justify-start">
-                             <div className="bg-white dark:bg-slate-800 rounded-2xl rounded-bl-none p-4 border border-slate-200 dark:border-slate-700 flex gap-2 items-center text-slate-500 text-sm">
-                                 <Bot size={16} className="animate-pulse"/> Thinking...
-                             </div>
-                         </div>
-                     )}
-                 </div>
-                 <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
-                     {attachedImage && (
-                         <div className="mb-2 inline-block relative">
-                             <img src={attachedImage} className="h-16 rounded border border-slate-300 dark:border-slate-600" alt="attachment"/>
-                             <button onClick={() => setAttachedImage('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-0.5"><X size={12}/></button>
-                         </div>
-                     )}
-                     <div className="flex gap-2">
-                         <button onClick={() => fileInputRef.current?.click()} className="p-3 text-slate-400 hover:text-cyan-500 transition-colors">
-                             <ImageIcon size={20}/>
-                             <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={(e) => {
-                                 const file = e.target.files?.[0];
-                                 if(file) {
-                                     const reader = new FileReader();
-                                     reader.onload = (ev) => setAttachedImage(ev.target?.result as string);
-                                     reader.readAsDataURL(file);
-                                 }
-                             }}/>
-                         </button>
-                         <Input 
-                            value={input} 
-                            onChange={e => setInput(e.target.value)} 
-                            onKeyDown={e => e.key === 'Enter' && handleSend()}
-                            placeholder="Describe a trade to log, or ask for advice..." 
-                            className="flex-1"
-                         />
-                         <Button onClick={handleSend} variant="neon" disabled={loading} className="px-4"><Send size={20}/></Button>
-                     </div>
-                 </div>
-             </Card>
-         </div>
-     );
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card>
+                    <h3 className="font-bold text-slate-700 dark:text-white mb-4 flex items-center gap-2"><PieChart size={18} className="text-emerald-500"/> Win Rate</h3>
+                    <WinLossChart trades={filteredTrades} />
+                </Card>
+                <Card>
+                    <h3 className="font-bold text-slate-700 dark:text-white mb-4 flex items-center gap-2"><Layers size={18} className="text-purple-500"/> Strategy Performance</h3>
+                    <StrategyChart trades={filteredTrades} />
+                </Card>
+                <Card>
+                    <h3 className="font-bold text-slate-700 dark:text-white mb-4 flex items-center gap-2"><Globe size={18} className="text-blue-500"/> Best Pairs</h3>
+                    <PairPerformanceChart trades={filteredTrades} />
+                </Card>
+                 <Card>
+                    <h3 className="font-bold text-slate-700 dark:text-white mb-4 flex items-center gap-2"><CalendarIcon size={18} className="text-amber-500"/> Daily Performance</h3>
+                    <DayOfWeekChart trades={filteredTrades} />
+                </Card>
+            </div>
+        </div>
+      );
   };
+
+  const DisciplineView: React.FC<{ logs: DisciplineLog[], userId: string }> = ({ logs, userId }) => {
+      const today = new Date().toISOString().split('T')[0];
+      const todayLog = logs.find(l => l.date === today) || {
+          id: `${userId}_${today}`,
+          userId,
+          date: today,
+          followedPlan: false,
+          noRevenge: false,
+          calmEmotion: false,
+          journaled: false,
+          notes: '',
+          mood: 50,
+          intention: ''
+      };
+
+      const [formState, setFormState] = useState(todayLog);
+
+      useEffect(() => {
+          const freshLog = logs.find(l => l.date === today);
+          if (freshLog) {
+              setFormState(prev => ({...freshLog}));
+          }
+      }, [logs, today]);
+
+      const handleToggle = async (field: keyof DisciplineLog) => {
+          const newVal = !formState[field];
+          // @ts-ignore
+          const updated = { ...formState, [field]: newVal };
+          setFormState(updated);
+          await updateDisciplineLog(updated, userId);
+      };
+
+      const handleSlider = async (val: number) => {
+          const updated = { ...formState, mood: val };
+          setFormState(updated);
+          await updateDisciplineLog(updated, userId);
+      };
+      
+      const handleNotes = (val: string) => {
+           setFormState(prev => ({ ...prev, notes: val }));
+      };
+
+      const saveNotes = async () => {
+          await updateDisciplineLog(formState, userId);
+      };
+
+      return (
+          <div className="space-y-6 animate-fade-in pb-20">
+              <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+                  <div>
+                      <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white flex items-center gap-2"><Zap className="text-yellow-500 fill-yellow-500" /> Trader Mindset</h2>
+                      <p className="text-slate-500 mt-1">Track your mental state and discipline daily.</p>
+                  </div>
+                  <div className="text-right">
+                      <div className="text-xs uppercase text-slate-500 font-bold">Current Streak</div>
+                      <div className="text-2xl font-bold text-cyan-500">
+                          {logs.filter(l => l.followedPlan).length} Days
+                      </div>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-cyan-500/30 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10"><BrainCircuit size={100} /></div>
+                      <h3 className="font-bold text-xl mb-6 relative z-10">Daily Checklist</h3>
+                      <div className="space-y-4 relative z-10">
+                          {[
+                              { id: 'followedPlan', label: 'Followed Trading Plan', icon: Target },
+                              { id: 'noRevenge', label: 'No Revenge Trading', icon: Shield },
+                              { id: 'calmEmotion', label: 'Stayed Calm & Focused', icon: Smile },
+                              { id: 'journaled', label: 'Journaled All Trades', icon: BookOpen },
+                          ].map(item => (
+                              <div 
+                                key={item.id}
+                                onClick={() => handleToggle(item.id as keyof DisciplineLog)}
+                                className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                                    // @ts-ignore
+                                    formState[item.id] 
+                                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' 
+                                    : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                                }`}
+                              >
+                                  <div className="flex items-center gap-3">
+                                      <item.icon size={20} />
+                                      <span className="font-bold">{item.label}</span>
+                                  </div>
+                                  {/* @ts-ignore */}
+                                  {formState[item.id] ? <CheckCircle size={24} className="text-emerald-500"/> : <div className="w-6 h-6 rounded-full border-2 border-slate-600" />}
+                              </div>
+                          ))}
+                      </div>
+                  </Card>
+
+                  <div className="space-y-6">
+                       <Card>
+                           <h3 className="font-bold text-slate-700 dark:text-white mb-4">Emotional State</h3>
+                           <div className="text-center mb-6">
+                               <div className="text-4xl mb-2">{formState.mood && formState.mood > 80 ? '🤩' : formState.mood && formState.mood > 60 ? '🙂' : formState.mood && formState.mood > 40 ? '😐' : formState.mood && formState.mood > 20 ? '😖' : '🤬'}</div>
+                               <div className="font-bold text-cyan-500">{formState.mood}/100</div>
+                           </div>
+                           <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                value={formState.mood || 50} 
+                                onChange={(e) => handleSlider(parseInt(e.target.value))}
+                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                           />
+                           <div className="flex justify-between text-xs text-slate-500 mt-2">
+                               <span>Tilted</span>
+                               <span>Neutral</span>
+                               <span>Flow State</span>
+                           </div>
+                       </Card>
+
+                       <BreathingExercise />
+                  </div>
+              </div>
+
+              <Card>
+                  <h3 className="font-bold text-slate-700 dark:text-white mb-4">Daily Intention / Reflection</h3>
+                  <textarea 
+                        value={formState.notes}
+                        onChange={(e) => handleNotes(e.target.value)}
+                        onBlur={saveNotes}
+                        placeholder="What is your main focus today? How did you feel during the session?"
+                        className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 h-32 focus:outline-none focus:border-cyan-500 resize-none"
+                  />
+              </Card>
+          </div>
+      );
+  };
+
+  const AICoachView = () => {
+      const [input, setInput] = useState('');
+      const [isLoading, setIsLoading] = useState(false);
+      const messagesEndRef = useRef<HTMLDivElement>(null);
+
+      const scrollToBottom = () => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      };
+
+      useEffect(() => {
+          scrollToBottom();
+      }, [chatHistory, isLoading]);
+
+      const handleSend = async () => {
+          if (!input.trim()) return;
+          
+          const userMsg: ChatMessage = {
+              id: Date.now().toString(),
+              role: 'user',
+              text: input,
+              timestamp: Date.now()
+          };
+          
+          setChatHistory(prev => [...prev, userMsg]);
+          setInput('');
+          setIsLoading(true);
+
+          try {
+              const response = await chatWithTradeCoach(chatHistory, userMsg.text);
+              const aiMsg: ChatMessage = {
+                  id: (Date.now() + 1).toString(),
+                  role: 'assistant',
+                  text: response,
+                  timestamp: Date.now()
+              };
+              setChatHistory(prev => [...prev, aiMsg]);
+          } catch (e) {
+              console.error(e);
+          } finally {
+              setIsLoading(false);
+          }
+      };
+
+      return (
+          <div className="h-[calc(100vh-140px)] flex flex-col animate-fade-in">
+              <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                      <Bot className="text-white" size={24} />
+                  </div>
+                  <div>
+                      <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-white">AI Performance Coach</h2>
+                      <p className="text-slate-500 text-sm">Ask about psychology, strategy, or analyze your recent trades.</p>
+                  </div>
+              </div>
+
+              <Card className="flex-1 flex flex-col p-0 overflow-hidden bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {chatHistory.length === 0 && (
+                          <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                              <Bot size={64} className="mb-4 text-slate-600" />
+                              <p>I'm ready to review your trading.</p>
+                              <p className="text-sm">Ask me: "Analyze my last loss" or "How to stop revenge trading?"</p>
+                          </div>
+                      )}
+                      
+                      {chatHistory.map((msg) => (
+                          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[80%] p-4 rounded-2xl ${
+                                  msg.role === 'user' 
+                                  ? 'bg-cyan-600 text-white rounded-tr-none shadow-lg shadow-cyan-500/20' 
+                                  : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-200 dark:border-slate-700'
+                              }`}>
+                                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                              </div>
+                          </div>
+                      ))}
+                      {isLoading && (
+                          <div className="flex justify-start">
+                              <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-200 dark:border-slate-700">
+                                  <div className="flex gap-2">
+                                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" />
+                                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-100" />
+                                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-200" />
+                                  </div>
+                              </div>
+                          </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                  </div>
+                  
+                  <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+                      <div className="relative flex items-center gap-2">
+                          <input 
+                              type="text" 
+                              value={input}
+                              onChange={(e) => setInput(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                              placeholder="Ask your coach..."
+                              className="w-full bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-cyan-500 rounded-xl px-4 py-3 focus:outline-none transition-all dark:text-white"
+                          />
+                          <Button onClick={handleSend} variant="neon" className="h-12 w-12 p-0 flex items-center justify-center rounded-xl" disabled={!input.trim() || isLoading}>
+                              <Send size={20} className={isLoading ? 'opacity-0' : ''} />
+                              {isLoading && <div className="absolute inset-0 flex items-center justify-center"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /></div>}
+                          </Button>
+                      </div>
+                  </div>
+              </Card>
+          </div>
+      );
+  };
+
+  if (!user) {
+    return (
+        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+            <LoginScreen onLogin={() => {}} />
+        </ThemeContext.Provider>
+    );
+  }
+
+  const currentAccount = accounts[0] || { id: 'default', name: 'Default', balance: 0, currency: 'USD' };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
         <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors duration-300 font-sans selection:bg-cyan-500/30`}>
              <BackgroundBlobs />
+             <WelcomeToast username={user.displayName || 'Trader'} visible={showWelcome} />
              <Navigation activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
              <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
              
@@ -1838,68 +1811,86 @@ const App: React.FC = () => {
                                 </div>
                             </Card>
 
-                            <Card>
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="font-bold text-xl flex items-center gap-2"><Wallet className="text-cyan-500"/> Trading Accounts</h3>
-                                    <Badge color="blue">{accounts.length} Active</Badge>
-                                </div>
-
-                                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                                    {accounts.map(acc => (
-                                        <div key={acc.id} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group transition-all hover:border-rose-500/30 hover:bg-rose-500/5 relative overflow-hidden">
+                            <div className="space-y-6">
+                                {/* CONNECT METATRADER CARD */}
+                                <Card className="border-dashed border-2 border-slate-700 bg-transparent hover:bg-slate-900/30 group cursor-pointer transition-all" onClick={() => setIsConnectOpen(true)}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform group-hover:bg-cyan-500/20 group-hover:text-cyan-400 text-slate-500">
+                                                <Wifi size={24} />
+                                            </div>
                                             <div>
-                                                <div className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                                    {acc.name} 
-                                                    {selectedAccount === acc.id && <Badge color="green">Active</Badge>}
-                                                </div>
-                                                <div className="text-xs text-slate-500">{acc.broker} • {acc.currency}</div>
-                                            </div>
-                                            <div className="flex items-center gap-4 z-10 relative">
-                                                <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">${acc.balance.toLocaleString()}</span>
-                                                <button 
-                                                    onClick={() => handleDeleteAccount(acc.id)}
-                                                    className="bg-rose-500/10 text-rose-500 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"
-                                                    title="Delete Account"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <h3 className="font-bold text-lg text-white">Connect MetaTrader</h3>
+                                                <p className="text-slate-500 text-sm">Sync live trades from MT4/MT5</p>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-
-                                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-                                    <div className="text-sm font-bold mb-3 text-slate-500">Add New Account</div>
-                                    <div className="grid grid-cols-1 gap-3">
-                                        <Input 
-                                            placeholder="Account Name (e.g. FTMO 100k)" 
-                                            value={newAccountName} 
-                                            onChange={e => setNewAccountName(e.target.value)}
-                                        />
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <Input 
-                                                placeholder="Broker" 
-                                                value={newAccountBroker} 
-                                                onChange={e => setNewAccountBroker(e.target.value)}
-                                            />
-                                            <Input 
-                                                placeholder="Starting Balance" 
-                                                type="number" 
-                                                value={newAccountBalance} 
-                                                onChange={e => setNewAccountBalance(e.target.value)}
-                                            />
-                                        </div>
-                                        <Button 
-                                            onClick={handleAddAccount} 
-                                            variant="secondary" 
-                                            disabled={!newAccountName || !newAccountBalance}
-                                            className="w-full"
-                                        >
-                                            <Plus size={18}/> Create Account
-                                        </Button>
+                                        <Button variant="ghost" className="group-hover:text-cyan-400">Connect <ChevronRight size={18} /></Button>
                                     </div>
-                                </div>
-                            </Card>
+                                </Card>
+
+                                <Card>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="font-bold text-xl flex items-center gap-2"><Wallet className="text-cyan-500"/> Trading Accounts</h3>
+                                        <Badge color="blue">{accounts.length} Active</Badge>
+                                    </div>
+
+                                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                                        {accounts.map(acc => (
+                                            <div key={acc.id} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group transition-all hover:border-rose-500/30 hover:bg-rose-500/5 relative overflow-hidden">
+                                                <div>
+                                                    <div className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                                        {acc.name} 
+                                                        {selectedAccount === acc.id && <Badge color="green">Active</Badge>}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">{acc.broker} • {acc.currency}</div>
+                                                </div>
+                                                <div className="flex items-center gap-4 z-10 relative">
+                                                    <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">${acc.balance.toLocaleString()}</span>
+                                                    <button 
+                                                        onClick={() => handleDeleteAccount(acc.id)}
+                                                        className="bg-rose-500/10 text-rose-500 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"
+                                                        title="Delete Account"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                                        <div className="text-sm font-bold mb-3 text-slate-500">Add New Account</div>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <Input 
+                                                placeholder="Account Name (e.g. FTMO 100k)" 
+                                                value={newAccountName} 
+                                                onChange={e => setNewAccountName(e.target.value)}
+                                            />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Input 
+                                                    placeholder="Broker" 
+                                                    value={newAccountBroker} 
+                                                    onChange={e => setNewAccountBroker(e.target.value)}
+                                                />
+                                                <Input 
+                                                    placeholder="Starting Balance" 
+                                                    type="number" 
+                                                    value={newAccountBalance} 
+                                                    onChange={e => setNewAccountBalance(e.target.value)}
+                                                />
+                                            </div>
+                                            <Button 
+                                                onClick={handleAddAccount} 
+                                                variant="secondary" 
+                                                disabled={!newAccountName || !newAccountBalance}
+                                                className="w-full"
+                                            >
+                                                <Plus size={18}/> Create Account
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
                         </div>
                      </div>
                  )}
@@ -1913,6 +1904,8 @@ const App: React.FC = () => {
                 currentAccountId={currentAccount.id}
                 initialData={editingTrade}
              />
+             
+             <ConnectBrokerModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} userId={user.uid} />
         </div>
     </ThemeContext.Provider>
   );
