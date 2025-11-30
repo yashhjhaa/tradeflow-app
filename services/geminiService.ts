@@ -1,12 +1,28 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { Trade, CalendarEvent, ChatMessage } from "../types";
 
 // --- CONFIGURATION ---
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to safely get the API Key in Vite/Browser environment
+const getApiKey = () => {
+  // Check for Vite environment variable (Standard for Vercel/Vite)
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) {
+    return (import.meta as any).env.VITE_API_KEY;
+  }
+  // Check for process.env (Legacy/Fallback) - safely check process existence
+  if (typeof process !== 'undefined' && process.env?.API_KEY) {
+    return process.env.API_KEY;
+  }
+  return null;
+};
+
+const apiKey = getApiKey();
+
+// Initialize client only if key exists to prevent "An API Key must be set" crash
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
-  if (!process.env.API_KEY) return "AI Analysis Unavailable (Missing API Key)";
+  if (!ai) return "AI Analysis Unavailable (API Key Missing)";
 
   try {
     const prompt = `
@@ -39,7 +55,7 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
 };
 
 export const analyzeTradeScreenshot = async (base64Image: string, pair: string): Promise<string> => {
-  if (!process.env.API_KEY) return "AI Vision Unavailable";
+  if (!ai) return "AI Vision Unavailable (API Key Missing)";
 
   try {
     // Remove data URL prefix if present to get raw base64
@@ -70,7 +86,7 @@ export const analyzeTradeScreenshot = async (base64Image: string, pair: string):
 };
 
 export const generatePerformanceReview = async (trades: Trade[]): Promise<string> => {
-    if (!process.env.API_KEY) return "AI Coach Unavailable.";
+    if (!ai) return "AI Coach Unavailable (API Key Missing).";
     
     try {
       const summary = trades.slice(-30).map(t => 
@@ -104,7 +120,7 @@ export const generatePerformanceReview = async (trades: Trade[]): Promise<string
 }
 
 export const parseTradeFromNaturalLanguage = async (text: string): Promise<Partial<Trade>> => {
-    if (!process.env.API_KEY) return {};
+    if (!ai) return {};
     
     try {
         const prompt = `
@@ -146,7 +162,7 @@ export const parseTradeFromNaturalLanguage = async (text: string): Promise<Parti
 };
 
 export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: string, image?: string): Promise<string> => {
-    if (!process.env.API_KEY) return "AI Coach Unavailable (Missing API Key)";
+    if (!ai) return "AI Coach Unavailable. Please set VITE_API_KEY in Vercel.";
   
     try {
       const parts: any[] = [];
@@ -182,9 +198,10 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
   };
 
 export const getLiveMarketNews = async (): Promise<{sentiment: string, events: CalendarEvent[]}> => {
-  if (!process.env.API_KEY) {
+  if (!ai) {
+      // Return mock data if no API key to prevent breaking the UI
       return { 
-          sentiment: "Demo Mode: API Key missing.", 
+          sentiment: "Demo Mode: API Key missing. Please set VITE_API_KEY in Vercel environment variables to enable live data.", 
           events: [
               { id: '1', time: '08:30 AM', currency: 'USD', impact: 'High', event: 'CPI m/m', actual: '0.4%', forecast: '0.3%', previous: '0.4%', isBetter: false },
               { id: '2', time: '02:00 PM', currency: 'USD', impact: 'High', event: 'FOMC Statement', actual: '', forecast: '', previous: '', isBetter: false },
