@@ -1,35 +1,16 @@
 
+
 import { GoogleGenAI } from "@google/genai";
 import { Trade, CalendarEvent, ChatMessage } from "../types";
 
 // --- CONFIGURATION ---
-// CAUTION: If pushing to GitHub, remove keys from here and use .env files instead!
-const HARDCODED_API_KEY = ""; 
-
-const getApiKey = () => {
-  if (HARDCODED_API_KEY) return HARDCODED_API_KEY;
-
-  // Fallbacks for various environments
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
-     // @ts-ignore
-     return import.meta.env.VITE_API_KEY;
-  }
-  try {
-    if (typeof process !== 'undefined' && process.env) {
-        return process.env.API_KEY || process.env.REACT_APP_API_KEY || '';
-    }
-  } catch {
-    return '';
-  }
-  return '';
-};
-
-const apiKey = getApiKey(); 
-const ai = new GoogleGenAI({ apiKey });
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+// Assume this variable is pre-configured, valid, and accessible in the execution context.
+// Do not generate any UI elements or code snippets for entering or managing the API key.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
-  if (!apiKey) return "AI Analysis Unavailable (Missing API Key)";
+  if (!process.env.API_KEY) return "AI Analysis Unavailable (Missing API Key)";
 
   try {
     const prompt = `
@@ -62,7 +43,7 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
 };
 
 export const analyzeTradeScreenshot = async (base64Image: string, pair: string): Promise<string> => {
-  if (!apiKey) return "AI Vision Unavailable";
+  if (!process.env.API_KEY) return "AI Vision Unavailable";
 
   try {
     // Remove data URL prefix if present to get raw base64
@@ -93,7 +74,7 @@ export const analyzeTradeScreenshot = async (base64Image: string, pair: string):
 };
 
 export const generatePerformanceReview = async (trades: Trade[]): Promise<string> => {
-    if (!apiKey) return "AI Coach Unavailable.";
+    if (!process.env.API_KEY) return "AI Coach Unavailable.";
     
     try {
       const summary = trades.slice(-30).map(t => 
@@ -127,7 +108,7 @@ export const generatePerformanceReview = async (trades: Trade[]): Promise<string
 }
 
 export const parseTradeFromNaturalLanguage = async (text: string): Promise<Partial<Trade>> => {
-    if (!apiKey) return {};
+    if (!process.env.API_KEY) return {};
     
     try {
         const prompt = `
@@ -140,14 +121,16 @@ export const parseTradeFromNaturalLanguage = async (text: string): Promise<Parti
                 "pair": "string (e.g. EURUSD, BTCUSD)",
                 "direction": "BUY" or "SELL",
                 "entryPrice": number,
+                "exitPrice": number,
                 "sl": number (Stop Loss),
                 "tp": number (Take Profit),
+                "lotSize": number,
                 "outcome": "WIN" | "LOSS" | "BREAKEVEN" | "PENDING",
                 "pnl": number (Profit/Loss amount),
                 "notes": "string (any extra commentary)"
             }
             
-            If a value is missing, use null or omit. 
+            If a value is missing, use null or omit the field. 
             Only return the JSON block.
         `;
 
@@ -157,7 +140,8 @@ export const parseTradeFromNaturalLanguage = async (text: string): Promise<Parti
         });
 
         const jsonText = response.text || "{}";
-        const cleanJson = jsonText.replace(/```json|```/g, '').trim();
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
         return JSON.parse(cleanJson);
     } catch (e) {
         console.error("Parse Error", e);
@@ -166,7 +150,7 @@ export const parseTradeFromNaturalLanguage = async (text: string): Promise<Parti
 };
 
 export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: string, image?: string): Promise<string> => {
-    if (!apiKey) return "AI Coach Unavailable (Missing API Key)";
+    if (!process.env.API_KEY) return "AI Coach Unavailable (Missing API Key)";
   
     try {
       const parts: any[] = [];
@@ -203,7 +187,7 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
   };
 
 export const getLiveMarketNews = async (): Promise<{sentiment: string, events: CalendarEvent[]}> => {
-  if (!apiKey) {
+  if (!process.env.API_KEY) {
       // Return mock data if no API key to prevent breaking the UI
       return { 
           sentiment: "Demo Mode: API Key missing.", 
@@ -264,9 +248,17 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
       }
 
       const jsonText = response.text || "{}";
-      // Clean up markdown code blocks if the model includes them
-      const cleanJson = jsonText.replace(/```json|```/g, '').trim();
-      const data = JSON.parse(cleanJson);
+      
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
+      
+      let data;
+      try {
+        data = JSON.parse(cleanJson);
+      } catch (parseError) {
+        console.error("JSON Parse Failed:", parseError, cleanJson);
+        return { sentiment: "Error parsing market data.", events: [] };
+      }
       
       return {
           sentiment: (data.sentiment || "Market data currently unavailable.") + sourcesText,
