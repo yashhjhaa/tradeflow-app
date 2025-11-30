@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
@@ -963,7 +962,8 @@ const WelcomeToast: React.FC<{ username: string, visible: boolean }> = ({ userna
     );
 };
 
-const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
+// Fix: Removed React.FC for better type inference with plain function components.
+const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -2140,7 +2140,7 @@ const App: React.FC = () => {
                               </div>
                           </div>
                       ))}
-                      {isSending && ( {/* Changed isLoading to isSending */}
+                      {isSending && ( 
                           <div className="flex justify-start">
                               <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-200 dark:border-slate-700">
                                   <div className="flex gap-2">
@@ -2164,9 +2164,9 @@ const App: React.FC = () => {
                               placeholder="Ask your coach..."
                               className="w-full bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-cyan-500 rounded-xl px-4 py-3 focus:outline-none transition-all dark:text-white"
                           />
-                          <Button onClick={handleSend} variant="neon" className="h-12 w-12 p-0 flex items-center justify-center rounded-xl" disabled={!input.trim() || isSending}> {/* Changed isLoading to isSending */}
-                              <Send size={20} className={isSending ? 'opacity-0' : ''} /> {/* Changed isLoading to isSending */}
-                              {isSending && <div className="absolute inset-0 flex items-center justify-center"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /></div>} {/* Changed isLoading to isSending */}
+                          <Button onClick={handleSend} variant="neon" className="h-12 w-12 p-0 flex items-center justify-center rounded-xl" disabled={!input.trim() || isSending}> 
+                              <Send size={20} className={isSending ? 'opacity-0' : ''} /> 
+                              {isSending && <div className="absolute inset-0 flex items-center justify-center"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /></div>} 
                           </Button>
                       </div>
                   </div>
