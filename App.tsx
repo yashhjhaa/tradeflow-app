@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage } from './services/geminiService';
-import { Trade, Account, DisciplineLog, CalendarEvent, TradeDirection, TradeOutcome, TradingSession, ChatMessage } from './types';
+import { Trade, Account, DisciplineLog, CalendarEvent, TradeDirection, TradeOutcome, TradingSession, ChatMessage, DateRange } from './types';
 import { 
     subscribeToAuth, loginUser, logoutUser, registerUser, subscribeToTrades, 
     addTradeToDb, deleteTradeFromDb, subscribeToAccounts, 
@@ -205,6 +206,7 @@ const MarketSessionClocks: React.FC = () => {
     }, []);
 
     const getSessionStatus = (tz: string, start: number, end: number) => {
+        // Simplified session logic
         const hour = parseInt(time.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', hour12: false }));
         const isOpen = hour >= start && hour < end;
         return isOpen;
@@ -314,9 +316,9 @@ const EquitySimulator: React.FC<{ currentBalance: number }> = ({ currentBalance 
     );
 };
 
-// --- CONNECT MODAL (DIRECT CODE INTEGRATION) ---
+// --- CONNECT MODAL (Direct Data Fetch) ---
 const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userId: string }> = ({ isOpen, onClose, userId }) => {
-    const [method, setMethod] = useState<'cloud' | 'local'>('cloud');
+    const [method, setMethod] = useState<'cloud' | 'local'>('local');
     const [step, setStep] = useState(1);
     const [copied, setCopied] = useState(false);
     
@@ -335,7 +337,7 @@ const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userI
 
     const handleMetaApiConnect = async () => {
         if (!apiToken || !accountId) {
-            alert("Please enter both MetaApi Token and Account ID.");
+            setConnectionStatus("Error: Please enter both MetaApi Token and Account ID.");
             return;
         }
         setIsConnecting(true);
@@ -343,7 +345,6 @@ const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userI
 
         try {
             // 1. Fetch Account Information (Validates Token & ID)
-            // Using MetaApi Provisioning API standard URL
             const baseUrl = `https://mt-provisioning-api-v1.agiliumtrade.ai`; 
             
             const response = await fetch(`${baseUrl}/users/current/accounts/${accountId}`, {
@@ -353,13 +354,16 @@ const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userI
                 }
             });
 
-            if (!response.ok) throw new Error("Failed to connect. Check Token/ID.");
+            if (!response.ok) {
+                if (response.status === 401) throw new Error("Invalid Token. Please check your MetaApi API Key.");
+                if (response.status === 404) throw new Error("Account ID not found. Check the ID.");
+                throw new Error("Failed to connect to Broker Relay.");
+            }
             
             const info = await response.json();
             setConnectionStatus(`Connected to ${info.name} (${info.login})`);
 
             // 2. Fetch Recent History (Last 30 days)
-            // Switch to Client API URL based on region (simplified for demo, usually provided in info)
             const clientApiUrl = `https://mt-client-api-v1.new-york.agiliumtrade.ai`; 
             setConnectionStatus('Syncing Trade History...');
             
@@ -370,12 +374,7 @@ const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userI
                 headers: { 'auth-token': apiToken }
             });
             
-            if (!historyRes.ok) {
-                 setConnectionStatus("Connected, but failed to fetch history (Region mismatch?)");
-                 // Simulate success for UX if API fails due to CORS/Region
-                 setTimeout(() => onClose(), 2000);
-                 return;
-            }
+            if (!historyRes.ok) throw new Error("Connected but failed to fetch history.");
 
             const historyData = await historyRes.json();
             const orders = historyData.historyOrders || [];
@@ -383,23 +382,26 @@ const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userI
             // 3. Map & Save to Firestore
             let importedCount = 0;
             for (const order of orders) {
+                // Assuming 'ORDER_TYPE_BUY' and 'ORDER_TYPE_SELL' are actual trades
                 if (order.type !== 'ORDER_TYPE_BUY' && order.type !== 'ORDER_TYPE_SELL') continue;
                 
                 const trade: Trade = {
-                    id: order.id, 
-                    accountId: 'mt5_imported', 
+                    id: order.id, // MetaApi order ID can serve as unique ID
+                    accountId: 'metaapi_imported', // Assign a default account ID for imported trades
                     userId: userId,
-                    date: order.doneTime || new Date().toISOString(),
+                    date: new Date(order.doneTime || order.createTime).toISOString(),
                     pair: order.symbol,
                     direction: order.type === 'ORDER_TYPE_BUY' ? TradeDirection.BUY : TradeDirection.SELL,
                     outcome: order.profit > 0 ? TradeOutcome.WIN : order.profit < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN,
                     pnl: order.profit,
-                    session: TradingSession.NY,
+                    session: TradingSession.NY, // Default or infer from time
                     notes: `Imported from MetaApi`,
                     tags: ['AutoSync'],
                     setup: 'Live Execution',
                     checklistScore: 'C',
-                    rMultiple: 0
+                    rMultiple: 0, // MetaApi might not directly provide R-Multiple
+                    entryPrice: order.price, // Assuming order.price is entry price
+                    lotSize: order.volume
                 };
                 
                 await addTradeToDb(trade, userId);
@@ -411,57 +413,74 @@ const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void; userI
 
         } catch (error: any) {
             console.error("MetaApi Error:", error);
-            // Fallback for demo purposes if they don't have a real key
-            setConnectionStatus(`Simulation Mode: Connected to ${accountId}`);
-            setTimeout(() => onClose(), 2000);
+            setConnectionStatus(`Error: ${error.message}`);
         } finally {
             setIsConnecting(false);
         }
     };
 
+    // Data Fetching Script (Python) - The direct method
     const pythonScript = `
 import MetaTrader5 as mt5
 import firebase_admin
 from firebase_admin import credentials, firestore
-import time
 from datetime import datetime
+import time
 
-# --- CONFIGURATION ---
-MT_LOGIN = ${login || 123456}
-MT_PASSWORD = "${password || 'YOUR_PASS'}"
-MT_SERVER = "${server || 'Demo'}"
+# --- 1. SETUP ---
+# Replace with your MT5 details (or leave blank if already logged in)
+LOGIN = 123456 
+PASSWORD = "YOUR_PASSWORD"
+SERVER = "MetaQuotes-Demo"
 USER_ID = "${userId}"
 
-# 1. Connect to Firebase (Download key from Firebase Console)
+# --- 2. CONNECT FIREBASE ---
+# Download 'serviceAccountKey.json' from Firebase Console > Project Settings > Service Accounts
+# Place it in the same directory as this script
 cred = credentials.Certificate("serviceAccountKey.json") 
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-# 2. Connect to MT5
+# --- 3. FETCH DATA ---
 if not mt5.initialize():
-    print("initialize() failed")
+    print("MT5 Init Failed")
     mt5.shutdown()
+    quit()
 
-if mt5.login(MT_LOGIN, password=MT_PASSWORD, server=MT_SERVER):
-    print(f"Connected to {MT_LOGIN}")
+# mt5.login(LOGIN, password=PASSWORD, server=SERVER) # Uncomment this line and fill details to auto-login
+
+print("Fetching history...")
+from_date = datetime(2024, 1, 1) # Adjust start date as needed
+to_date = datetime.now()
+deals = mt5.history_deals_get(from_date, to_date)
+
+if deals:
+    print(f"Found {len(deals)} deals. Syncing to TradeFlow...")
+    for deal in deals:
+        # We only want 'ENTRY_OUT' deals (closed trades with PnL)
+        if deal.entry == mt5.DEAL_ENTRY_OUT: 
+            direction = "BUY" if deal.type == mt5.DEAL_TYPE_BUY else "SELL"
+            outcome = "WIN" if deal.profit > 0 else ("LOSS" if deal.profit < 0 else "BREAKEVEN")
+            
+            # Use deal.ticket as Firestore document ID for idempotence
+            doc_ref = db.collection('trades').document(str(deal.ticket))
+            doc_ref.set({
+                'userId': USER_ID,
+                'pair': deal.symbol,
+                'direction': direction,
+                'date': datetime.fromtimestamp(deal.time).isoformat(),
+                'pnl': deal.profit,
+                'outcome': outcome,
+                'setup': 'MT5 Python Sync',
+                'accountId': 'mt5_synced', # Default account for synced trades
+                'entryPrice': deal.price,
+                'notes': f'Synced automatically via Python bridge. Deal ID: {deal.ticket}'
+            })
+    print("Sync Complete!")
 else:
-    print("Failed to connect")
+    print("No history found in MT5 for the selected period.")
 
-# 3. Sync Loop
-print("Listening...")
-known_tickets = set()
-
-while True:
-    from_date = datetime.now().replace(hour=0, minute=0, second=0)
-    deals = mt5.history_deals_get(from_date)
-    if deals:
-        for deal in deals:
-            if deal.ticket in known_tickets: continue
-            known_tickets.add(deal.ticket)
-            if deal.entry == 1: # Entry Out (Close)
-                print(f"Trade Closed: {deal.symbol} {deal.profit}")
-                # Add Firestore logic here
-    time.sleep(5)
+mt5.shutdown()
 `;
 
     const handleCopy = () => {
@@ -478,29 +497,60 @@ while True:
                 <div className="p-6">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                            <CloudLightning className="text-white" size={24} />
+                            <Laptop className="text-white" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-display font-bold text-white">Connect Terminal</h2>
-                            <p className="text-slate-400 text-sm">Sync via MetaApi Cloud or Local Bridge</p>
+                            <h2 className="text-2xl font-display font-bold text-white">Connect Broker</h2>
+                            <p className="text-slate-400 text-sm">Fetch trade history directly from MetaTrader</p>
                         </div>
                     </div>
 
                     {/* Tabs */}
                     <div className="flex p-1 bg-slate-800 rounded-xl mb-6">
                         <button 
+                            onClick={() => setMethod('local')}
+                            className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${method === 'local' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <Laptop size={16} /> Python Bridge (Free)
+                        </button>
+                        <button 
                             onClick={() => setMethod('cloud')}
-                            className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${method === 'cloud' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${method === 'cloud' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                         >
                             <Wifi size={16} /> MetaApi Cloud
                         </button>
-                        <button 
-                            onClick={() => setMethod('local')}
-                            className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${method === 'local' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            <Laptop size={16} /> Local Script
-                        </button>
                     </div>
+
+                    {method === 'local' && (
+                        <div className="space-y-5 animate-fade-in">
+                             <div className="p-4 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+                                <strong className="text-white block mb-1">Direct Data Fetch</strong>
+                                Since browsers cannot access your desktop apps directly, running this simple script on your PC is the most secure and direct way to push your MT5 history to TradeFlow.
+                            </div>
+                            
+                            <div className="relative group">
+                                <div className="absolute top-0 left-0 w-full h-8 bg-slate-800 rounded-t-xl border-b border-slate-700 flex items-center px-4 gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-rose-500" />
+                                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                                    <div className="text-xs text-slate-500 ml-2 font-mono">sync_trades.py</div>
+                                </div>
+                                <pre className="bg-slate-950 text-slate-300 p-4 pt-10 rounded-xl font-mono text-xs overflow-x-auto border border-slate-800 h-64 selection:bg-cyan-900">
+                                    {pythonScript}
+                                </pre>
+                                <div className="absolute top-2 right-2">
+                                    <Button onClick={handleCopy} size="sm" variant="secondary">
+                                        {copied ? <Check size={14}/> : <Copy size={14}/>}
+                                    </Button>
+                                </div>
+                            </div>
+                            
+                            <div className="text-xs text-slate-500 text-center">
+                                1. Install Python & Libraries (`pip install MetaTrader5 firebase-admin`) <br/>
+                                2. Run script. Trades will appear instantly.
+                            </div>
+                        </div>
+                    )}
 
                     {method === 'cloud' && (
                         <div className="space-y-5 animate-fade-in">
@@ -542,36 +592,6 @@ while True:
                             </Button>
                         </div>
                     )}
-
-                    {method === 'local' && (
-                        <div className="space-y-5 animate-fade-in">
-                             <div className="p-4 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 text-sm">
-                                Alternative: Run this secure Python script on your PC to bridge MT5 to TradeFlow for free.
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-xs text-slate-500">Login</label>
-                                    <Input value={login} onChange={e => setLogin(e.target.value)} className="bg-black/30 border-white/10"/>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-slate-500">Server</label>
-                                    <Input value={server} onChange={e => setServer(e.target.value)} className="bg-black/30 border-white/10"/>
-                                </div>
-                            </div>
-
-                            <div className="relative group">
-                                <pre className="bg-slate-950 text-slate-300 p-4 pt-10 rounded-xl font-mono text-xs overflow-x-auto border border-slate-800 h-48 selection:bg-cyan-900">
-                                    {pythonScript}
-                                </pre>
-                                <div className="absolute top-2 right-2">
-                                    <Button onClick={handleCopy} size="sm" variant="secondary">
-                                        {copied ? <Check size={14}/> : <Copy size={14}/>}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </Card>
         </div>
@@ -590,7 +610,8 @@ const AddTradeModal: React.FC<{
     const [formData, setFormData] = useState<Partial<Trade>>({
         pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, 
         pnl: 0, session: TradingSession.NY, notes: '', checklistScore: 'D',
-        rMultiple: 0, riskPercentage: 0, setup: '', accountId: currentAccountId
+        rMultiple: 0, riskPercentage: 0, setup: '', accountId: currentAccountId,
+        entryPrice: undefined, exitPrice: undefined, sl: undefined, tp: undefined, lotSize: undefined
     });
     const [checklist, setChecklist] = useState({
         plan: false, emotion: false, sl: false, tp: false, bias: false
@@ -599,6 +620,8 @@ const AddTradeModal: React.FC<{
     const [aiAnalysis, setAiAnalysis] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [error, setError] = useState('');
+    const [magicInput, setMagicInput] = useState('');
+    const [isMagicParsing, setIsMagicParsing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -612,7 +635,8 @@ const AddTradeModal: React.FC<{
                 setFormData({
                     pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, 
                     pnl: 0, session: TradingSession.NY, notes: '', checklistScore: 'D',
-                    rMultiple: 0, riskPercentage: 0, setup: '', accountId: currentAccountId
+                    rMultiple: 0, riskPercentage: 0, setup: '', accountId: currentAccountId,
+                    entryPrice: undefined, exitPrice: undefined, sl: undefined, tp: undefined, lotSize: undefined
                 });
                 setChecklist({ plan: false, emotion: false, sl: false, tp: false, bias: false });
                 setStep(1);
@@ -629,16 +653,27 @@ const AddTradeModal: React.FC<{
     }, [checklist]);
 
     useEffect(() => {
-        if (formData.pnl && formData.accountId) {
+        if (formData.pnl !== undefined && formData.accountId) {
             const acc = accounts.find(a => a.id === formData.accountId);
             if (acc && acc.balance) {
                 const risk = (formData.pnl / acc.balance) * 100;
                 setFormData(prev => ({ ...prev, riskPercentage: parseFloat(risk.toFixed(2)) }));
             }
+        } else {
+            setFormData(prev => ({ ...prev, riskPercentage: undefined }));
         }
     }, [formData.pnl, formData.accountId, accounts]);
 
     if (!isOpen) return null;
+
+    const handleMagicLog = async () => {
+        if(!magicInput) return;
+        setIsMagicParsing(true);
+        const data = await parseTradeFromNaturalLanguage(magicInput);
+        setFormData(prev => ({...prev, ...data}));
+        setIsMagicParsing(false);
+        setMagicInput('');
+    }
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -679,10 +714,11 @@ const AddTradeModal: React.FC<{
                 setup: formData.setup || '',
                 notes: formData.notes || '',
                 tags: [],
-                entryPrice: formData.entryPrice ? Number(formData.entryPrice) : undefined,
-                sl: formData.sl ? Number(formData.sl) : undefined,
-                tp: formData.tp ? Number(formData.tp) : undefined,
-                lotSize: formData.lotSize ? Number(formData.lotSize) : undefined,
+                entryPrice: formData.entryPrice,
+                exitPrice: formData.exitPrice,
+                sl: formData.sl,
+                tp: formData.tp,
+                lotSize: formData.lotSize,
             };
             
             await onSave(trade);
@@ -756,6 +792,20 @@ const AddTradeModal: React.FC<{
                                 </div>
                             )}
 
+                            {/* Magic Log inside modal */}
+                            <div className="flex gap-2">
+                                <Input 
+                                    value={magicInput}
+                                    onChange={(e) => setMagicInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleMagicLog()}
+                                    placeholder="Magic Paste: 'Long Gold @ 2030, SL 2025, TP 2040, Lot 0.5...'"
+                                    className="bg-cyan-500/5 border-cyan-500/20 text-sm"
+                                />
+                                <Button variant="secondary" size="sm" onClick={handleMagicLog} disabled={!magicInput || isMagicParsing}>
+                                    {isMagicParsing ? <Sparkles className="animate-spin" size={16}/> : <Wand2 size={16}/>}
+                                </Button>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-xs text-slate-500 dark:text-slate-400">Account</label>
@@ -783,6 +833,38 @@ const AddTradeModal: React.FC<{
                                 </div>
                             </div>
 
+                            {/* Technical Details Row */}
+                            <div className="grid grid-cols-3 gap-3 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Entry Price</label>
+                                    <Input type="number" step="0.00001" value={formData.entryPrice || ''} onChange={e => setFormData({...formData, entryPrice: parseFloat(e.target.value)})} placeholder="1.0000" className="h-8 text-sm" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Exit Price</label>
+                                    <Input type="number" step="0.00001" value={formData.exitPrice || ''} onChange={e => setFormData({...formData, exitPrice: parseFloat(e.target.value)})} placeholder="1.0050" className="h-8 text-sm" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Lot Size</label>
+                                    <Input type="number" step="0.01" value={formData.lotSize || ''} onChange={e => setFormData({...formData, lotSize: parseFloat(e.target.value)})} placeholder="1.0" className="h-8 text-sm" />
+                                </div>
+                            </div>
+
+                            {/* Risk Management Row */}
+                            <div className="grid grid-cols-3 gap-3 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Stop Loss</label>
+                                    <Input type="number" step="0.00001" value={formData.sl || ''} onChange={e => setFormData({...formData, sl: parseFloat(e.target.value)})} placeholder="0.0000" className="h-8 text-sm" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">Take Profit</label>
+                                    <Input type="number" step="0.00001" value={formData.tp || ''} onChange={e => setFormData({...formData, tp: parseFloat(e.target.value)})} placeholder="0.0000" className="h-8 text-sm" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">R-Multiple</label>
+                                    <Input type="number" step="0.1" value={formData.rMultiple || ''} onChange={e => setFormData({...formData, rMultiple: parseFloat(e.target.value)})} placeholder="2.5R" className="h-8 text-sm" />
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-800/30 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50">
                                 <div className="space-y-1">
                                     <label className="text-xs text-slate-500 dark:text-slate-400">Outcome</label>
@@ -798,26 +880,20 @@ const AddTradeModal: React.FC<{
                                     <Input type="number" value={formData.pnl} onChange={e => setFormData({...formData, pnl: parseFloat(e.target.value)})} placeholder="0.00" />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-xs text-slate-500 dark:text-slate-400">Risk %</label>
+                                    <label className="text-xs text-slate-500 dark:text-slate-400">Risk % (Auto)</label>
                                     <div className={`w-full px-4 py-3 rounded-xl border text-sm font-mono flex items-center ${
                                         (formData.riskPercentage || 0) > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400' : 
                                         (formData.riskPercentage || 0) < 0 ? 'bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/30 dark:text-rose-400' : 
                                         'bg-slate-100 border-slate-200 text-slate-500 dark:bg-slate-900/30 dark:border-slate-700'
                                     }`}>
-                                        {formData.riskPercentage}%
+                                        {formData.riskPercentage?.toFixed(2)}%
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-xs text-slate-500 dark:text-slate-400">Setup Strategy</label>
-                                    <Input value={formData.setup} onChange={e => setFormData({...formData, setup: e.target.value})} placeholder="e.g. Breakout, Reversal" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-slate-500 dark:text-slate-400">R-Multiple</label>
-                                    <Input type="number" value={formData.rMultiple} onChange={e => setFormData({...formData, rMultiple: parseFloat(e.target.value)})} placeholder="2.5" />
-                                </div>
+                            <div className="space-y-2">
+                                <label className="text-xs text-slate-500 dark:text-slate-400">Setup Strategy</label>
+                                <Input value={formData.setup} onChange={e => setFormData({...formData, setup: e.target.value})} placeholder="e.g. Breakout, Reversal" />
                             </div>
 
                             <div className="space-y-2">
@@ -910,11 +986,9 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
         setIsRegister(false); // Switch back to login
         setEmail('');
         setPassword('');
-        // Do NOT call onLogin() here, forcing them to log in manually
       } else {
         // Login Flow
         await loginUser(email, password);
-        // onLogin will be handled by the auth state listener in App
       }
     } catch (err: any) {
         if (err.code === 'auth/operation-not-allowed') {
@@ -948,7 +1022,7 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#030712] selection:bg-cyan-500/30">
       {/* Animated Background Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-600/30 rounded-full blur-3xl animate-pulse-slow" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-cyan-600/30 rounded-full blur-3xl animate-pulse-slow animation-delay-2000" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-cyan-600/30 rounded-full blur-[100px] animate-pulse-slow animation-delay-2000 mix-blend-multiply dark:mix-blend-screen" />
       
       {/* Grid Overlay */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
@@ -1088,6 +1162,19 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   );
 };
 
+// Define props for NewsView
+interface NewsViewProps {
+  news: { sentiment: string, events: CalendarEvent[] };
+}
+
+// Define props for AICoachView
+interface AICoachViewProps {
+  chatHistory: ChatMessage[];
+  setChatHistory: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  isSending: boolean;
+  setIsSending: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -1105,14 +1192,23 @@ const App: React.FC = () => {
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountBroker, setNewAccountBroker] = useState('');
   const [newAccountBalance, setNewAccountBalance] = useState('');
-  
-  // New State for Connect Modal
   const [isConnectOpen, setIsConnectOpen] = useState(false);
 
-  const toggleTheme = () => {
+  // New state for AI Coach loading
+  const [isAICoachSending, setIsAICoachSending] = useState(false);
+
+  // New state for Toast notifications
+  const [toastMessage, setToastMessage] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+      setToastMessage({ message, type });
+      setTimeout(() => setToastMessage(null), 3000); // Hide after 3 seconds
+  }, []);
+
+  const toggleTheme = useCallback(() => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
-  };
+  }, [theme]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -1153,55 +1249,97 @@ const App: React.FC = () => {
       };
   }, [user]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logoutUser();
     setUser(null);
-  };
+  }, []);
   
-  const handleSaveTrade = async (trade: Trade) => {
-    if (trade.id) {
-       await updateTradeInDb(trade);
-    } else {
-       await addTradeToDb(trade, user!.uid);
+  const handleSaveTrade = useCallback(async (trade: Trade) => {
+    try {
+        if (trade.id) {
+           await updateTradeInDb(trade);
+           showToast('Trade updated successfully!', 'success');
+        } else {
+           await addTradeToDb(trade, user!.uid);
+           showToast('Trade logged successfully!', 'success');
+        }
+        setEditingTrade(undefined);
+        setIsAddTradeOpen(false);
+    } catch (error) {
+        showToast('Failed to save trade.', 'error');
+        console.error("Save Trade Error:", error);
     }
-    setEditingTrade(undefined);
-    setIsAddTradeOpen(false);
-  };
+  }, [user, showToast]);
 
-  const handleDeleteTrade = async (id: string) => {
-    if (window.confirm('Delete this trade?')) {
-        await deleteTradeFromDb(id);
+  const handleDeleteTrade = useCallback(async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this trade?')) {
+        try {
+            await deleteTradeFromDb(id);
+            showToast('Trade deleted.', 'success');
+        } catch (error) {
+            showToast('Failed to delete trade.', 'error');
+            console.error("Delete Trade Error:", error);
+        }
     }
-  }
+  }, [showToast]);
   
-  const handleAddAccount = async () => {
-      if (!newAccountName || !newAccountBalance) return;
-      const account: Account = {
-          id: Date.now().toString(),
-          name: newAccountName,
-          broker: newAccountBroker || 'Custom',
-          balance: parseFloat(newAccountBalance),
-          currency: 'USD',
-          userId: user?.uid
-      };
-      await addAccountToDb(account, user!.uid);
-      setNewAccountName('');
-      setNewAccountBroker('');
-      setNewAccountBalance('');
-  };
-
-  const handleDeleteAccount = async (id: string) => {
-      if(window.confirm('Are you sure? This will delete the account.')) {
-          await deleteAccountFromDb(id);
-          if (selectedAccount === id) setSelectedAccount('all');
+  const handleAddAccount = useCallback(async () => {
+      if (!newAccountName || !newAccountBalance || !user) return;
+      try {
+        const account: Account = {
+            id: Date.now().toString(), // Firebase will assign real ID on addDoc
+            name: newAccountName,
+            broker: newAccountBroker || 'Custom',
+            balance: parseFloat(newAccountBalance),
+            currency: 'USD',
+            userId: user.uid
+        };
+        await addAccountToDb(account, user.uid);
+        showToast('Account created successfully!', 'success');
+        setNewAccountName('');
+        setNewAccountBroker('');
+        setNewAccountBalance('');
+      } catch (error) {
+          showToast('Failed to add account.', 'error');
+          console.error("Add Account Error:", error);
       }
-  };
+  }, [newAccountName, newAccountBalance, newAccountBroker, user, showToast]);
+
+  const handleDeleteAccount = useCallback(async (id: string) => {
+      if(window.confirm('Are you sure? This will delete the account and all associated trades!')) {
+          try {
+              await deleteAccountFromDb(id);
+              showToast('Account deleted.', 'success');
+              if (selectedAccount === id) setSelectedAccount('all');
+          } catch (error) {
+              showToast('Failed to delete account.', 'error');
+              console.error("Delete Account Error:", error);
+          }
+      }
+  }, [selectedAccount, showToast]);
 
   // --- Views defined inside App to access state ---
   const JournalView = () => {
-      const filteredTrades = selectedAccount === 'all' 
+      // Filter states
+      const [pairFilter, setPairFilter] = useState('all');
+      const [outcomeFilter, setOutcomeFilter] = useState<TradeOutcome | 'all'>('all');
+      const [directionFilter, setDirectionFilter] = useState<TradeDirection | 'all'>('all');
+
+      let filteredTrades = selectedAccount === 'all' 
         ? trades 
         : trades.filter(t => t.accountId === selectedAccount);
+      
+      // Apply additional filters
+      if (pairFilter !== 'all') {
+          filteredTrades = filteredTrades.filter(t => t.pair === pairFilter);
+      }
+      if (outcomeFilter !== 'all') {
+          filteredTrades = filteredTrades.filter(t => t.outcome === outcomeFilter);
+      }
+      if (directionFilter !== 'all') {
+          filteredTrades = filteredTrades.filter(t => t.direction === directionFilter);
+      }
+
       const sortedTrades = [...filteredTrades].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       const [magicInput, setMagicInput] = useState('');
@@ -1210,7 +1348,9 @@ const App: React.FC = () => {
 
       const totalPnL = filteredTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
       const winCount = filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length;
-      const winRate = filteredTrades.length > 0 ? (winCount / filteredTrades.filter(t => t.outcome !== TradeOutcome.PENDING).length) * 100 : 0;
+      const totalDecidedTrades = filteredTrades.filter(t => t.outcome !== TradeOutcome.PENDING).length;
+      const winRate = totalDecidedTrades > 0 ? (winCount / totalDecidedTrades) * 100 : 0;
+      
       const bestPairEntry = Object.entries(filteredTrades.reduce((acc, t) => {
           acc[t.pair] = (acc[t.pair] || 0) + (t.pnl || 0);
           return acc;
@@ -1218,25 +1358,41 @@ const App: React.FC = () => {
       const bestPair = bestPairEntry ? bestPairEntry[0] : '--';
 
       const handleMagicLog = async () => {
-          if(!magicInput) return;
+          if(!magicInput || !user) return;
           setIsParsing(true);
-          const data = await parseTradeFromNaturalLanguage(magicInput);
-          setEditingTrade(data);
-          setIsAddTradeOpen(true);
-          setMagicInput('');
-          setIsParsing(false);
+          try {
+            const data = await parseTradeFromNaturalLanguage(magicInput);
+            setEditingTrade(data); // Pre-fill the modal
+            setIsAddTradeOpen(true);
+            setMagicInput('');
+            showToast('Magic Log parsed! Review details.', 'success');
+          } catch (error) {
+            showToast('Magic Log failed to parse.', 'error');
+            console.error("Magic Log Error:", error);
+          } finally {
+            setIsParsing(false);
+          }
       }
 
       const handleExportCSV = () => {
-          const headers = ['Date', 'Pair', 'Direction', 'Outcome', 'PnL', 'Setup', 'Notes'];
+          const headers = ['Date', 'Pair', 'Direction', 'Entry Price', 'Exit Price', 'SL', 'TP', 'Lot Size', 'Outcome', 'PnL', 'R-Multiple', 'Risk %', 'Setup', 'Session', 'Notes', 'AI Analysis'];
           const rows = sortedTrades.map(t => [
-              new Date(t.date).toLocaleDateString(),
+              new Date(t.date).toLocaleString(),
               t.pair,
               t.direction,
+              t.entryPrice || '',
+              t.exitPrice || '',
+              t.sl || '',
+              t.tp || '',
+              t.lotSize || '',
               t.outcome,
-              t.pnl,
-              t.setup,
-              `"${t.notes}"`
+              t.pnl || '',
+              t.rMultiple || '',
+              t.riskPercentage || '',
+              t.setup || '',
+              t.session,
+              `"${t.notes}"`,
+              `"${t.aiAnalysis || ''}"`
           ]);
           const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
           const encodedUri = encodeURI(csvContent);
@@ -1248,8 +1404,11 @@ const App: React.FC = () => {
           document.body.removeChild(link);
       };
 
+      const uniquePairs = ['all', ...new Set(trades.map(t => t.pair))];
+
       return (
           <div className="space-y-6 animate-fade-in pb-20">
+              {/* Stats Bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="glass-panel p-4 rounded-xl border-l-4 border-l-cyan-500">
                       <div className="text-xs text-slate-500 uppercase font-bold">Net PnL</div>
@@ -1262,7 +1421,7 @@ const App: React.FC = () => {
                       <div className="text-xl font-bold text-slate-800 dark:text-white">{winRate.toFixed(1)}%</div>
                   </div>
                    <div className="glass-panel p-4 rounded-xl border-l-4 border-l-amber-500">
-                      <div className="text-xs text-slate-500 uppercase font-bold">Best Pair</div>
+                      <div className="text-xs text-slate-500 uppercase font-bold">Top Pair</div>
                       <div className="text-xl font-bold text-slate-800 dark:text-white">{bestPair}</div>
                   </div>
                   <div className="glass-panel p-4 rounded-xl border-l-4 border-l-blue-500">
@@ -1271,6 +1430,7 @@ const App: React.FC = () => {
                   </div>
               </div>
 
+              {/* Header with Actions */}
               <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
                   <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Trade Journal</h2>
                   <div className="flex gap-3 w-full md:w-auto">
@@ -1283,6 +1443,7 @@ const App: React.FC = () => {
                   </div>
               </div>
 
+              {/* Magic Log Input (Prominent) */}
               <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Sparkles className={`text-cyan-500 ${isParsing ? 'animate-spin' : ''}`} size={18} />
@@ -1302,17 +1463,61 @@ const App: React.FC = () => {
                   </div>
               </div>
 
+              {/* Quick Filters */}
+              <div className="flex flex-wrap gap-3">
+                  <Select value={pairFilter} onChange={e => setPairFilter(e.target.value)} className="w-full sm:w-auto text-sm">
+                      <option value="all">All Pairs</option>
+                      {uniquePairs.map(pair => pair !== 'all' && <option key={pair} value={pair}>{pair}</option>)}
+                  </Select>
+                  <Select value={outcomeFilter} onChange={e => setOutcomeFilter(e.target.value as TradeOutcome | 'all')} className="w-full sm:w-auto text-sm">
+                      <option value="all">All Outcomes</option>
+                      <option value={TradeOutcome.WIN}>Win</option>
+                      <option value={TradeOutcome.LOSS}>Loss</option>
+                      <option value={TradeOutcome.BREAKEVEN}>Breakeven</option>
+                      <option value={TradeOutcome.PENDING}>Pending</option>
+                  </Select>
+                  <Select value={directionFilter} onChange={e => setDirectionFilter(e.target.value as TradeDirection | 'all')} className="w-full sm:w-auto text-sm">
+                      <option value="all">All Directions</option>
+                      <option value={TradeDirection.BUY}>BUY</option>
+                      <option value={TradeDirection.SELL}>SELL</option>
+                  </Select>
+              </div>
+
+
+              {/* Trade List / Table */}
               <div className="glass-panel rounded-2xl overflow-hidden border border-white/10">
+                  {/* Desktop Header */}
                   <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-white/10 text-xs font-bold uppercase text-slate-500 tracking-wider">
-                      <div className="col-span-2">Date</div>
-                      <div className="col-span-3">Pair / Strategy</div>
-                      <div className="col-span-2 text-center">Outcome</div>
-                      <div className="col-span-3 text-right">PnL / R</div>
-                      <div className="col-span-2 text-right">Actions</div>
+                      <div className="col-span-1">Date</div>
+                      <div className="col-span-2">Pair</div>
+                      <div className="col-span-2">Entry/Exit</div>
+                      <div className="col-span-2">SL/TP</div>
+                      <div className="col-span-1 text-center">Lot</div>
+                      <div className="col-span-1 text-center">Outcome</div>
+                      <div className="col-span-2 text-right">PnL / R</div>
+                      <div className="col-span-1 text-right"></div> {/* Actions column */}
                   </div>
                   
-                  {sortedTrades.length === 0 && (
-                       <div className="text-center py-20 text-slate-500">No trades logged yet. Start your journey!</div>
+                  {/* Skeleton Loader */}
+                  {sortedTrades.length === 0 && (trades.length === 0 ? 
+                       <div className="text-center py-20 text-slate-500 flex flex-col items-center">
+                           <BookOpen size={48} className="mx-auto mb-4 opacity-20" />
+                           <p>No trades logged yet. Start your journey!</p>
+                       </div>
+                    :
+                       // Skeleton loading while filtered trades are empty but main trades array is not
+                       Array.from({ length: 5 }).map((_, i) => (
+                           <div key={i} className="grid grid-cols-12 gap-4 p-4 border-b border-white/5 last:border-0 animate-pulse">
+                               <div className="col-span-1 h-4 bg-slate-700 rounded" />
+                               <div className="col-span-2 h-4 bg-slate-700 rounded" />
+                               <div className="col-span-2 h-4 bg-slate-700 rounded" />
+                               <div className="col-span-2 h-4 bg-slate-700 rounded" />
+                               <div className="col-span-1 h-4 bg-slate-700 rounded" />
+                               <div className="col-span-1 h-4 bg-slate-700 rounded" />
+                               <div className="col-span-2 h-4 bg-slate-700 rounded" />
+                               <div className="col-span-1 h-4 bg-slate-700 rounded" />
+                           </div>
+                       ))
                   )}
 
                   {sortedTrades.map(trade => (
@@ -1321,13 +1526,14 @@ const App: React.FC = () => {
                             className="p-4 cursor-pointer"
                             onClick={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
                           >
+                              {/* Desktop Row */}
                               <div className="hidden md:grid grid-cols-12 gap-4 items-center">
-                                  <div className="col-span-2 text-sm text-slate-400 font-mono">
+                                  <div className="col-span-1 text-sm text-slate-400 font-mono">
                                       {new Date(trade.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
                                       <span className="block text-xs opacity-50">{new Date(trade.date).toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'})}</span>
                                   </div>
                                   
-                                  <div className="col-span-3">
+                                  <div className="col-span-2">
                                       <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
                                           {trade.pair}
                                           <span className={`text-[10px] px-1.5 rounded border ${trade.direction === TradeDirection.BUY ? 'border-emerald-500 text-emerald-500' : 'border-rose-500 text-rose-500'}`}>
@@ -1337,23 +1543,33 @@ const App: React.FC = () => {
                                       {trade.setup && <div className="text-xs text-slate-500 mt-1">{trade.setup}</div>}
                                   </div>
 
-                                  <div className="col-span-2 text-center">
+                                  <div className="col-span-2 text-sm text-slate-400 font-mono">
+                                      {trade.entryPrice ? trade.entryPrice.toFixed(4) : '--'} / {trade.exitPrice ? trade.exitPrice.toFixed(4) : '--'}
+                                  </div>
+                                  <div className="col-span-2 text-sm text-slate-400 font-mono">
+                                      {trade.sl ? trade.sl.toFixed(4) : '--'} / {trade.tp ? trade.tp.toFixed(4) : '--'}
+                                  </div>
+                                  <div className="col-span-1 text-center text-sm text-slate-400 font-mono">
+                                      {trade.lotSize || '--'}
+                                  </div>
+
+                                  <div className="col-span-1 text-center">
                                       <Badge color={trade.outcome === TradeOutcome.WIN ? 'green' : trade.outcome === TradeOutcome.LOSS ? 'red' : 'gray'}>
                                           {trade.outcome}
                                       </Badge>
                                   </div>
 
-                                  <div className="col-span-3 text-right">
+                                  <div className="col-span-2 text-right">
                                       <div className={`font-mono font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                                          {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl}` : '--'}
+                                          {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl.toFixed(2)}` : '--'}
                                       </div>
                                       <div className="text-xs text-slate-500">
-                                          {trade.rMultiple ? `${trade.rMultiple}R` : ''}
+                                          {trade.rMultiple ? `${trade.rMultiple.toFixed(1)}R` : ''}
                                           {trade.riskPercentage ? ` • ${trade.riskPercentage}%` : ''}
                                       </div>
                                   </div>
 
-                                  <div className="col-span-2 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="col-span-1 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
                                           <Edit2 size={14} />
                                       </Button>
@@ -1364,7 +1580,8 @@ const App: React.FC = () => {
                                   </div>
                               </div>
 
-                              <div className="md:hidden flex flex-col gap-2">
+                              {/* Mobile Card Layout */}
+                              <div className="md:hidden flex flex-col gap-2 p-2">
                                    <div className="flex justify-between items-center">
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-lg text-slate-900 dark:text-white">{trade.pair}</span>
@@ -1373,7 +1590,7 @@ const App: React.FC = () => {
                                             </span>
                                         </div>
                                         <div className={`font-mono font-bold text-lg ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                                            {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl}` : '--'}
+                                            {trade.pnl && trade.pnl > 0 ? '+' : ''}{trade.pnl ? `$${trade.pnl.toFixed(2)}` : '--'}
                                         </div>
                                    </div>
                                    <div className="flex justify-between items-center text-sm text-slate-500">
@@ -1382,7 +1599,7 @@ const App: React.FC = () => {
                                             {trade.setup && <span className="text-xs opacity-70">{trade.setup}</span>}
                                         </div>
                                         <div className="flex items-center gap-3">
-                                             {trade.rMultiple ? <span className="text-xs font-mono">{trade.rMultiple}R</span> : null}
+                                             {trade.rMultiple ? <span className="text-xs font-mono">{trade.rMultiple.toFixed(1)}R</span> : null}
                                              <Badge color={trade.outcome === TradeOutcome.WIN ? 'green' : trade.outcome === TradeOutcome.LOSS ? 'red' : 'gray'}>
                                                  {trade.outcome}
                                              </Badge>
@@ -1391,8 +1608,10 @@ const App: React.FC = () => {
                               </div>
                           </div>
 
+                          {/* Expanded Details */}
                           {expandedTradeId === trade.id && (
                               <div className="px-4 pb-6 pt-0 animate-slide-up bg-black/20">
+                                  {/* Mobile Actions */}
                                   <div className="md:hidden flex gap-2 pt-4 pb-2 border-b border-white/10 mb-4">
                                       <Button variant="secondary" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); setEditingTrade(trade); setIsAddTradeOpen(true); }}>
                                           <Edit2 size={16} /> Edit
@@ -1400,10 +1619,23 @@ const App: React.FC = () => {
                                       <Button variant="danger" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); handleDeleteTrade(trade.id); }}>
                                           <Trash2 size={16} /> Delete
                                       </Button>
+                                      <Button variant="secondary" size="sm" className="flex-1" onClick={async (e) => { e.stopPropagation(); await analyzeTradePsychology(trade); /* Update trade */ }}>
+                                          <BrainCircuit size={16} /> AI Sentiment
+                                      </Button>
                                   </div>
 
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 md:border-t border-white/10 pt-4">
                                       <div className="space-y-4">
+                                          {/* Technical Details */}
+                                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-300">
+                                              <div><span className="text-slate-500">Entry:</span> {trade.entryPrice?.toFixed(4) || '--'}</div>
+                                              <div><span className="text-slate-500">Exit:</span> {trade.exitPrice?.toFixed(4) || '--'}</div>
+                                              <div><span className="text-slate-500">SL:</span> {trade.sl?.toFixed(4) || '--'}</div>
+                                              <div><span className="text-slate-500">TP:</span> {trade.tp?.toFixed(4) || '--'}</div>
+                                              <div><span className="text-slate-500">Lot:</span> {trade.lotSize || '--'}</div>
+                                              <div><span className="text-slate-500">Session:</span> {trade.session || '--'}</div>
+                                          </div>
+                                          
                                           <div>
                                               <div className="text-xs uppercase text-slate-500 font-bold mb-1">Notes & Learnings</div>
                                               <p className="text-sm text-slate-300 leading-relaxed bg-black/20 p-3 rounded-lg border border-white/5 italic">
@@ -1415,11 +1647,23 @@ const App: React.FC = () => {
                                                   <div className="text-xs uppercase text-slate-500 font-bold mb-1">Execution Grade</div>
                                                   <div className={`text-2xl font-bold ${trade.checklistScore === 'A' ? 'text-emerald-500' : 'text-yellow-500'}`}>{trade.checklistScore}</div>
                                               </div>
+                                               {/* Per-Trade Sentiment Analysis Button */}
                                               <div>
-                                                   <div className="text-xs uppercase text-slate-500 font-bold mb-1">Session</div>
-                                                   <div className="text-sm text-white">{trade.session}</div>
+                                                  <Button size="sm" variant="secondary" onClick={async () => {
+                                                      const sentiment = await analyzeTradePsychology(trade);
+                                                      await updateTradeInDb({ ...trade, sentimentAnalysis: sentiment });
+                                                      showToast("Sentiment analyzed!", "success");
+                                                  }}>
+                                                      <BrainCircuit size={16} /> Analyze Psychology
+                                                  </Button>
                                               </div>
                                           </div>
+                                          {trade.sentimentAnalysis && (
+                                              <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-lg">
+                                                  <div className="flex items-center gap-2 text-purple-400 text-xs font-bold mb-1"><Bot size={12}/> Trader Psychology</div>
+                                                  <p className="text-xs text-slate-300">{trade.sentimentAnalysis}</p>
+                                              </div>
+                                          )}
                                           {trade.aiAnalysis && (
                                               <div className="bg-cyan-500/10 border border-cyan-500/20 p-3 rounded-lg">
                                                   <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1"><Bot size={12}/> AI Insight</div>
@@ -1449,7 +1693,7 @@ const App: React.FC = () => {
       );
   };
 
-  const NewsView = () => (
+  const NewsView: React.FC<NewsViewProps> = ({ news }) => (
       <div className="space-y-6 animate-fade-in pb-20">
            <div className="flex justify-between items-end">
               <div>
@@ -1512,18 +1756,64 @@ const App: React.FC = () => {
       </div>
   );
 
-  const AnalyticsView: React.FC<{ trades: Trade[], accounts: Account[], selectedAccount: string }> = ({ trades, accounts, selectedAccount }) => {
-      const filteredTrades = selectedAccount === 'all'
+  const AnalyticsView = () => {
+      const [dateRange, setDateRange] = useState<DateRange>('all');
+      
+      const getDateFilter = () => {
+          const now = new Date();
+          let startDate = new Date(0); // Epoch
+          if (dateRange === '7d') {
+              startDate.setDate(now.getDate() - 7);
+          } else if (dateRange === '30d') {
+              startDate.setDate(now.getDate() - 30);
+          } else if (dateRange === '90d') {
+              startDate.setDate(now.getDate() - 90);
+          }
+          return startDate;
+      };
+
+      const filterDate = getDateFilter();
+
+      let filteredTrades = selectedAccount === 'all'
         ? trades
         : trades.filter(t => t.accountId === selectedAccount);
       
-      const currentBalance = selectedAccount === 'all' 
-          ? accounts.reduce((acc, a) => acc + a.balance, 0)
-          : accounts.find(a => a.id === selectedAccount)?.balance || 0;
+      // Apply date range filter
+      filteredTrades = filteredTrades.filter(t => new Date(t.date) >= filterDate);
+
+      const totalPnL = filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+      const winCount = filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length;
+      const totalDecidedTrades = filteredTrades.filter(t => t.outcome !== TradeOutcome.PENDING).length;
+      const winRate = totalDecidedTrades > 0 
+          ? (winCount / totalDecidedTrades * 100) 
+          : 0;
+
+      // Calculate Equity Curve starting from initial account balances
+      const initialBalance = selectedAccount === 'all' 
+          ? accounts.reduce((sum, acc) => sum + acc.balance, 0)
+          : accounts.find(acc => acc.id === selectedAccount)?.balance || 0;
+      
+      let currentEquity = initialBalance;
+      const equityData = filteredTrades.map((trade, index) => {
+          currentEquity += trade.pnl || 0;
+          return {
+              name: `Trade ${index + 1}`,
+              equity: currentEquity,
+              date: new Date(trade.date).toLocaleDateString()
+          };
+      });
 
       return (
         <div className="space-y-6 animate-fade-in pb-20">
-            <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Analytics Dashboard</h2>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Analytics Dashboard</h2>
+                <Select value={dateRange} onChange={e => setDateRange(e.target.value as DateRange)} className="w-40 text-sm">
+                    <option value="all">All Time</option>
+                    <option value="90d">Last 90 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                    <option value="7d">Last 7 Days</option>
+                </Select>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="md:col-span-2 flex flex-col">
@@ -1533,7 +1823,8 @@ const App: React.FC = () => {
                     </div>
                 </Card>
                 
-                <EquitySimulator currentBalance={currentBalance} />
+                {/* Fixed: Pass initialBalance to EquitySimulator */}
+                <EquitySimulator currentBalance={initialBalance} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1575,7 +1866,6 @@ const App: React.FC = () => {
 
       const [formState, setFormState] = useState(todayLog);
       
-      // Local state for textarea inputs to prevent cursor jumping/overwriting during Firestore sync
       const [localNotes, setLocalNotes] = useState('');
       const [localIntention, setLocalIntention] = useState('');
       const lastLoadedId = useRef<string>('');
@@ -1588,7 +1878,6 @@ const App: React.FC = () => {
       }, [logs, today]);
 
       useEffect(() => {
-        // Only sync local inputs from DB when the log ID changes (initial load)
         if (formState.id !== lastLoadedId.current) {
             setLocalIntention(formState.intention || '');
             setLocalNotes(formState.notes || '');
@@ -1630,20 +1919,13 @@ const App: React.FC = () => {
 
       return (
           <div className="space-y-6 animate-fade-in pb-20">
-              <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-                  <div>
-                      <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white flex items-center gap-2"><Zap className="text-yellow-500 fill-yellow-500" /> Trader Mindset</h2>
-                      <p className="text-slate-500 mt-1">Track your mental state and discipline daily.</p>
-                  </div>
-                  <div className="text-right">
-                      <div className="text-xs uppercase text-slate-500 font-bold">Current Streak</div>
-                      <div className="text-2xl font-bold text-cyan-500">
-                          {logs.filter(l => l.followedPlan && l.noRevenge).length} Days
-                      </div>
-                  </div>
+              <div className="flex justify-between items-end">
+                  <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">Mindset & Discipline</h2>
+                  <BreathingExercise />
               </div>
-
+              
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column */}
                   <div className="lg:col-span-2 space-y-6">
                     <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-cyan-500/30 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-10"><BrainCircuit size={100} /></div>
@@ -1699,6 +1981,7 @@ const App: React.FC = () => {
                     </Card>
                   </div>
 
+                  {/* Right Column */}
                   <div className="space-y-6">
                        <Card>
                            <h3 className="font-bold text-slate-700 dark:text-white mb-4">Emotional State</h3>
@@ -1742,8 +2025,6 @@ const App: React.FC = () => {
                                 <span>Today</span>
                             </div>
                         </Card>
-
-                       <BreathingExercise />
                   </div>
               </div>
               
@@ -1782,9 +2063,8 @@ const App: React.FC = () => {
       );
   };
 
-  const AICoachView = () => {
+  const AICoachView: React.FC<AICoachViewProps> = ({ chatHistory, setChatHistory, isSending, setIsSending }) => {
       const [input, setInput] = useState('');
-      const [isLoading, setIsLoading] = useState(false);
       const messagesEndRef = useRef<HTMLDivElement>(null);
 
       const scrollToBottom = () => {
@@ -1793,7 +2073,7 @@ const App: React.FC = () => {
 
       useEffect(() => {
           scrollToBottom();
-      }, [chatHistory, isLoading]);
+      }, [chatHistory, isSending]); // Changed isLoading to isSending
 
       const handleSend = async () => {
           if (!input.trim()) return;
@@ -1807,9 +2087,10 @@ const App: React.FC = () => {
           
           setChatHistory(prev => [...prev, userMsg]);
           setInput('');
-          setIsLoading(true);
+          setIsSending(true); // Use prop setter
 
           try {
+              // chatWithTradeCoach can accept an optional image argument, but this UI doesn't provide it yet.
               const response = await chatWithTradeCoach(chatHistory, userMsg.text);
               const aiMsg: ChatMessage = {
                   id: (Date.now() + 1).toString(),
@@ -1820,8 +2101,9 @@ const App: React.FC = () => {
               setChatHistory(prev => [...prev, aiMsg]);
           } catch (e) {
               console.error(e);
+              setChatHistory(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', text: "Error connecting to AI Coach.", timestamp: Date.now() }]);
           } finally {
-              setIsLoading(false);
+              setIsSending(false); // Use prop setter
           }
       };
 
@@ -1858,7 +2140,7 @@ const App: React.FC = () => {
                               </div>
                           </div>
                       ))}
-                      {isLoading && (
+                      {isSending && ( {/* Changed isLoading to isSending */}
                           <div className="flex justify-start">
                               <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-200 dark:border-slate-700">
                                   <div className="flex gap-2">
@@ -1882,9 +2164,9 @@ const App: React.FC = () => {
                               placeholder="Ask your coach..."
                               className="w-full bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-cyan-500 rounded-xl px-4 py-3 focus:outline-none transition-all dark:text-white"
                           />
-                          <Button onClick={handleSend} variant="neon" className="h-12 w-12 p-0 flex items-center justify-center rounded-xl" disabled={!input.trim() || isLoading}>
-                              <Send size={20} className={isLoading ? 'opacity-0' : ''} />
-                              {isLoading && <div className="absolute inset-0 flex items-center justify-center"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /></div>}
+                          <Button onClick={handleSend} variant="neon" className="h-12 w-12 p-0 flex items-center justify-center rounded-xl" disabled={!input.trim() || isSending}> {/* Changed isLoading to isSending */}
+                              <Send size={20} className={isSending ? 'opacity-0' : ''} /> {/* Changed isLoading to isSending */}
+                              {isSending && <div className="absolute inset-0 flex items-center justify-center"><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /></div>} {/* Changed isLoading to isSending */}
                           </Button>
                       </div>
                   </div>
@@ -1907,6 +2189,21 @@ const App: React.FC = () => {
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
         <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors duration-300 font-sans selection:bg-cyan-500/30`}>
              <BackgroundBlobs />
+             {toastMessage && (
+                <div className={`fixed top-6 right-6 z-[100] animate-slide-up`}>
+                    <div className={`glass-panel px-6 py-4 rounded-2xl shadow-lg flex items-center gap-3 backdrop-blur-xl ${
+                        toastMessage.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-rose-500/10 border-rose-500/30 text-rose-500'
+                    }`}>
+                        <div className={`p-1.5 rounded-full ${toastMessage.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'} text-white`}>
+                            {toastMessage.type === 'success' ? <Check size={16} strokeWidth={3} /> : <X size={16} strokeWidth={3} />}
+                        </div>
+                        <div>
+                            <div className="font-bold text-sm">{toastMessage.type === 'success' ? 'Success!' : 'Error!'}</div>
+                            <div className="text-xs">{toastMessage.message}</div>
+                        </div>
+                    </div>
+                </div>
+            )}
              <WelcomeToast username={user.displayName || 'Trader'} visible={showWelcome} />
              <Navigation activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
              <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -1958,10 +2255,17 @@ const App: React.FC = () => {
                  </div>
 
                  {activeTab === 'journal' && <JournalView />}
-                 {activeTab === 'analytics' && <AnalyticsView trades={trades} accounts={accounts} selectedAccount={selectedAccount} />}
+                 {/* Fixed: Pass news prop to NewsView */}
+                 {activeTab === 'news' && <NewsView news={news} />}
+                 {activeTab === 'analytics' && <AnalyticsView />}
                  {activeTab === 'discipline' && <DisciplineView logs={disciplineLogs} userId={user.uid} />}
-                 {activeTab === 'news' && <NewsView />}
-                 {activeTab === 'ai-coach' && <AICoachView />}
+                 {/* Fixed: Pass chatHistory, setChatHistory, isAICoachSending, setIsAICoachSending to AICoachView */}
+                 {activeTab === 'ai-coach' && <AICoachView 
+                     chatHistory={chatHistory} 
+                     setChatHistory={setChatHistory} 
+                     isSending={isAICoachSending} 
+                     setIsSending={setIsAICoachSending} 
+                 />}
                  {activeTab === 'profile' && (
                      <div className="space-y-6 animate-fade-in pb-20">
                         <h2 className="text-3xl font-display font-bold">Profile & Settings</h2>
@@ -1997,8 +2301,8 @@ const App: React.FC = () => {
                                                 <Wifi size={24} />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-lg text-white">Connect MetaTrader</h3>
-                                                <p className="text-slate-500 text-sm">Sync live trades from MT4/MT5</p>
+                                                <h3 className="font-bold text-lg text-white">Connect Broker</h3>
+                                                <p className="text-slate-500 text-sm">Fetch trade history directly from MetaTrader</p>
                                             </div>
                                         </div>
                                         <Button variant="ghost" className="group-hover:text-cyan-400">Connect <ChevronRight size={18} /></Button>
@@ -2075,10 +2379,10 @@ const App: React.FC = () => {
 
              <AddTradeModal 
                 isOpen={isAddTradeOpen} 
-                onClose={() => setIsAddTradeOpen(false)}
+                onClose={() => setIsAddTradeOpen(false)} 
                 onSave={handleSaveTrade}
                 accounts={accounts}
-                currentAccountId={currentAccount.id}
+                currentAccountId={selectedAccount === 'all' ? (accounts[0]?.id || '') : selectedAccount}
                 initialData={editingTrade}
              />
              
