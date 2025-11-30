@@ -34,6 +34,7 @@ export interface Trade {
   pair: string;
   direction: TradeDirection;
   entryPrice?: number; // Optional
+  exitPrice?: number;  // Optional
   sl?: number;         // Optional
   tp?: number;         // Optional
   lotSize?: number;    // Optional
@@ -85,3 +86,11 @@ export interface ChatMessage {
   image?: string;
   timestamp: number;
 }
+
+export interface TradeFilter {
+  pair: string;
+  outcome: TradeOutcome | 'all';
+  direction: TradeDirection | 'all';
+}
+
+export type DateRange = '7d' | '30d' | '90d' | 'all';
