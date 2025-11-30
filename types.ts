@@ -87,6 +87,7 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+
 export interface TradeFilter {
   pair: string;
   outcome: TradeOutcome | 'all';
