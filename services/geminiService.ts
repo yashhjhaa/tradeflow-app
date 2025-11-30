@@ -1,12 +1,8 @@
-
-
 import { GoogleGenAI } from "@google/genai";
 import { Trade, CalendarEvent, ChatMessage } from "../types";
 
 // --- CONFIGURATION ---
 // The API key must be obtained exclusively from the environment variable process.env.API_KEY.
-// Assume this variable is pre-configured, valid, and accessible in the execution context.
-// Do not generate any UI elements or code snippets for entering or managing the API key.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
@@ -165,7 +161,6 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
           });
       }
       
-      // Provide limited context from history to keep it relevant
       let context = "You are an expert trading coach and technical analyst. Be concise, professional, and helpful.\n\n";
       if (history.length > 0) {
           context += "Previous conversation:\n" + history.slice(-4).map(m => `${m.role}: ${m.text}`).join('\n') + "\n\n";
@@ -188,7 +183,6 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
 
 export const getLiveMarketNews = async (): Promise<{sentiment: string, events: CalendarEvent[]}> => {
   if (!process.env.API_KEY) {
-      // Return mock data if no API key to prevent breaking the UI
       return { 
           sentiment: "Demo Mode: API Key missing.", 
           events: [
@@ -242,13 +236,11 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
             .map((c: any) => c.web?.uri)
             .filter((u: string) => u);
         if (urls.length > 0) {
-            // Dedup sources
             sourcesText = "\n\nSources:\n" + [...new Set(urls)].map((u: unknown) => `- ${u}`).join('\n');
         }
       }
 
       const jsonText = response.text || "{}";
-      
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
       
