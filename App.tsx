@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2 } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
-import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology } from './services/geminiService';
+import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy } from './services/geminiService';
 import { Trade, Account, DisciplineLog, CalendarEvent, TradeDirection, TradeOutcome, TradingSession, ChatMessage, DateRange } from './types';
 import { 
     subscribeToAuth, loginUser, logoutUser, registerUser, subscribeToTrades, 
@@ -19,6 +19,41 @@ export const ThemeContext = React.createContext({
   theme: 'dark',
   toggleTheme: () => {},
 });
+
+// --- HELPER UTILS ---
+const compressImage = (base64Str: string, maxWidth = 1024, maxHeight = 1024) => {
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => {
+        resolve(base64Str); // Fallback to original if load fails
+    };
+  });
+};
+
+const getStringSizeInBytes = (str: string) => new Blob([str]).size;
 
 // --- SUB-COMPONENTS ---
 
@@ -47,6 +82,86 @@ const BackgroundBlobs = () => (
     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
   </div>
 );
+
+const Ticker = () => {
+    const items = [
+        { sym: 'EURUSD', val: '1.0842', chg: '+0.12%' },
+        { sym: 'GBPUSD', val: '1.2650', chg: '-0.05%' },
+        { sym: 'USDJPY', val: '150.20', chg: '+0.32%' },
+        { sym: 'XAUUSD', val: '2035.40', chg: '+1.20%' },
+        { sym: 'BTCUSD', val: '64,250', chg: '+4.50%' },
+        { sym: 'ETHUSD', val: '3,450', chg: '+3.10%' },
+        { sym: 'SPX500', val: '5,080', chg: '+0.80%' },
+        { sym: 'NAS100', val: '17,950', chg: '+1.10%' },
+    ];
+
+    return (
+        <div className="fixed bottom-[80px] md:bottom-0 left-0 right-0 h-8 bg-[#020305] border-t border-white/5 z-40 flex items-center overflow-hidden pointer-events-none">
+            <div className="animate-marquee whitespace-nowrap flex gap-8 items-center text-xs font-mono">
+                {[...items, ...items, ...items].map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                        <span className="font-bold text-slate-400">{item.sym}</span>
+                        <span className="text-white">{item.val}</span>
+                        <span className={item.chg.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}>{item.chg}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const PositionSizeCalculator = () => {
+    const [balance, setBalance] = useState(10000);
+    const [riskPercent, setRiskPercent] = useState(1);
+    const [stopLoss, setStopLoss] = useState(20);
+    const [pairType, setPairType] = useState('USD'); // USD or JPY
+    
+    // Formula: RiskAmt / (SL * PipValue)
+    // Approx Pip Value: Standard Lot ($10 for USD pairs), ~$7 for JPY pairs (simplified)
+    const riskAmount = (balance * riskPercent) / 100;
+    const pipValue = pairType === 'USD' ? 10 : 7; 
+    const lots = riskAmount / (stopLoss * pipValue);
+
+    return (
+        <Card className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-white/10">
+            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-wider">
+                <Calculator size={16} className="text-cyan-400"/> Position Sizing
+            </h3>
+            <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-[10px] text-slate-500 font-bold uppercase">Account Balance</label>
+                        <Input type="number" value={balance} onChange={e => setBalance(Number(e.target.value))} className="bg-black/40 h-10 text-sm" />
+                    </div>
+                    <div>
+                         <label className="text-[10px] text-slate-500 font-bold uppercase">Risk %</label>
+                         <Input type="number" value={riskPercent} onChange={e => setRiskPercent(Number(e.target.value))} className="bg-black/40 h-10 text-sm" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-[10px] text-slate-500 font-bold uppercase">Stop Loss (Pips)</label>
+                        <Input type="number" value={stopLoss} onChange={e => setStopLoss(Number(e.target.value))} className="bg-black/40 h-10 text-sm" />
+                    </div>
+                    <div>
+                         <label className="text-[10px] text-slate-500 font-bold uppercase">Pair Type</label>
+                         <div className="flex bg-black/40 rounded-xl p-1 h-10">
+                             <button onClick={() => setPairType('USD')} className={`flex-1 text-xs font-bold rounded-lg ${pairType === 'USD' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>USD</button>
+                             <button onClick={() => setPairType('JPY')} className={`flex-1 text-xs font-bold rounded-lg ${pairType === 'JPY' ? 'bg-purple-600 text-white' : 'text-slate-500'}`}>JPY</button>
+                         </div>
+                    </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+                    <div className="text-xs text-slate-400">Risk: <span className="text-rose-400 font-bold">${riskAmount.toFixed(2)}</span></div>
+                    <div className="text-right">
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">Lot Size</div>
+                        <div className="text-2xl font-mono font-bold text-emerald-400">{lots.toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+};
 
 const Navigation: React.FC<{ activeTab: string; setActiveTab: (t: string) => void; onLogout: () => void }> = ({ activeTab, setActiveTab, onLogout }) => {
   const navItems = [
@@ -108,6 +223,7 @@ const Navigation: React.FC<{ activeTab: string; setActiveTab: (t: string) => voi
   );
 };
 
+// ... (MobileBottomNav, BreathingExercise, WelcomeToast, LoginScreen components remain unchanged) ...
 const MobileBottomNav: React.FC<{ activeTab: string; setActiveTab: (t: string) => void }> = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'journal', icon: Home },
@@ -206,6 +322,55 @@ const BreathingExercise: React.FC = () => {
     );
 };
 
+const CooldownModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+    const [secondsLeft, setSecondsLeft] = useState(60);
+    
+    useEffect(() => {
+        if (!isOpen) { setSecondsLeft(60); return; }
+        const timer = setInterval(() => {
+            setSecondsLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-xl">
+             <div className="w-full max-w-lg bg-[#0B0F19] rounded-3xl border border-rose-500/30 p-8 text-center shadow-[0_0_50px_rgba(244,63,94,0.3)] animate-blob">
+                 <div className="flex justify-center mb-6">
+                     <AlertTriangle size={64} className="text-rose-500 animate-pulse" />
+                 </div>
+                 <h2 className="text-3xl font-display font-bold text-white mb-2">TILT PROTOCOL ENGAGED</h2>
+                 <p className="text-rose-400 font-bold uppercase tracking-widest mb-8">Daily Loss Limit Exceeded</p>
+                 
+                 <div className="bg-black/40 rounded-2xl p-6 border border-white/5 mb-8">
+                     <BreathingExercise />
+                 </div>
+
+                 <p className="text-slate-400 text-sm mb-6">
+                    You are psychologically compromised. The terminal is locked until you regulate your nervous system.
+                 </p>
+
+                 <Button 
+                    variant={secondsLeft > 0 ? 'secondary' : 'neon'} 
+                    className="w-full"
+                    disabled={secondsLeft > 0}
+                    onClick={onClose}
+                 >
+                     {secondsLeft > 0 ? `Unlock in ${secondsLeft}s` : 'I Am Calm. Resume.'}
+                 </Button>
+             </div>
+        </div>
+    );
+};
+
 const WelcomeToast: React.FC<{ username: string; visible: boolean }> = ({ username, visible }) => {
     if (!visible) return null;
     return <div className="fixed top-24 right-4 bg-emerald-500/90 text-white p-4 rounded-xl shadow-xl z-[100] animate-fade-in backdrop-blur-md">Welcome back, {username}!</div>;
@@ -216,6 +381,18 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
     const [pass, setPass] = useState('');
     const [isRegister, setIsRegister] = useState(false);
     const [username, setUsername] = useState('');
+    const [quote, setQuote] = useState('');
+
+    useEffect(() => {
+        const quotes = [
+            "We suffer more often in imagination than in reality. – Seneca",
+            "The market is a device for transferring money from the impatient to the patient. – Warren Buffett",
+            "Discipline is doing what needs to be done, even if you don't want to do it.",
+            "Amateurs think about how much they can make. Professionals think about how much they can lose.",
+            "Risk comes from not knowing what you're doing."
+        ];
+        setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+    }, []);
     
     const handleAuth = async () => {
         try {
@@ -299,40 +476,60 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                         </button>
                     </div>
                 </div>
+                
+                {/* Stoic Quote */}
+                <div className="mt-8 text-center animate-fade-in px-4">
+                    <p className="text-xs font-mono text-slate-500 italic">"{quote}"</p>
+                </div>
             </div>
         </div>
     );
 };
 
-// ... [Keep AddTradeModal, TradeDetailsModal, ConnectBrokerModal as is but update styles slightly if needed] ...
-const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t: Partial<Trade>) => void; accounts: Account[]; currentAccountId: string; initialData?: Partial<Trade> }> = ({ isOpen, onClose, onSave, accounts, currentAccountId, initialData }) => {
+// ... (AddTradeModal, TradeDetailsModal, ConnectBrokerModal components unchanged) ...
+const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t: Partial<Trade>) => void; accounts: Account[]; currentAccountId: string; initialData?: Partial<Trade>; playbookEntries: PlaybookEntry[] }> = ({ isOpen, onClose, onSave, accounts, currentAccountId, initialData, playbookEntries }) => {
     const [formData, setFormData] = useState<Partial<Trade>>({
         pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, 
         pnl: 0, notes: '', session: TradingSession.NY, setup: '', riskPercentage: 1, 
-        date: new Date().toISOString().split('T')[0], tags: [], ...initialData
+        date: new Date().toISOString().split('T')[0], tags: [], accountId: currentAccountId, ...initialData
     });
     const [screenshotPreview, setScreenshotPreview] = useState(initialData?.screenshot || '');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [tagInput, setTagInput] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [selectedStrategyId, setSelectedStrategyId] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+    // Ensure accountId is set
+    useEffect(() => {
+        if (!formData.accountId && accounts.length > 0) {
+            setFormData(prev => ({ ...prev, accountId: accounts[0].id }));
+        }
+    }, [accounts, formData.accountId]);
 
     useEffect(() => { 
         setFormData({ 
             pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, 
             pnl: 0, notes: '', session: TradingSession.NY, setup: '', riskPercentage: 1, 
-            date: new Date().toISOString().split('T')[0], tags: [], ...initialData 
+            date: new Date().toISOString().split('T')[0], tags: [], accountId: currentAccountId, ...initialData 
         }); 
         setScreenshotPreview(initialData?.screenshot || ''); 
-    }, [initialData, isOpen]);
+    }, [initialData, isOpen, currentAccountId]);
 
     if (!isOpen) return null;
 
-    const handleScreenshot = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleScreenshot = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => setScreenshotPreview(reader.result as string);
+            reader.onloadend = async () => {
+                const rawBase64 = reader.result as string;
+                // Compress immediately upon selection for preview and storage
+                const compressed = await compressImage(rawBase64);
+                setScreenshotPreview(compressed);
+            };
             reader.readAsDataURL(file);
         }
     };
@@ -354,10 +551,78 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
             setTagInput('');
         }
     }
+    
+    // Voice to Journal
+    const toggleRecording = async () => {
+        if (isRecording) {
+            mediaRecorderRef.current?.stop();
+            setIsRecording(false);
+        } else {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                const audioChunks: Blob[] = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    // Convert to base64
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result as string;
+                        setIsAnalyzing(true);
+                        const result = await transcribeAudioNote(base64Audio);
+                        setFormData(prev => ({
+                            ...prev, 
+                            notes: (prev.notes ? prev.notes + '\n' : '') + result.text,
+                            tags: result.sentiment ? [...(prev.tags || []), result.sentiment] : prev.tags
+                        }));
+                        setIsAnalyzing(false);
+                    };
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                mediaRecorderRef.current = mediaRecorder;
+                setIsRecording(true);
+            } catch (err) {
+                console.error("Error accessing microphone:", err);
+                alert("Microphone access denied or unavailable.");
+            }
+        }
+    };
 
     const handleSaveClick = async () => {
+        if (!formData.pair || !formData.date) {
+            alert("Please fill in Pair and Date.");
+            return;
+        }
+        if (!formData.accountId) {
+             alert("Please select an Account.");
+             return;
+        }
+
+        // GHOST VALIDATOR
+        if (selectedStrategyId) {
+            const strategy = playbookEntries.find(p => p.id === selectedStrategyId);
+            if (strategy) {
+                setIsSaving(true);
+                const validation = await validateTradeAgainstStrategy(formData, strategy.content);
+                setIsSaving(false);
+                if (!validation.valid) {
+                    if (!confirm(`GHOST WARNING: This trade violates your strategy "${strategy.title}".\n\nReason: ${validation.reason}\n\nAre you sure you want to proceed?`)) {
+                        return;
+                    }
+                }
+            }
+        }
+
         setIsSaving(true);
-        await onSave({ ...formData, screenshot: screenshotPreview, accountId: currentAccountId });
+        await onSave({ ...formData, screenshot: screenshotPreview, accountId: formData.accountId });
         setIsSaving(false);
     }
 
@@ -370,7 +635,17 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                         <h2 className="text-2xl font-display font-bold text-white">Log Trade</h2>
                         <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24}/></button>
                     </div>
-                    {/* ... (Existing inputs) ... */}
+                    
+                    {/* Account Selector */}
+                    <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Account</label>
+                        <Select value={formData.accountId} onChange={e => setFormData({...formData, accountId: e.target.value})} className="bg-slate-900 border-white/10">
+                            {accounts.map(acc => (
+                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.broker})</option>
+                            ))}
+                        </Select>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                          <div>
                             <label className="text-xs text-slate-400 mb-1 block">Pair</label>
@@ -422,6 +697,19 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                             <Input type="number" step="0.1" placeholder="2.5" value={formData.rMultiple} onChange={e => setFormData({...formData, rMultiple: Number(e.target.value)})} />
                          </div>
                     </div>
+                    
+                    <div>
+                        <label className="text-xs text-slate-400 mb-1 block flex justify-between">
+                            <span>Strategy (Ghost Validator)</span>
+                            <span className="text-purple-400 font-bold">AI Compliance Check</span>
+                        </label>
+                        <Select value={selectedStrategyId} onChange={e => setSelectedStrategyId(e.target.value)} className="bg-slate-900 border-white/10 text-white">
+                            <option value="">No Strategy Selected</option>
+                            {playbookEntries.map(p => (
+                                <option key={p.id} value={p.id}>{p.title}</option>
+                            ))}
+                        </Select>
+                    </div>
 
                     <div>
                         <label className="text-xs text-slate-400 mb-1 block">Tags (Press Enter)</label>
@@ -439,8 +727,16 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                         </div>
                     </div>
 
-                    <div>
-                        <label className="text-xs text-slate-400 mb-1 block">Notes & Analysis</label>
+                    <div className="relative">
+                        <div className="flex justify-between items-center mb-1">
+                             <label className="text-xs text-slate-400">Notes & Analysis</label>
+                             <button 
+                                onClick={toggleRecording} 
+                                className={`text-xs flex items-center gap-1 px-2 py-0.5 rounded-full transition-all ${isRecording ? 'bg-rose-500 text-white animate-pulse' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                             >
+                                 {isRecording ? <><StopCircle size={12}/> Recording...</> : <><Mic size={12}/> Voice Note</>}
+                             </button>
+                        </div>
                         <textarea 
                             className="w-full h-24 bg-slate-900 border border-white/10 rounded-xl p-4 text-white resize-none focus:ring-1 focus:ring-cyan-500 outline-none" 
                             placeholder="Why did you take this trade?"
@@ -450,7 +746,7 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                     </div>
 
                     <Button variant="neon" className="w-full" onClick={handleSaveClick} disabled={isSaving}>
-                        {isSaving ? <><Loader2 className="animate-spin" size={18}/> Saving Trade...</> : 'Save to Journal'}
+                        {isSaving ? <><Loader2 className="animate-spin" size={18}/> Validating & Saving...</> : 'Save to Journal'}
                     </Button>
                 </div>
                 {/* Media */}
@@ -478,7 +774,7 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                      
                      <div className="bg-indigo-900/10 p-4 rounded-xl border border-indigo-500/10">
                          <h4 className="text-xs font-bold text-indigo-400 mb-2 flex items-center gap-2"><Lightbulb size={12}/> Pro Tip</h4>
-                         <p className="text-xs text-slate-400">Upload a chart image to let Gemini automatically analyze the market structure.</p>
+                         <p className="text-xs text-slate-400">Select a Strategy to enable the Ghost Validator to check your compliance before saving.</p>
                      </div>
                 </div>
             </div>
@@ -486,7 +782,7 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
     );
 };
 
-const TradeDetailsModal: React.FC<{ trade: Trade | null; onClose: () => void; onDelete: (id: string) => void; onEdit: (t: Trade) => void }> = ({ trade, onClose, onDelete, onEdit }) => {
+const TradeDetailsModal: React.FC<{ trade: Trade | null; onClose: () => void; onDelete: (id: string) => void; onEdit: (t: Trade) => void; onAnalyze: (t: Trade) => void }> = ({ trade, onClose, onDelete, onEdit, onAnalyze }) => {
     if (!trade) return null;
     const isWin = trade.outcome === TradeOutcome.WIN;
     return (
@@ -509,7 +805,19 @@ const TradeDetailsModal: React.FC<{ trade: Trade | null; onClose: () => void; on
                              <div className="p-4 bg-white/5 rounded-xl"><span className="text-xs text-slate-400 block mb-1">Risk</span><span className="font-mono text-white">{trade.riskPercentage}%</span></div>
                          </div>
                          <div><h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2"><FileText size={14}/> Notes</h4><p className="text-sm text-slate-400 bg-black/20 p-4 rounded-xl border border-white/5">{trade.notes || "No notes."}</p></div>
-                         {trade.aiAnalysis && <div><h4 className="text-sm font-bold text-cyan-400 mb-2 flex items-center gap-2"><Bot size={14}/> AI Insight</h4><p className="text-sm text-cyan-100/80 bg-cyan-900/10 border border-cyan-500/20 p-4 rounded-xl">{trade.aiAnalysis}</p></div>}
+                         {trade.aiAnalysis ? (
+                             <div>
+                                <h4 className="text-sm font-bold text-cyan-400 mb-2 flex items-center gap-2"><Bot size={14}/> Coach's Insight</h4>
+                                <div className="text-sm text-cyan-100/80 bg-cyan-900/10 border border-cyan-500/20 p-4 rounded-xl prose prose-invert max-w-none">
+                                    <pre className="whitespace-pre-wrap font-sans bg-transparent border-0 p-0 text-xs">{trade.aiAnalysis}</pre>
+                                </div>
+                                <Button size="sm" variant="ghost" onClick={() => onAnalyze(trade)} className="mt-2 w-full text-xs text-cyan-500/50 hover:text-cyan-400">Regenerate Analysis</Button>
+                             </div>
+                         ) : (
+                             <Button size="sm" variant="secondary" onClick={() => onAnalyze(trade)} className="w-full">
+                                <Sparkles size={14} className="mr-2"/> Generate AI Analysis
+                             </Button>
+                         )}
                      </div>
                      <div className="mt-10 flex gap-3"><Button variant="secondary" className="flex-1" onClick={() => onEdit(trade)}>Edit</Button><Button variant="danger" onClick={() => { onDelete(trade.id); onClose(); }}><Trash2 size={16}/></Button></div>
                  </div>
@@ -524,6 +832,17 @@ const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void }> = (
 };
 
 // --- MAIN APP ---
+
+interface PlaybookEntry {
+    id: string;
+    title: string;
+    content: string;
+    rating?: string;
+    image?: string;
+    checklist?: string[];
+    dangerZones?: string;
+    tags?: string[];
+}
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -548,11 +867,13 @@ const App: React.FC = () => {
 
   // Playbook State
   const [strategyInput, setStrategyInput] = useState('');
-  const [playbookEntries, setPlaybookEntries] = useState<{title: string, content: string, rating?: string}[]>([]);
+  const [playbookEntries, setPlaybookEntries] = useState<PlaybookEntry[]>([]);
   const [generatingStrat, setGeneratingStrat] = useState(false);
   const [strategyMode, setStrategyMode] = useState<'ai' | 'manual'>('ai');
   const [manualStratTitle, setManualStratTitle] = useState('');
   const [manualStratRules, setManualStratRules] = useState('');
+  const [manualStratImage, setManualStratImage] = useState<string | null>(null);
+  const stratFileRef = useRef<HTMLInputElement>(null);
 
   // Mindset State
   const [journalTab, setJournalTab] = useState<'pre' | 'mid' | 'post'>('pre');
@@ -572,6 +893,12 @@ const App: React.FC = () => {
 
   // Profile State
   const [profileSettingsTab, setProfileSettingsTab] = useState('account');
+  
+  // Loading state for saving
+  const [isSavingTrade, setIsSavingTrade] = useState(false);
+  
+  // Tilt Blocker State
+  const [isCooldownOpen, setIsCooldownOpen] = useState(false);
 
   // Load Data
   useEffect(() => {
@@ -618,6 +945,23 @@ const App: React.FC = () => {
       if (city === 'Sydney') return (hour >= 10 && hour < 16) ? 'OPEN' : 'CLOSED';
       return 'CLOSED';
   };
+  
+  // TILT CALCULATION
+  const todayStr = new Date().toISOString().split('T')[0];
+  const dailyPnL = trades
+    .filter(t => t.date.startsWith(todayStr))
+    .reduce((acc, t) => acc + (t.pnl || 0), 0);
+  const tiltLimit = -500;
+  const isTiltLocked = dailyPnL <= tiltLimit;
+  
+  const handleNewTradeClick = () => {
+      if (isTiltLocked) {
+          setIsCooldownOpen(true);
+      } else {
+          setEditingTrade(undefined); 
+          setIsAddTradeOpen(true);
+      }
+  };
 
   const handleSaveTrade = async (tradeData: Partial<Trade>) => {
       if (!user) {
@@ -626,21 +970,46 @@ const App: React.FC = () => {
       }
       
       const accountId = tradeData.accountId || accounts[0]?.id || 'demo';
+      setIsSavingTrade(true);
       
       try {
-          if (tradeData.id) {
-              await updateTradeInDb(tradeData as Trade);
+          // 0. Handle Screenshot separately
+          let finalScreenshot = tradeData.screenshot;
+          
+          if (tradeData.screenshot && tradeData.screenshot.startsWith('data:image')) {
+               // Try upload
+               const url = await uploadScreenshotToStorage(tradeData.screenshot, user.uid);
+               
+               if (url) {
+                   finalScreenshot = url;
+               } else {
+                   // Upload failed logic... checks size...
+                   const size = getStringSizeInBytes(tradeData.screenshot);
+                   if (size > 800000) { 
+                       finalScreenshot = undefined;
+                       // We fail silently on the image to ensure the trade data is saved
+                       console.warn("Screenshot too large for database and upload failed. Saving trade without image.");
+                   } else {
+                       finalScreenshot = tradeData.screenshot; 
+                   }
+               }
+          }
+
+          const tradeToSave = { ...tradeData, screenshot: finalScreenshot };
+
+          if (tradeToSave.id) {
+              await updateTradeInDb(tradeToSave as Trade);
           } else {
-              let outcome = tradeData.outcome || TradeOutcome.PENDING;
-              if (tradeData.pnl) { outcome = tradeData.pnl > 0 ? TradeOutcome.WIN : tradeData.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; }
+              let outcome = tradeToSave.outcome || TradeOutcome.PENDING;
+              if (tradeToSave.pnl) { outcome = tradeToSave.pnl > 0 ? TradeOutcome.WIN : tradeToSave.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; }
               
               const newTrade: any = { 
-                  ...tradeData, 
-                  date: tradeData.date || new Date().toISOString(), 
+                  ...tradeToSave, 
+                  date: tradeToSave.date || new Date().toISOString(), 
                   userId: user.uid, 
                   accountId, 
                   outcome, 
-                  tags: tradeData.tags || [], 
+                  tags: tradeToSave.tags || [], 
               };
               
               // 1. Save Trade FIRST to get the ID
@@ -661,9 +1030,28 @@ const App: React.FC = () => {
           }
           setIsAddTradeOpen(false); 
           setEditingTrade(undefined);
+          alert("Trade Saved Successfully!");
       } catch (error) {
           console.error("Failed to save trade", error);
-          alert("Failed to save trade. Please try again.");
+          alert("Failed to save trade. Please check connection.");
+      } finally {
+          setIsSavingTrade(false);
+      }
+  };
+
+  const handleAnalyzeTrade = async (trade: Trade) => {
+      // Set a temporary loading state on the selected trade object for UI feedback
+      setSelectedTrade({ ...trade, aiAnalysis: "Analyzing..." });
+      try {
+          const analysis = await analyzeTradePsychology(trade);
+          const updatedTrade = { ...trade, aiAnalysis: analysis };
+          
+          await updateTradeInDb(updatedTrade);
+          // Update local state immediately to reflect changes without waiting for subscription
+          setSelectedTrade(updatedTrade);
+      } catch (e) {
+          console.error("Analysis failed", e);
+          setSelectedTrade({ ...trade, aiAnalysis: "Failed to generate analysis." });
       }
   };
 
@@ -673,13 +1061,20 @@ const App: React.FC = () => {
       setEditingTrade(parsed); setMagicCmd(''); setIsAddTradeOpen(true);
   };
 
-  // ... (rest of the handlers)
-
   const handleGenerateStrategy = async () => {
       if (!strategyInput.trim()) return;
       setGeneratingStrat(true);
-      const strat = await generateTradingStrategy(strategyInput);
-      setPlaybookEntries([...playbookEntries, { title: strategyInput, content: strat }]);
+      const stratContent = await generateTradingStrategy(strategyInput);
+      const checklist = await generateStrategyChecklist(stratContent);
+      const dangerZones = await analyzeStrategyEdgeCases(stratContent);
+      
+      setPlaybookEntries([...playbookEntries, { 
+          id: Date.now().toString(),
+          title: strategyInput, 
+          content: stratContent,
+          checklist,
+          dangerZones
+      }]);
       setStrategyInput(''); setGeneratingStrat(false);
   };
 
@@ -687,9 +1082,34 @@ const App: React.FC = () => {
       if (!manualStratTitle.trim() || !manualStratRules.trim()) return;
       setGeneratingStrat(true);
       const critique = await critiqueTradingStrategy(manualStratRules);
-      setPlaybookEntries([...playbookEntries, { title: manualStratTitle, content: manualStratRules, rating: critique }]);
-      setManualStratTitle(''); setManualStratRules(''); setGeneratingStrat(false);
+      const checklist = await generateStrategyChecklist(manualStratRules);
+      const dangerZones = await analyzeStrategyEdgeCases(manualStratRules);
+      
+      setPlaybookEntries([...playbookEntries, { 
+          id: Date.now().toString(),
+          title: manualStratTitle, 
+          content: manualStratRules, 
+          rating: critique,
+          image: manualStratImage || undefined,
+          checklist,
+          dangerZones
+      }]);
+      
+      setManualStratTitle(''); setManualStratRules(''); setManualStratImage(null); setGeneratingStrat(false);
   }
+
+  const handleStrategyImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+              const raw = reader.result as string;
+              const compressed = await compressImage(raw);
+              setManualStratImage(compressed);
+          };
+          reader.readAsDataURL(file);
+      }
+  };
   
   const handlePsychoAnalysis = async () => {
       if (!selectedPsychoTradeId) return;
@@ -707,7 +1127,12 @@ const App: React.FC = () => {
       const file = e.target.files?.[0];
       if (file) {
           const reader = new FileReader();
-          reader.onloadend = () => setCoachImage(reader.result as string);
+          reader.onloadend = async () => {
+              // Also compress coach images for performance
+              const raw = reader.result as string;
+              const compressed = await compressImage(raw);
+              setCoachImage(compressed);
+          };
           reader.readAsDataURL(file);
       }
   };
@@ -744,10 +1169,51 @@ const App: React.FC = () => {
       setCoachLoading(false);
   };
 
+  const handleExportCSV = () => {
+      if (trades.length === 0) return;
+      
+      // Basic CSV Generation
+      const headers = ["Date", "Pair", "Direction", "Outcome", "PnL", "Session", "Setup", "Notes"];
+      const rows = trades.map(t => [
+          t.date.split('T')[0],
+          t.pair,
+          t.direction,
+          t.outcome,
+          t.pnl,
+          t.session,
+          t.setup || '',
+          `"${(t.notes || '').replace(/"/g, '""')}"` // Escape quotes
+      ]);
+
+      const csvContent = [
+          headers.join(","),
+          ...rows.map(r => r.join(","))
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `trade_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
   const handleLogout = async () => { await logoutUser(); setTrades([]); setAccounts([]); };
   if (!user) return <LoginScreen onLogin={() => {}} />;
 
   const filteredTrades = selectedAccount === 'all' ? trades : trades.filter(t => t.accountId === selectedAccount);
+
+  // Group trades by Date for the new Journal View
+  const tradesByDate: Record<string, Trade[]> = {};
+  filteredTrades.forEach(t => {
+      const dateStr = t.date.split('T')[0];
+      if (!tradesByDate[dateStr]) tradesByDate[dateStr] = [];
+      tradesByDate[dateStr].push(t);
+  });
+  const sortedDates = Object.keys(tradesByDate).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
 
   // Stats Calculation for Profile
   const totalPnL = filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
@@ -770,10 +1236,12 @@ const App: React.FC = () => {
     <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: () => {} }}>
       <div className="flex min-h-screen bg-[#05070A] text-slate-100 font-sans selection:bg-cyan-500/30">
         <BackgroundBlobs />
+        <Ticker />
         <WelcomeToast username={user.displayName || 'Trader'} visible={showWelcome} />
+        <CooldownModal isOpen={isCooldownOpen} onClose={() => setIsCooldownOpen(false)} />
         <Navigation activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
 
-        <main className="flex-1 md:ml-20 pb-24 md:pb-0 relative z-10 transition-all duration-300">
+        <main className="flex-1 md:ml-20 pb-24 md:pb-8 relative z-10 transition-all duration-300">
           
           {/* Header */}
           <header className="sticky top-0 z-40 px-6 py-4 bg-[#05070A]/80 backdrop-blur-xl border-b border-white/5 flex justify-between items-center">
@@ -789,11 +1257,24 @@ const App: React.FC = () => {
                  )}
              </div>
              <div className="flex items-center gap-4">
+                 {/* DAILY PNL DISPLAY */}
+                 <div className={`hidden md:flex flex-col items-end px-3 py-1 rounded-lg border border-white/5 ${dailyPnL >= 0 ? 'bg-emerald-500/5' : 'bg-rose-500/5'}`}>
+                     <span className="text-[10px] uppercase font-bold text-slate-500">Daily PnL</span>
+                     <span className={`font-mono text-sm font-bold ${dailyPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrency(dailyPnL)}</span>
+                 </div>
+
                  <Select value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)} className="w-40 h-10 py-0 text-sm bg-slate-900 border-white/10">
                      <option value="all">All Accounts</option>
                      {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                  </Select>
-                 <Button size="sm" variant="neon" onClick={() => { setEditingTrade(undefined); setIsAddTradeOpen(true); }}><Plus size={18} /> <span className="hidden sm:inline">New Trade</span></Button>
+                 <Button 
+                    size="sm" 
+                    variant={isTiltLocked ? 'danger' : 'neon'} 
+                    onClick={handleNewTradeClick}
+                 >
+                     {isTiltLocked ? <Lock size={18} /> : <Plus size={18} />} 
+                     <span className="hidden sm:inline">{isTiltLocked ? 'LOCKED' : 'New Trade'}</span>
+                 </Button>
              </div>
           </header>
 
@@ -822,64 +1303,81 @@ const App: React.FC = () => {
                             </div>
                         </Card>
                          <Card className="bg-gradient-to-br from-amber-900/20 to-transparent border-amber-500/10 flex flex-col justify-between">
-                            <div className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">Market Bias</div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xl font-bold text-amber-400">Neutral</span>
-                                <span className="text-xs px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded border border-amber-500/20">AI</span>
-                            </div>
+                            <div className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">Avg R:R</div>
+                            <div className="text-2xl font-mono font-bold text-amber-400">1 : {avgRR}</div>
                         </Card>
                     </div>
 
-                    <Card className="overflow-hidden border-0 bg-[#0B0F19]/90">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-white/5 text-xs text-slate-500 uppercase font-mono tracking-wider">
-                                    <th className="p-4 font-normal">Date</th>
-                                    <th className="p-4 font-normal">Pair</th>
-                                    <th className="p-4 font-normal">Session</th>
-                                    <th className="p-4 font-normal">Setup</th>
-                                    <th className="p-4 font-normal">Tags</th>
-                                    <th className="p-4 font-normal">Risk</th>
-                                    <th className="p-4 font-normal">R:R</th>
-                                    <th className="p-4 font-normal text-right">PnL</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {filteredTrades.slice().reverse().map((trade) => (
-                                    <tr key={trade.id} onClick={() => setSelectedTrade(trade)} className="hover:bg-white/5 transition-colors cursor-pointer group">
-                                        <td className="p-4 text-sm text-slate-300 font-mono">{new Date(trade.date).toLocaleDateString()}</td>
-                                        <td className="p-4"><div className="flex items-center gap-2"><Badge color={trade.direction === TradeDirection.BUY ? 'green' : 'red'}>{trade.direction}</Badge><span className="font-bold text-white">{trade.pair}</span></div></td>
-                                        <td className="p-4 text-sm text-slate-400">{trade.session}</td>
-                                        <td className="p-4 text-sm text-slate-400">{trade.setup || '-'}</td>
-                                        <td className="p-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {trade.tags?.slice(0, 2).map(tag => <Badge key={tag} color="gray">{tag}</Badge>)}
-                                                {(trade.tags?.length || 0) > 2 && <span className="text-[10px] text-slate-500">+{trade.tags!.length - 2}</span>}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-sm text-slate-400">{trade.riskPercentage ? `${trade.riskPercentage}%` : '-'}</td>
-                                        <td className="p-4 text-sm text-slate-400">{trade.rMultiple ? `${trade.rMultiple}R` : '-'}</td>
-                                        <td className={`p-4 text-right font-mono font-bold ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{trade.pnl ? formatCurrency(trade.pnl) : '-'}</td>
-                                    </tr>
-                                ))}
-                                {filteredTrades.length === 0 && (
-                                    <tr>
-                                        <td colSpan={8} className="p-12 text-center text-slate-500">
-                                            <div className="flex flex-col items-center gap-4">
-                                                <BookOpen size={48} opacity={0.2} />
-                                                <p>No trades logged yet.</p>
-                                                <Button size="sm" variant="secondary" onClick={() => setIsAddTradeOpen(true)}>Log First Trade</Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </Card>
+                    {/* NEW JOURNAL REVAMP: DAILY GROUPS */}
+                    <div className="space-y-6">
+                        {sortedDates.length > 0 ? sortedDates.map(date => {
+                            const dayTrades = tradesByDate[date];
+                            const dayPnL = dayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+                            return (
+                                <div key={date} className="animate-slide-up">
+                                    <div className="flex items-center justify-between mb-2 px-2">
+                                        <h3 className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                                            <CalendarIcon size={14}/> {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </h3>
+                                        <div className={`font-mono text-sm font-bold ${dayPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            {dayPnL > 0 ? '+' : ''}{formatCurrency(dayPnL)}
+                                        </div>
+                                    </div>
+                                    <Card className="overflow-hidden border-0 bg-[#0B0F19]/90 p-0">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-white/5 text-[10px] text-slate-500 uppercase font-mono tracking-wider bg-white/5">
+                                                    <th className="p-3 font-normal">Pair</th>
+                                                    <th className="p-3 font-normal">Session</th>
+                                                    <th className="p-3 font-normal">Setup</th>
+                                                    <th className="p-3 font-normal">Tags</th>
+                                                    <th className="p-3 font-normal">Risk</th>
+                                                    <th className="p-3 font-normal">R:R</th>
+                                                    <th className="p-3 font-normal text-right">PnL</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/5">
+                                                {dayTrades.map((trade) => (
+                                                    <tr key={trade.id} onClick={() => setSelectedTrade(trade)} className="hover:bg-white/5 transition-colors cursor-pointer group">
+                                                        <td className="p-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <Badge color={trade.direction === TradeDirection.BUY ? 'green' : 'red'}>{trade.direction}</Badge>
+                                                                <span className="font-bold text-white text-sm">{trade.pair}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-3 text-sm text-slate-400">{trade.session}</td>
+                                                        <td className="p-3 text-sm text-slate-400">{trade.setup || '-'}</td>
+                                                        <td className="p-3">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {trade.tags?.slice(0, 2).map(tag => <Badge key={tag} color="gray">{tag}</Badge>)}
+                                                                {(trade.tags?.length || 0) > 2 && <span className="text-[10px] text-slate-500">+{trade.tags!.length - 2}</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-3 text-sm text-slate-400">{trade.riskPercentage ? `${trade.riskPercentage}%` : '-'}</td>
+                                                        <td className="p-3 text-sm text-slate-400">{trade.rMultiple ? `${trade.rMultiple}R` : '-'}</td>
+                                                        <td className={`p-3 text-right font-mono font-bold ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{trade.pnl ? formatCurrency(trade.pnl) : '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </Card>
+                                </div>
+                            )
+                        }) : (
+                            <Card className="p-12 text-center text-slate-500">
+                                <div className="flex flex-col items-center gap-4">
+                                    <BookOpen size={48} opacity={0.2} />
+                                    <p>No trades logged yet.</p>
+                                    <Button size="sm" variant="secondary" onClick={() => setIsAddTradeOpen(true)}>Log First Trade</Button>
+                                </div>
+                            </Card>
+                        )}
+                    </div>
                 </div>
             )}
             
-            {/* ... (Rest of activeTab logic kept same) ... */}
+            {/* ... (Rest of activeTab components unchanged: Analytics, Playbook, Community, Profile, Discipline, News, AI Coach) ... */}
+            
             {activeTab === 'analytics' && (
                 <div className="space-y-6 flex flex-col">
                     <Card className="flex items-center justify-between bg-gradient-to-r from-blue-900/20 to-transparent border-blue-500/20">
@@ -892,6 +1390,9 @@ const App: React.FC = () => {
                          </div>
                          <div className="text-3xl font-mono font-bold text-blue-400">88<span className="text-sm text-slate-500">/100</span></div>
                     </Card>
+
+                    {/* New Position Size Calculator */}
+                    <PositionSizeCalculator />
                     
                     {/* PSYCHO LAB */}
                     <Card className="bg-gradient-to-br from-indigo-900/20 to-transparent border-indigo-500/10">
@@ -950,7 +1451,7 @@ const App: React.FC = () => {
                             <div className="flex flex-col md:flex-row gap-4 items-end">
                                 <div className="flex-1 w-full">
                                     <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Sparkles className="text-cyan-400"/> AI Strategy Architect</h3>
-                                    <p className="text-sm text-slate-400 mb-3">Describe a concept (e.g. "Silver Bullet for London"). Gemini 3 Pro will structure a full trading plan.</p>
+                                    <p className="text-sm text-slate-400 mb-3">Describe a concept (e.g. "Silver Bullet for London"). Gemini 3 Pro will structure a full trading plan with execution checklists.</p>
                                     <Input placeholder="Describe your edge..." value={strategyInput} onChange={e => setStrategyInput(e.target.value)} className="bg-black/30" />
                                 </div>
                                 <Button variant="neon" onClick={handleGenerateStrategy} disabled={generatingStrat} className="w-full md:w-auto min-w-[150px]">
@@ -964,6 +1465,20 @@ const App: React.FC = () => {
                                 </div>
                                 <Input placeholder="Strategy Title (e.g. 5min Scalp)" value={manualStratTitle} onChange={e => setManualStratTitle(e.target.value)} />
                                 <textarea className="w-full h-40 bg-black/30 border border-white/10 rounded-xl p-4 text-white resize-none outline-none focus:border-purple-500" placeholder="Define Entry, Exit, and Risk rules here..." value={manualStratRules} onChange={e => setManualStratRules(e.target.value)} />
+                                
+                                {/* Image Upload for Strategy */}
+                                <div>
+                                    <label className="text-xs text-slate-400 mb-2 block">Golden Setup Reference (Chart Image)</label>
+                                    <div className="flex gap-2 items-center">
+                                        <input type="file" ref={stratFileRef} className="hidden" accept="image/*" onChange={handleStrategyImageUpload} />
+                                        <Button size="sm" variant="secondary" onClick={() => stratFileRef.current?.click()}>
+                                            <ImageIcon size={16} className="mr-2"/> Upload Reference Chart
+                                        </Button>
+                                        {manualStratImage && <span className="text-xs text-emerald-400 flex items-center gap-1"><CheckCircle size={12}/> Image Attached</span>}
+                                    </div>
+                                    {manualStratImage && <img src={manualStratImage} className="mt-2 h-32 w-auto rounded-lg border border-white/10" />}
+                                </div>
+
                                 <div className="flex justify-end">
                                     <Button variant="primary" className="bg-purple-600 hover:bg-purple-500 border-purple-500/50 shadow-purple-500/20" onClick={handleManualStrategy} disabled={generatingStrat}>
                                         {generatingStrat ? 'Analyzing...' : 'Save & Rate Strategy'}
@@ -985,9 +1500,41 @@ const App: React.FC = () => {
                                         <Badge color="purple">Rated</Badge>
                                     )}
                                 </div>
+
+                                {entry.image && (
+                                    <div className="mb-4">
+                                        <img src={entry.image} alt="Setup" className="w-full h-48 object-cover rounded-xl border border-white/10" />
+                                        <div className="text-xs text-center text-slate-500 mt-1">Reference Setup</div>
+                                    </div>
+                                )}
+
                                 <div className="prose prose-invert max-w-none prose-sm mb-4">
                                     <pre className="whitespace-pre-wrap font-sans text-slate-300 text-xs bg-black/20 p-4 rounded-xl border border-white/5">{entry.content}</pre>
                                 </div>
+                                
+                                {entry.checklist && entry.checklist.length > 0 && (
+                                    <div className="mb-4 bg-emerald-900/10 p-4 rounded-xl border border-emerald-500/10">
+                                        <h4 className="text-xs font-bold text-emerald-400 uppercase mb-2 flex items-center gap-2"><CheckSquare size={12}/> Execution Checklist</h4>
+                                        <ul className="space-y-2">
+                                            {entry.checklist.map((item, i) => (
+                                                <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
+                                                    <input type="checkbox" className="mt-0.5" />
+                                                    <span>{item}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {entry.dangerZones && (
+                                    <div className="mb-4 bg-rose-900/10 p-4 rounded-xl border border-rose-500/10">
+                                         <h4 className="text-xs font-bold text-rose-400 uppercase mb-2 flex items-center gap-2"><AlertCircle size={12}/> Danger Zones (Avoid)</h4>
+                                         <div className="text-xs text-rose-200/80 prose prose-invert max-w-none">
+                                            <pre className="whitespace-pre-wrap font-sans bg-transparent border-0 p-0">{entry.dangerZones}</pre>
+                                         </div>
+                                    </div>
+                                )}
+
                                 {entry.rating && (
                                     <div className="mt-4 pt-4 border-t border-white/10">
                                         <h4 className="text-xs font-bold text-purple-400 uppercase mb-2">AI Critique</h4>
@@ -1094,7 +1641,7 @@ const App: React.FC = () => {
                     </div>
                 </div>
             )}
-
+            
             {/* --- PROFILE --- */}
             {activeTab === 'profile' && (
                 <div className="space-y-8">
@@ -1212,7 +1759,12 @@ const App: React.FC = () => {
                                                     <div className="font-bold text-white">Pro Plan</div>
                                                     <div className="text-xs text-slate-500">Next billing: Oct 24, 2024</div>
                                                 </div>
-                                                <Button size="sm" variant="secondary">Manage Subscription</Button>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="ghost" onClick={handleExportCSV} className="text-emerald-400 hover:text-emerald-300">
+                                                        <FileSpreadsheet size={16} className="mr-2"/> Export Data
+                                                    </Button>
+                                                    <Button size="sm" variant="secondary">Manage Subscription</Button>
+                                                </div>
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
@@ -1259,7 +1811,8 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- MINDSET --- */}
+            {/* ... (Rest of activeTabs like discipline, news, ai-coach are unchanged) ... */}
+            
             {activeTab === 'discipline' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
                     {/* Column 1: Daily Protocol */}
@@ -1541,8 +2094,8 @@ const App: React.FC = () => {
         </main>
         
         <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
-        <AddTradeModal isOpen={isAddTradeOpen} onClose={() => setIsAddTradeOpen(false)} onSave={handleSaveTrade} accounts={accounts} currentAccountId={selectedAccount === 'all' ? accounts[0]?.id : selectedAccount} initialData={editingTrade} />
-        <TradeDetailsModal trade={selectedTrade} onClose={() => setSelectedTrade(null)} onDelete={deleteTradeFromDb} onEdit={(t) => { setSelectedTrade(null); setEditingTrade(t); setIsAddTradeOpen(true); }} />
+        <AddTradeModal isOpen={isAddTradeOpen} onClose={() => setIsAddTradeOpen(false)} onSave={handleSaveTrade} accounts={accounts} currentAccountId={selectedAccount === 'all' ? accounts[0]?.id : selectedAccount} initialData={editingTrade} playbookEntries={playbookEntries} />
+        <TradeDetailsModal trade={selectedTrade} onClose={() => setSelectedTrade(null)} onDelete={deleteTradeFromDb} onEdit={(t) => { setSelectedTrade(null); setEditingTrade(t); setIsAddTradeOpen(true); }} onAnalyze={handleAnalyzeTrade} />
         <ConnectBrokerModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} />
         
       </div>
