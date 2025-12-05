@@ -21,19 +21,24 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
 
   try {
     const prompt = `
-      Act as a professional trading psychologist. 
-      Analyze this trade entry and give brief, constructive feedback (max 2 sentences).
-      
-      Trade Details:
+      You are an elite trading performance coach and psychologist.
+      Review the following trade execution and the trader's notes to identify behavioral patterns.
+
+      Trade Context:
       - Pair: ${trade.pair}
       - Direction: ${trade.direction}
-      - Outcome: ${trade.outcome}
-      - PnL: ${trade.pnl}
-      - Risk %: ${trade.riskPercentage}%
-      - Checklist Grade: ${trade.checklistScore || 'N/A'}
-      - User Notes: "${trade.notes}"
+      - Outcome: ${trade.outcome} (PnL: ${trade.pnl})
+      - Risk: ${trade.riskPercentage}%
+      - Session: ${trade.session}
+      
+      Trader's Notes: 
+      "${trade.notes}"
 
-      Focus on discipline, emotional state, or risk management.
+      Your Task:
+      1. **Diagnosis**: Identify the specific psychological driver or error (e.g., FOMO, Revenge Trading, Hesitation, Premature Exit, Good Discipline).
+      2. **Correction**: Provide ONE specific, actionable instruction or "Mental Correction" for the next trade to improve performance.
+
+      Format the output clearly in Markdown. Be direct and concise.
     `;
 
     const response = await ai.models.generateContent({
@@ -196,6 +201,55 @@ export const generateTradingStrategy = async (concept: string): Promise<string> 
     }
 };
 
+export const generateStrategyChecklist = async (strategyText: string): Promise<string[]> => {
+    if (!ai) return ["Ensure Trend Alignment", "Check Risk/Reward", "Confirm Entry Signal"];
+    try {
+        const prompt = `
+            Analyze this trading strategy and create a strict "Pre-Flight Checklist".
+            Return a JSON array of 5 short, actionable yes/no strings that a trader must check before entering.
+            
+            Strategy: "${strategyText}"
+            
+            Example output format:
+            ["Market structure is bullish?", "Price swept liquidity?", "FVG created?"]
+            
+            Output ONLY the JSON array.
+        `;
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: { thinkingConfig: { thinkingBudget: 8192 } }
+        });
+        
+        const text = response.text || "[]";
+        const match = text.match(/\[.*\]/s);
+        return match ? JSON.parse(match[0]) : [];
+    } catch(e) {
+        return ["Check Market Structure", "Confirm Signal", "Verify Risk"];
+    }
+};
+
+export const analyzeStrategyEdgeCases = async (strategyText: string): Promise<string> => {
+    if (!ai) return "Use caution in high volatility.";
+    try {
+        const prompt = `
+            Analyze this trading strategy. Identify the "Danger Zones" or "Anti-Patterns" where this strategy will likely FAIL.
+            
+            Strategy: "${strategyText}"
+            
+            Output a concise bulleted list (Markdown) of 3 specific market conditions to AVOID when using this system.
+        `;
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: { thinkingConfig: { thinkingBudget: 8192 } }
+        });
+        return response.text || "Avoid high impact news events.";
+    } catch(e) {
+        return "Avoid News Events.";
+    }
+};
+
 export const critiqueTradingStrategy = async (strategy: string): Promise<string> => {
     if (!ai) return "AI Unavailable.";
 
@@ -228,6 +282,85 @@ export const critiqueTradingStrategy = async (strategy: string): Promise<string>
     } catch (e) {
         return "Critique failed.";
     }
+};
+
+export const transcribeAudioNote = async (base64Audio: string): Promise<{ text: string; sentiment: string }> => {
+  if (!ai) return { text: "AI Unavailable", sentiment: "Neutral" };
+  try {
+    const base64Data = base64Audio.split(',')[1] || base64Audio;
+    // We assume the browser records in webm, but Gemini handles various formats.
+    // mimeType 'audio/webm' is standard for MediaRecorder.
+    
+    const prompt = `
+      Transcribe this audio recording of a trader's notes.
+      Also, analyze the tone and extract a single word Sentiment tag (e.g., Frustrated, Confident, Anxious, Calm, Euphoric).
+      
+      Output JSON:
+      {
+        "text": "The transcribed text...",
+        "sentiment": "Confident"
+      }
+      
+      Only output the JSON.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          { inlineData: { mimeType: 'audio/webm', data: base64Data } }, 
+          { text: prompt }
+        ]
+      }
+    });
+
+    const jsonText = response.text || "{}";
+    const cleanJson = jsonText.match(/\{[\s\S]*\}/)?.[0] || "{}";
+    return JSON.parse(cleanJson);
+  } catch (e) {
+    console.error("Transcription failed", e);
+    return { text: "Audio transcription failed.", sentiment: "Unknown" };
+  }
+};
+
+export const validateTradeAgainstStrategy = async (trade: any, strategyRules: string): Promise<{ valid: boolean; reason: string }> => {
+  if (!ai) return { valid: true, reason: "AI Unavailable" };
+  
+  const prompt = `
+    You are a Risk Manager. Validate this trade against the user's Strategy Rules.
+    
+    Strategy Rules:
+    "${strategyRules}"
+    
+    Trade Details:
+    Pair: ${trade.pair}
+    Direction: ${trade.direction}
+    Session: ${trade.session}
+    Notes/Context: ${trade.notes}
+    
+    Does this trade violate the strategy? 
+    Strictly output JSON:
+    {
+      "valid": boolean,
+      "reason": "Short explanation if invalid, otherwise 'Looks good'"
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: prompt,
+      config: {
+        thinkingConfig: { thinkingBudget: 4096 }
+      }
+    });
+
+    const jsonText = response.text || "{}";
+    const cleanJson = jsonText.match(/\{[\s\S]*\}/)?.[0] || "{}";
+    return JSON.parse(cleanJson);
+  } catch (e) {
+    return { valid: true, reason: "Validation skipped (Error)" };
+  }
 };
 
 export const parseTradeFromNaturalLanguage = async (text: string): Promise<Partial<Trade>> => {
