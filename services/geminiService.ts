@@ -3,13 +3,10 @@ import { GoogleGenAI } from "@google/genai";
 import { Trade, CalendarEvent, ChatMessage } from "../types";
 
 // --- CONFIGURATION ---
-// Helper to safely get the API Key in Vite/Browser environment
 const getApiKey = () => {
-  // Check for Vite environment variable (Standard for Vercel/Vite)
   if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) {
     return (import.meta as any).env.VITE_API_KEY;
   }
-  // Check for process.env (Legacy/Fallback) - safely check process existence
   if (typeof process !== 'undefined' && process.env?.API_KEY) {
     return process.env.API_KEY;
   }
@@ -17,8 +14,6 @@ const getApiKey = () => {
 };
 
 const apiKey = getApiKey();
-
-// Initialize client only if key exists to prevent "An API Key must be set" crash
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
@@ -33,9 +28,8 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
       - Pair: ${trade.pair}
       - Direction: ${trade.direction}
       - Outcome: ${trade.outcome}
-      - Session: ${trade.session}
       - PnL: ${trade.pnl}
-      - R-Multiple: ${trade.rMultiple}
+      - Risk %: ${trade.riskPercentage}%
       - Checklist Grade: ${trade.checklistScore || 'N/A'}
       - User Notes: "${trade.notes}"
 
@@ -43,8 +37,11 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-pro-preview',
       contents: prompt,
+      config: {
+        thinkingConfig: { thinkingBudget: 32768 }
+      }
     });
 
     return response.text || "Could not generate analysis.";
@@ -54,11 +51,49 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
   }
 };
 
+export const analyzeDeepPsychology = async (trade: Trade): Promise<string> => {
+    if (!ai) return "AI Unavailable.";
+
+    try {
+        const prompt = `
+            You are an elite Trading Psychologist and Performance Coach.
+            Perform a deep-dive behavioral analysis on this specific trade based on the trader's notes and outcome.
+
+            Trade Context:
+            - Pair: ${trade.pair}
+            - Result: ${trade.outcome} (${trade.pnl})
+            - Session: ${trade.session}
+            - Setup: ${trade.setup}
+            
+            Trader's Notes: 
+            "${trade.notes}"
+
+            Your Task:
+            1. Identify the emotional state (e.g., FOMO, Revenge, Hesitation, Overconfidence).
+            2. Detect cognitive biases (e.g., Confirmation Bias, Gambler's Fallacy).
+            3. Provide a specific "Mental Correction" for the next trade.
+
+            Output Format: Markdown. Be direct, professional, and insightful.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
+
+        return response.text || "Could not generate deep analysis.";
+    } catch (e) {
+        return "Analysis failed.";
+    }
+};
+
 export const analyzeTradeScreenshot = async (base64Image: string, pair: string): Promise<string> => {
   if (!ai) return "AI Vision Unavailable (API Key Missing)";
 
   try {
-    // Remove data URL prefix if present to get raw base64
     const base64Data = base64Image.replace(/^data:image\/(png|jpg|jpeg|webp);base64,/, "");
 
     const response = await ai.models.generateContent({
@@ -108,8 +143,11 @@ export const generatePerformanceReview = async (trades: Trade[]): Promise<string
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-pro-preview', 
         contents: prompt,
+        config: {
+          thinkingConfig: { thinkingBudget: 32768 }
+        }
       });
   
       return response.text || "Review unavailable.";
@@ -118,6 +156,79 @@ export const generatePerformanceReview = async (trades: Trade[]): Promise<string
         return "Failed to generate review.";
     }
 }
+
+export const generateTradingStrategy = async (concept: string): Promise<string> => {
+    if (!ai) return "AI Unavailable.";
+
+    try {
+        const prompt = `
+            Create a professional trading strategy based on this concept: "${concept}".
+            
+            Structure the response as a formal Trading Playbook Entry in Markdown:
+            # [Strategy Name]
+            
+            ## 1. The Setup
+            (Describe market condition, e.g., Liquidity Sweep, FVG)
+            
+            ## 2. Entry Triggers
+            - Exact conditions to enter
+            
+            ## 3. Stop Loss & Take Profit
+            - Logical SL placement
+            - Target logic
+            
+            ## 4. Risk Profile
+            - Win Rate Estimation
+            - R:R Expectancy
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
+
+        return response.text || "Could not generate strategy.";
+    } catch (e) {
+        return "Strategy generation failed.";
+    }
+};
+
+export const critiqueTradingStrategy = async (strategy: string): Promise<string> => {
+    if (!ai) return "AI Unavailable.";
+
+    try {
+        const prompt = `
+            Critique this trading strategy provided by the user. Find the flaws, the edge cases where it will fail, and rate its robustness.
+
+            Strategy: "${strategy}"
+
+            Output strictly in Markdown:
+            ## Analysis
+            (Your critique)
+
+            ## Vulnerabilities
+            - (List 2 key weaknesses)
+
+            ## Robustness Score
+            (1-10)/10
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 }
+            }
+        });
+
+        return response.text || "Could not critique strategy.";
+    } catch (e) {
+        return "Critique failed.";
+    }
+};
 
 export const parseTradeFromNaturalLanguage = async (text: string): Promise<Partial<Trade>> => {
     if (!ai) return {};
@@ -167,27 +278,34 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
     try {
       const parts: any[] = [];
       
+      let context = "You are an expert trading coach and technical analyst. Be concise, professional, and helpful. If an image is provided, analyze the chart market structure, liquidity zones, and price action patterns.\n\n";
+      
+      // Add History
+      if (history.length > 0) {
+          context += "Previous conversation:\n" + history.slice(-6).map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n') + "\n\n";
+      }
+      
+      // Add Image if present
       if (image) {
           const base64Data = image.replace(/^data:image\/(png|jpg|jpeg|webp);base64,/, "");
           parts.push({
               inlineData: {
-                  mimeType: 'image/png',
+                  mimeType: 'image/png', // Gemini supports png/jpeg/webp
                   data: base64Data
               }
           });
+          context += "[User has uploaded a chart image for analysis].\n";
       }
       
-      let context = "You are an expert trading coach and technical analyst. Be concise, professional, and helpful.\n\n";
-      if (history.length > 0) {
-          context += "Previous conversation:\n" + history.slice(-4).map(m => `${m.role}: ${m.text}`).join('\n') + "\n\n";
-      }
       context += "User Query: " + newMessage;
-  
       parts.push({ text: context });
   
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: { parts }
+        model: 'gemini-3-pro-preview',
+        contents: { parts },
+        config: {
+          thinkingConfig: { thinkingBudget: 32768 }
+        }
       });
   
       return response.text || "No response.";
@@ -199,7 +317,6 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
 
 export const getLiveMarketNews = async (): Promise<{sentiment: string, events: CalendarEvent[]}> => {
   if (!ai) {
-      // Return mock data if no API key to prevent breaking the UI
       return { 
           sentiment: "Demo Mode: API Key missing. Please set VITE_API_KEY in Vercel environment variables to enable live data.", 
           events: [
