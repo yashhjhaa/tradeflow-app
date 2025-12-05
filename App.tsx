@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology } from './services/geminiService';
@@ -308,13 +308,23 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t: Partial<Trade>) => void; accounts: Account[]; currentAccountId: string; initialData?: Partial<Trade> }> = ({ isOpen, onClose, onSave, accounts, currentAccountId, initialData }) => {
     const [formData, setFormData] = useState<Partial<Trade>>({
         pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, 
-        pnl: 0, notes: '', session: TradingSession.NY, setup: '', riskPercentage: 1, ...initialData
+        pnl: 0, notes: '', session: TradingSession.NY, setup: '', riskPercentage: 1, 
+        date: new Date().toISOString().split('T')[0], tags: [], ...initialData
     });
     const [screenshotPreview, setScreenshotPreview] = useState(initialData?.screenshot || '');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [tagInput, setTagInput] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => { setFormData({ pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, pnl: 0, notes: '', session: TradingSession.NY, setup: '', riskPercentage: 1, ...initialData }); setScreenshotPreview(initialData?.screenshot || ''); }, [initialData, isOpen]);
+    useEffect(() => { 
+        setFormData({ 
+            pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, 
+            pnl: 0, notes: '', session: TradingSession.NY, setup: '', riskPercentage: 1, 
+            date: new Date().toISOString().split('T')[0], tags: [], ...initialData 
+        }); 
+        setScreenshotPreview(initialData?.screenshot || ''); 
+    }, [initialData, isOpen]);
 
     if (!isOpen) return null;
 
@@ -335,6 +345,22 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
         setIsAnalyzing(false);
     };
 
+    const handleAddTag = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && tagInput.trim()) {
+            e.preventDefault();
+            if (!formData.tags?.includes(tagInput.trim())) {
+                setFormData(prev => ({...prev, tags: [...(prev.tags || []), tagInput.trim()]}));
+            }
+            setTagInput('');
+        }
+    }
+
+    const handleSaveClick = async () => {
+        setIsSaving(true);
+        await onSave({ ...formData, screenshot: screenshotPreview, accountId: currentAccountId });
+        setIsSaving(false);
+    }
+
     return (
         <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#0B0F19] border border-white/10 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col md:flex-row animate-slide-up">
@@ -351,12 +377,8 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                             <Input placeholder="EURUSD" value={formData.pair} onChange={e => setFormData({...formData, pair: e.target.value.toUpperCase()})} />
                          </div>
                          <div>
-                            <label className="text-xs text-slate-400 mb-1 block">Session</label>
-                            <Select value={formData.session} onChange={e => setFormData({...formData, session: e.target.value as any})}>
-                                <option value={TradingSession.ASIA}>Asia</option>
-                                <option value={TradingSession.LONDON}>London</option>
-                                <option value={TradingSession.NY}>New York</option>
-                            </Select>
+                            <label className="text-xs text-slate-400 mb-1 block">Date</label>
+                            <Input type="date" value={typeof formData.date === 'string' ? formData.date.split('T')[0] : ''} onChange={e => setFormData({...formData, date: e.target.value})} />
                          </div>
                     </div>
 
@@ -382,7 +404,15 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                          </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                         <div>
+                            <label className="text-xs text-slate-400 mb-1 block">Session</label>
+                            <Select value={formData.session} onChange={e => setFormData({...formData, session: e.target.value as any})}>
+                                <option value={TradingSession.ASIA}>Asia</option>
+                                <option value={TradingSession.LONDON}>London</option>
+                                <option value={TradingSession.NY}>New York</option>
+                            </Select>
+                         </div>
                          <div>
                             <label className="text-xs text-slate-400 mb-1 block">Risk %</label>
                             <Input type="number" step="0.1" placeholder="1.0" value={formData.riskPercentage} onChange={e => setFormData({...formData, riskPercentage: Number(e.target.value)})} />
@@ -394,17 +424,33 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                     </div>
 
                     <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Tags (Press Enter)</label>
+                        <div className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-cyan-500/20">
+                            {formData.tags?.map(tag => (
+                                <Badge key={tag} color="gray">{tag} <button onClick={() => setFormData(prev => ({...prev, tags: prev.tags?.filter(t => t !== tag)}))} className="ml-1 hover:text-white">&times;</button></Badge>
+                            ))}
+                            <input 
+                                className="bg-transparent border-none outline-none text-sm text-white flex-1 min-w-[100px]" 
+                                placeholder="Add tag..." 
+                                value={tagInput}
+                                onChange={e => setTagInput(e.target.value)}
+                                onKeyDown={handleAddTag}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
                         <label className="text-xs text-slate-400 mb-1 block">Notes & Analysis</label>
                         <textarea 
-                            className="w-full h-32 bg-slate-900 border border-white/10 rounded-xl p-4 text-white resize-none focus:ring-1 focus:ring-cyan-500 outline-none" 
+                            className="w-full h-24 bg-slate-900 border border-white/10 rounded-xl p-4 text-white resize-none focus:ring-1 focus:ring-cyan-500 outline-none" 
                             placeholder="Why did you take this trade?"
                             value={formData.notes}
                             onChange={e => setFormData({...formData, notes: e.target.value})}
                         />
                     </div>
 
-                    <Button variant="neon" className="w-full" onClick={() => onSave({ ...formData, screenshot: screenshotPreview, accountId: currentAccountId })}>
-                        Save to Journal
+                    <Button variant="neon" className="w-full" onClick={handleSaveClick} disabled={isSaving}>
+                        {isSaving ? <><Loader2 className="animate-spin" size={18}/> Saving Trade...</> : 'Save to Journal'}
                     </Button>
                 </div>
                 {/* Media */}
@@ -429,6 +475,11 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                              {isAnalyzing ? <><Sparkles className="animate-spin" size={14}/> Scanning...</> : <><Eye size={14}/> AI Scan Chart</>}
                          </Button>
                      )}
+                     
+                     <div className="bg-indigo-900/10 p-4 rounded-xl border border-indigo-500/10">
+                         <h4 className="text-xs font-bold text-indigo-400 mb-2 flex items-center gap-2"><Lightbulb size={12}/> Pro Tip</h4>
+                         <p className="text-xs text-slate-400">Upload a chart image to let Gemini automatically analyze the market structure.</p>
+                     </div>
                 </div>
             </div>
         </div>
@@ -569,19 +620,51 @@ const App: React.FC = () => {
   };
 
   const handleSaveTrade = async (tradeData: Partial<Trade>) => {
-      if (!user) return;
-      const accountId = tradeData.accountId || accounts[0]?.id || 'demo';
-      if (tradeData.id) {
-          await updateTradeInDb(tradeData as Trade);
-      } else {
-          let outcome = tradeData.outcome || TradeOutcome.PENDING;
-          if (tradeData.pnl) { outcome = tradeData.pnl > 0 ? TradeOutcome.WIN : tradeData.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; }
-          const newTrade: any = { ...tradeData, date: new Date().toISOString(), userId: user.uid, accountId, outcome, tags: [], };
-          if (newTrade.notes && !newTrade.aiAnalysis) { analyzeTradePsychology(newTrade).then(analysis => { updateTradeInDb({ ...newTrade, aiAnalysis: analysis }); }); }
-          await addTradeToDb(newTrade, user.uid);
-          if (newTrade.pnl) { const acc = accounts.find(a => a.id === accountId); if (acc) await updateAccountBalance(accountId, acc.balance + newTrade.pnl); }
+      if (!user) {
+          alert("Please sign in to log trades.");
+          return;
       }
-      setIsAddTradeOpen(false); setEditingTrade(undefined);
+      
+      const accountId = tradeData.accountId || accounts[0]?.id || 'demo';
+      
+      try {
+          if (tradeData.id) {
+              await updateTradeInDb(tradeData as Trade);
+          } else {
+              let outcome = tradeData.outcome || TradeOutcome.PENDING;
+              if (tradeData.pnl) { outcome = tradeData.pnl > 0 ? TradeOutcome.WIN : tradeData.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; }
+              
+              const newTrade: any = { 
+                  ...tradeData, 
+                  date: tradeData.date || new Date().toISOString(), 
+                  userId: user.uid, 
+                  accountId, 
+                  outcome, 
+                  tags: tradeData.tags || [], 
+              };
+              
+              // 1. Save Trade FIRST to get the ID
+              const savedId = await addTradeToDb(newTrade, user.uid);
+              
+              // 2. Trigger AI Analysis if notes exist (Async, don't block UI)
+              if (newTrade.notes && !newTrade.aiAnalysis) { 
+                  analyzeTradePsychology(newTrade).then(async (analysis) => { 
+                      await updateTradeInDb({ ...newTrade, id: savedId, aiAnalysis: analysis }); 
+                  }); 
+              }
+              
+              // 3. Update Balance
+              if (newTrade.pnl) { 
+                  const acc = accounts.find(a => a.id === accountId); 
+                  if (acc) await updateAccountBalance(accountId, acc.balance + newTrade.pnl); 
+              }
+          }
+          setIsAddTradeOpen(false); 
+          setEditingTrade(undefined);
+      } catch (error) {
+          console.error("Failed to save trade", error);
+          alert("Failed to save trade. Please try again.");
+      }
   };
 
   const handleMagicCommand = async (e: React.FormEvent) => {
@@ -589,6 +672,8 @@ const App: React.FC = () => {
       const parsed = await parseTradeFromNaturalLanguage(magicCmd);
       setEditingTrade(parsed); setMagicCmd(''); setIsAddTradeOpen(true);
   };
+
+  // ... (rest of the handlers)
 
   const handleGenerateStrategy = async () => {
       if (!strategyInput.trim()) return;
@@ -753,8 +838,9 @@ const App: React.FC = () => {
                                     <th className="p-4 font-normal">Pair</th>
                                     <th className="p-4 font-normal">Session</th>
                                     <th className="p-4 font-normal">Setup</th>
-                                    <th className="p-4 font-normal">Risk %</th>
-                                    <th className="p-4 font-normal">R-Mul</th>
+                                    <th className="p-4 font-normal">Tags</th>
+                                    <th className="p-4 font-normal">Risk</th>
+                                    <th className="p-4 font-normal">R:R</th>
                                     <th className="p-4 font-normal text-right">PnL</th>
                                 </tr>
                             </thead>
@@ -765,19 +851,35 @@ const App: React.FC = () => {
                                         <td className="p-4"><div className="flex items-center gap-2"><Badge color={trade.direction === TradeDirection.BUY ? 'green' : 'red'}>{trade.direction}</Badge><span className="font-bold text-white">{trade.pair}</span></div></td>
                                         <td className="p-4 text-sm text-slate-400">{trade.session}</td>
                                         <td className="p-4 text-sm text-slate-400">{trade.setup || '-'}</td>
+                                        <td className="p-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {trade.tags?.slice(0, 2).map(tag => <Badge key={tag} color="gray">{tag}</Badge>)}
+                                                {(trade.tags?.length || 0) > 2 && <span className="text-[10px] text-slate-500">+{trade.tags!.length - 2}</span>}
+                                            </div>
+                                        </td>
                                         <td className="p-4 text-sm text-slate-400">{trade.riskPercentage ? `${trade.riskPercentage}%` : '-'}</td>
                                         <td className="p-4 text-sm text-slate-400">{trade.rMultiple ? `${trade.rMultiple}R` : '-'}</td>
                                         <td className={`p-4 text-right font-mono font-bold ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{trade.pnl ? formatCurrency(trade.pnl) : '-'}</td>
                                     </tr>
                                 ))}
-                                {filteredTrades.length === 0 && (<tr><td colSpan={7} className="p-12 text-center text-slate-500"><div className="flex flex-col items-center gap-4"><BookOpen size={48} opacity={0.2} /><p>No trades logged yet.</p></div></td></tr>)}
+                                {filteredTrades.length === 0 && (
+                                    <tr>
+                                        <td colSpan={8} className="p-12 text-center text-slate-500">
+                                            <div className="flex flex-col items-center gap-4">
+                                                <BookOpen size={48} opacity={0.2} />
+                                                <p>No trades logged yet.</p>
+                                                <Button size="sm" variant="secondary" onClick={() => setIsAddTradeOpen(true)}>Log First Trade</Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </Card>
                 </div>
             )}
-
-            {/* --- ANALYTICS --- */}
+            
+            {/* ... (Rest of activeTab logic kept same) ... */}
             {activeTab === 'analytics' && (
                 <div className="space-y-6 flex flex-col">
                     <Card className="flex items-center justify-between bg-gradient-to-r from-blue-900/20 to-transparent border-blue-500/20">
@@ -993,7 +1095,7 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* --- PROFILE REVAMP --- */}
+            {/* --- PROFILE --- */}
             {activeTab === 'profile' && (
                 <div className="space-y-8">
                     {/* Hero Section */}
