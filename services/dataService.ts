@@ -155,18 +155,21 @@ export const subscribeToTrades = (userId: string, callback: (trades: Trade[]) =>
     }, handleFirestoreError);
 };
 
-export const addTradeToDb = async (trade: Trade, userId: string) => {
+export const addTradeToDb = async (trade: Trade, userId: string): Promise<string> => {
     if (!isFirebaseReady || !db) {
         const local = JSON.parse(localStorage.getItem('trades') || '[]');
-        const newTrade = { ...trade, id: Date.now().toString(), userId };
+        const id = Date.now().toString();
+        const newTrade = { ...trade, id, userId };
         localStorage.setItem('trades', JSON.stringify([...local, newTrade]));
         window.dispatchEvent(new Event('localDataUpdate'));
-        return newTrade;
+        return id;
     }
     
+    // Ensure we don't pass an undefined ID to addDoc
     const { id, ...tradeData } = trade;
     const cleanData = cleanUndefined(tradeData);
-    await addDoc(collection(db, "trades"), { ...cleanData, userId });
+    const docRef = await addDoc(collection(db, "trades"), { ...cleanData, userId });
+    return docRef.id;
 };
 
 export const updateTradeInDb = async (trade: Trade) => {
@@ -179,6 +182,8 @@ export const updateTradeInDb = async (trade: Trade) => {
     }
     
     const { id, ...tradeData } = trade;
+    if (!id) throw new Error("Cannot update trade without ID");
+    
     const cleanData = cleanUndefined(tradeData);
     await updateDoc(doc(db, "trades", id), cleanData);
 };
@@ -213,7 +218,6 @@ export const subscribeToAccounts = (userId: string, callback: (accounts: Account
     const q = query(collection(db, "accounts"), where("userId", "==", userId));
     return onSnapshot(q, async (snapshot) => {
         if (snapshot.empty) {
-            // Do nothing here, wait for manual creation or registerUser to handle it
             callback([]); 
         } else {
             const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
@@ -308,7 +312,7 @@ export const initializeTodayLog = async (userId: string) => {
             calmEmotion: false,
             journaled: false,
             notes: '',
-            mood: 50, // Neutral default
+            mood: 50,
             intention: ''
         });
     }
