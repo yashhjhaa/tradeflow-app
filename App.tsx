@@ -1,10 +1,11 @@
 
+
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation } from './services/geminiService';
-import { Trade, Account, DisciplineLog, CalendarEvent, TradeDirection, TradeOutcome, TradingSession, ChatMessage, DateRange, Challenge, ChallengeDay } from './types';
+import { Trade, Account, DisciplineLog, CalendarEvent, TradeDirection, TradeOutcome, TradingSession, ChatMessage, DateRange, Challenge, ChallengeDay, ChallengeTask } from './types';
 import { 
     subscribeToAuth, loginUser, logoutUser, registerUser, subscribeToTrades, 
     addTradeToDb, deleteTradeFromDb, subscribeToAccounts, 
@@ -55,6 +56,52 @@ const compressImage = (base64Str: string, maxWidth = 1024, maxHeight = 1024) => 
 };
 
 const getStringSizeInBytes = (str: string) => new Blob([str]).size;
+
+// Confetti Effect Helper
+const fireConfetti = () => {
+  const colors = ['#06b6d4', '#8b5cf6', '#10b981', '#f43f5e'];
+  const canvas = document.createElement('canvas');
+  canvas.style.position = 'fixed';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.width = '100vw';
+  canvas.style.height = '100vh';
+  canvas.style.pointerEvents = 'none';
+  canvas.style.zIndex = '9999';
+  document.body.appendChild(canvas);
+  
+  const ctx = canvas.getContext('2d');
+  if(!ctx) return;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles: any[] = [];
+  for(let i=0; i<150; i++) {
+    particles.push({
+      x: canvas.width/2, y: canvas.height/2,
+      vx: (Math.random() - 0.5) * 20,
+      vy: (Math.random() - 0.5) * 20,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: 1, life: Math.random() * 50 + 50
+    });
+  }
+
+  const animate = () => {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let active = false;
+    particles.forEach(p => {
+      if(p.life > 0) {
+        active = true;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life--; p.alpha -= 0.01;
+        ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 6, 6);
+      }
+    });
+    if(active) requestAnimationFrame(animate);
+    else document.body.removeChild(canvas);
+  };
+  animate();
+};
 
 // --- SUB-COMPONENTS ---
 
@@ -265,6 +312,275 @@ const MobileBottomNav: React.FC<{ activeTab: string; setActiveTab: (t: string) =
   );
 };
 
+// --- NEW CHALLENGE COMPONENTS ---
+const FlameStreak: React.FC<{ streak: number }> = ({ streak }) => {
+    // 0-3: Yellow (Spark) | 4-7: Orange (Flame) | 8+: Blue (Plasma)
+    const getFlameColor = () => {
+        if(streak >= 8) return 'text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]';
+        if(streak >= 4) return 'text-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.8)]';
+        return 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]';
+    };
+
+    const getScale = () => Math.min(1 + (streak * 0.05), 1.5);
+
+    return (
+        <div className="flex flex-col items-center">
+            <div className={`transition-all duration-500 ${getFlameColor()}`} style={{ transform: `scale(${getScale()})` }}>
+                <FlameIcon size={32} fill="currentColor" className="animate-pulse-slow"/>
+            </div>
+            <span className="text-xs font-bold text-slate-400 mt-1">{streak} Day Streak</span>
+        </div>
+    );
+};
+
+const CreateChallengeModal: React.FC<{ isOpen: boolean; onClose: () => void; onCreate: (c: Partial<Challenge>) => void }> = ({ isOpen, onClose, onCreate }) => {
+    const [step, setStep] = useState(1);
+    const [draft, setDraft] = useState<Partial<Challenge>>({
+        title: '', description: '', totalDays: 30, rules: [], 
+        theme: 'custom', themeColor: 'cyan', stakes: ''
+    });
+    const [newTaskLabel, setNewTaskLabel] = useState('');
+    const [newTaskType, setNewTaskType] = useState('manual');
+    const [newTaskThresh, setNewTaskThresh] = useState(0);
+    const [draftTasks, setDraftTasks] = useState<{label: string, type: string, thresh?: number}[]>([]);
+
+    if (!isOpen) return null;
+
+    const handleAddTask = () => {
+        if (!newTaskLabel.trim()) return;
+        setDraftTasks([...draftTasks, { label: newTaskLabel, type: newTaskType, thresh: newTaskThresh }]);
+        setNewTaskLabel(''); setNewTaskType('manual'); setNewTaskThresh(0);
+    };
+
+    const handleCreate = () => {
+        if (!draft.title) return alert("Title required");
+        if (draftTasks.length === 0) return alert("Add at least one rule");
+        
+        // Convert draftTasks to the complex ChallengeTask structure for the days generation later
+        // For now, pass them as a custom field or process in parent
+        // We'll attach the tasks config to the draft for the parent to process
+        onCreate({
+            ...draft,
+            // @ts-ignore - passing temp config to be processed
+            taskConfig: draftTasks 
+        });
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
+            <Card className="w-full max-w-2xl bg-[#0B0F19] border-cyan-500/20 shadow-[0_0_50px_rgba(6,182,212,0.1)] flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-display font-bold text-white flex items-center gap-2">
+                            <Wand2 className="text-cyan-400"/> Protocol Architect
+                        </h2>
+                        <p className="text-xs text-slate-400">Design your own discipline system.</p>
+                    </div>
+                    <button onClick={onClose}><X size={20} className="text-slate-500 hover:text-white"/></button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                    {/* Progress */}
+                    <div className="flex items-center gap-2 mb-8">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className={`h-1 flex-1 rounded-full ${step >= i ? 'bg-cyan-500' : 'bg-slate-800'}`}></div>
+                        ))}
+                    </div>
+
+                    {step === 1 && (
+                        <div className="space-y-6 animate-slide-up">
+                            <h3 className="text-lg font-bold text-white">Identity & Duration</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs uppercase font-bold text-slate-500">Protocol Name</label>
+                                    <Input placeholder="e.g. Project 50, Monk Mode Ultra" value={draft.title} onChange={e => setDraft({...draft, title: e.target.value})} autoFocus/>
+                                </div>
+                                <div>
+                                    <label className="text-xs uppercase font-bold text-slate-500">Manifesto (Description)</label>
+                                    <Input placeholder="What is the goal? e.g. Total dopamine detox." value={draft.description} onChange={e => setDraft({...draft, description: e.target.value})}/>
+                                </div>
+                                <div>
+                                    <label className="text-xs uppercase font-bold text-slate-500 flex justify-between">
+                                        <span>Duration</span>
+                                        <span className="text-cyan-400">{draft.totalDays} Days</span>
+                                    </label>
+                                    <input 
+                                        type="range" min="7" max="100" value={draft.totalDays} 
+                                        onChange={e => setDraft({...draft, totalDays: Number(e.target.value)})}
+                                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-slate-600 mt-1"><span>7 Days</span><span>100 Days</span></div>
+                                </div>
+                                <div>
+                                    <label className="text-xs uppercase font-bold text-slate-500">Visual Theme</label>
+                                    <div className="flex gap-4 mt-2">
+                                        {['cyan', 'purple', 'rose', 'amber'].map(color => (
+                                            <button 
+                                                key={color} 
+                                                onClick={() => setDraft({...draft, themeColor: color})}
+                                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${draft.themeColor === color ? 'border-white scale-110' : 'border-transparent opacity-50'}`}
+                                                style={{ backgroundColor: `var(--color-${color}-500)` }} // Tailwind utility approximation
+                                            >
+                                                <div className={`w-full h-full rounded-full bg-${color}-500`}></div> 
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 2 && (
+                        <div className="space-y-6 animate-slide-up">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2"><Gavel size={18}/> Tribunal Rules</h3>
+                            <p className="text-sm text-slate-400">Define your daily tasks. Connect them to the "Tribunal" for auto-verification.</p>
+                            
+                            {/* Rule Builder */}
+                            <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div className="md:col-span-2">
+                                        <label className="text-[10px] uppercase font-bold text-slate-500">Rule Description</label>
+                                        <Input placeholder="e.g. No trades after 11am" value={newTaskLabel} onChange={e => setNewTaskLabel(e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] uppercase font-bold text-slate-500">Verification</label>
+                                        <Select value={newTaskType} onChange={e => setNewTaskType(e.target.value)}>
+                                            <option value="manual">Manual Check</option>
+                                            <option value="max_loss">Max Daily Loss</option>
+                                            <option value="max_trades">Max Trade Count</option>
+                                            <option value="journal_all">Journal Check</option>
+                                        </Select>
+                                    </div>
+                                </div>
+                                {(newTaskType === 'max_loss' || newTaskType === 'max_trades') && (
+                                    <div>
+                                        <label className="text-[10px] uppercase font-bold text-slate-500">Limit / Threshold</label>
+                                        <Input type="number" placeholder={newTaskType === 'max_loss' ? 'e.g. 500 ($)' : 'e.g. 3 (trades)'} value={newTaskThresh} onChange={e => setNewTaskThresh(Number(e.target.value))} />
+                                    </div>
+                                )}
+                                <Button size="sm" variant="secondary" className="w-full" onClick={handleAddTask} disabled={!newTaskLabel}><Plus size={16}/> Add Rule to Protocol</Button>
+                            </div>
+
+                            {/* List */}
+                            <div className="space-y-2">
+                                {draftTasks.map((t, i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+                                            <span className="text-sm text-white">{t.label}</span>
+                                            {t.type !== 'manual' && <Badge color="yellow">AUTO</Badge>}
+                                        </div>
+                                        <button onClick={() => setDraftTasks(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-rose-500"><Trash2 size={14}/></button>
+                                    </div>
+                                ))}
+                                {draftTasks.length === 0 && <div className="text-center text-xs text-slate-600 py-4">No rules added yet.</div>}
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 3 && (
+                        <div className="space-y-6 animate-slide-up">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2"><Flame size={18}/> The Blood Oath</h3>
+                            <div className="bg-gradient-to-br from-red-900/10 to-transparent border border-red-500/20 p-6 rounded-2xl text-center space-y-4">
+                                <p className="text-slate-300 text-sm">I hereby commit to the <strong>{draft.title}</strong> protocol for {draft.totalDays} days.</p>
+                                <div className="text-left bg-black/40 p-4 rounded-xl space-y-1">
+                                    <div className="text-xs font-bold text-slate-500 uppercase mb-2">My Stakes (Optional)</div>
+                                    <textarea 
+                                        className="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600 resize-none" 
+                                        placeholder="If I fail, I will donate $100 to charity..."
+                                        rows={2}
+                                        value={draft.stakes}
+                                        onChange={e => setDraft({...draft, stakes: e.target.value})}
+                                    />
+                                </div>
+                                <div className="flex gap-2 justify-center">
+                                    {draftTasks.slice(0, 3).map((t,i) => <Badge key={i} color="gray">{t.label}</Badge>)}
+                                    {draftTasks.length > 3 && <Badge color="gray">+{draftTasks.length - 3}</Badge>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-6 border-t border-white/5 flex justify-between">
+                    {step > 1 ? (
+                        <Button variant="ghost" onClick={() => setStep(s => s - 1)}>Back</Button>
+                    ) : (
+                        <div></div>
+                    )}
+                    {step < 3 ? (
+                        <Button variant="primary" onClick={() => setStep(s => s + 1)}>Next Step <ArrowRight size={16} className="ml-2"/></Button>
+                    ) : (
+                        <Button variant="neon" onClick={handleCreate}>Initialize Protocol</Button>
+                    )}
+                </div>
+            </Card>
+        </div>
+    );
+};
+
+const ShareableChallengeCard: React.FC<{ challenge: Challenge, user: string, winRate: string, pnl: number }> = ({ challenge, user, winRate, pnl }) => {
+    return (
+        <div id="share-card" className="w-[400px] h-[600px] bg-[#05070A] relative overflow-hidden flex flex-col p-8 border border-white/10 rounded-3xl">
+            {/* Background Gradients */}
+            <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-cyan-500/20 rounded-full blur-[80px]"></div>
+            <div className="absolute bottom-[-20%] right-[-20%] w-[300px] h-[300px] bg-purple-500/20 rounded-full blur-[80px]"></div>
+            
+            {/* Header */}
+            <div className="relative z-10 flex justify-between items-start mb-12">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <AppLogo className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="font-display font-bold text-white text-lg">TradeFlow</h3>
+                        <p className="text-xs text-slate-400 uppercase tracking-widest">Protocol Verified</p>
+                    </div>
+                </div>
+                <div className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs font-mono text-cyan-400">
+                    {new Date().toLocaleDateString()}
+                </div>
+            </div>
+
+            {/* Main Stats */}
+            <div className="relative z-10 flex-1 flex flex-col justify-center space-y-8">
+                <div>
+                    <h1 className="text-6xl font-display font-bold text-white mb-2">Day {challenge.currentDay}</h1>
+                    <h2 className="text-2xl font-medium text-slate-400">{challenge.title}</h2>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Win Rate</div>
+                        <div className="text-2xl font-mono font-bold text-emerald-400">{winRate}%</div>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Total PnL</div>
+                        <div className={`text-2xl font-mono font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 bg-gradient-to-r from-cyan-900/10 to-transparent border-l-2 border-cyan-500">
+                    <p className="text-sm italic text-slate-300 font-serif">"Discipline is doing what needs to be done, even if you don't want to do it."</p>
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="relative z-10 mt-auto flex items-center gap-3 pt-6 border-t border-white/5">
+                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-white">
+                    {user[0]}
+                </div>
+                <span className="text-sm font-bold text-slate-300">{user}</span>
+                <div className="ml-auto text-xs text-slate-500">#TradeFlowChallenge</div>
+            </div>
+        </div>
+    );
+};
+
+// ... (BreathingExercise, CooldownModal, WelcomeToast, LoginScreen code remains same) ...
 const BreathingExercise: React.FC = () => {
     const [phase, setPhase] = useState<'Inhale' | 'Hold' | 'Exhale' | 'Hold '>('Inhale');
     const [active, setActive] = useState(false);
@@ -489,8 +805,10 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
     );
 };
 
+// ... (AddTradeModal, TradeDetailsModal, ConnectBrokerModal remain same) ...
 const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t: Partial<Trade>) => void; accounts: Account[]; currentAccountId: string; initialData?: Partial<Trade>; playbookEntries: PlaybookEntry[] }> = ({ isOpen, onClose, onSave, accounts, currentAccountId, initialData, playbookEntries }) => {
-    const [formData, setFormData] = useState<Partial<Trade>>({
+    // ... [Original code] ...
+     const [formData, setFormData] = useState<Partial<Trade>>({
         pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, 
         pnl: 0, notes: '', session: TradingSession.NY, setup: '', riskPercentage: 1, 
         date: new Date().toISOString().split('T')[0], tags: [], accountId: currentAccountId, ...initialData
@@ -858,6 +1176,8 @@ const App: React.FC = () => {
   const [editingTrade, setEditingTrade] = useState<Partial<Trade> | undefined>(undefined);
   const [magicCmd, setMagicCmd] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false); // FOR SHARING
+  const [isCreateChallengeOpen, setIsCreateChallengeOpen] = useState(false); // FOR CUSTOM CHALLENGES
   
   // Realtime Clock State
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -962,6 +1282,87 @@ const App: React.FC = () => {
     .reduce((acc, t) => acc + (t.pnl || 0), 0);
   const tiltLimit = -500;
   const isTiltLocked = dailyPnL <= tiltLimit;
+
+  // --- THE TRIBUNAL: AUTO-VERIFY CHALLENGE TASKS ---
+  useEffect(() => {
+      if (!activeChallenge) return;
+      
+      const checkTribunal = async () => {
+          let updatedNeeded = false;
+          const currentDayObj = activeChallenge.days.find(d => d.dayNumber === activeChallenge.currentDay);
+          if (!currentDayObj) return;
+
+          const updatedTasks = currentDayObj.tasks.map(task => {
+              if (task.completed || task.status === 'failed') return task; // Already done/failed
+
+              if (task.verificationType === 'max_loss') {
+                  const limit = task.threshold || 0;
+                  if (dailyPnL <= -limit) {
+                      updatedNeeded = true;
+                      return { ...task, completed: false, status: 'failed' };
+                  }
+                  if (dailyPnL > -limit) return { ...task, status: 'passing' };
+              }
+
+              if (task.verificationType === 'max_trades') {
+                  const limit = task.threshold || 100;
+                  const todayTradesCount = trades.filter(t => t.date.startsWith(todayStr)).length;
+                  if (todayTradesCount > limit) {
+                      updatedNeeded = true;
+                      return { ...task, completed: false, status: 'failed' };
+                  }
+                  return { ...task, status: 'passing' };
+              }
+              
+              if (task.verificationType === 'journal_all') {
+                  const todayTrades = trades.filter(t => t.date.startsWith(todayStr));
+                  if (todayTrades.length > 0 && todayTrades.every(t => t.notes && t.notes.length > 10)) {
+                      // Only mark completed if explicitly checked? Or auto-complete? 
+                      // Let's mark status passing, user must still check or we auto-complete at end of day.
+                      // For "Journal Check", let's make it auto-complete if true.
+                      if (!task.completed) {
+                           updatedNeeded = true;
+                           return { ...task, completed: true, status: 'completed' };
+                      }
+                  }
+              }
+
+              return task;
+          });
+
+          if (updatedNeeded) {
+              const updatedDays = activeChallenge.days.map(d => d.dayNumber === activeChallenge.currentDay ? { ...d, tasks: updatedTasks as any } : d);
+              await updateChallenge({ ...activeChallenge, days: updatedDays });
+          }
+      };
+
+      const timer = setInterval(checkTribunal, 5000); // Check every 5s
+      checkTribunal(); // Initial check
+      return () => clearInterval(timer);
+  }, [trades, activeChallenge, dailyPnL]);
+
+  // --- XP & GAMIFICATION ---
+  const calculateXP = () => {
+      if (!activeChallenge) return 0;
+      let completedCount = 0;
+      activeChallenge.days.forEach(d => {
+          completedCount += d.tasks.filter(t => t.completed).length;
+      });
+      return completedCount * 100;
+  };
+  
+  const currentXP = calculateXP();
+  const currentLevel = Math.floor(currentXP / 1000) + 1;
+  const xpProgress = (currentXP % 1000) / 10; // 0-100%
+
+  // Milestones
+  useEffect(() => {
+      if (activeChallenge) {
+          if ([7, 14, 30, 75].includes(activeChallenge.currentDay)) {
+              fireConfetti();
+          }
+      }
+  }, [activeChallenge?.currentDay]);
   
   const handleNewTradeClick = () => {
       if (isTiltLocked) {
@@ -1068,10 +1469,34 @@ const App: React.FC = () => {
   // --- CHALLENGE HANDLERS ---
   const handleStartChallenge = async (type: 'monk' | 'iron' | 'savage') => {
       if (!user) return;
+      
+      // Verification types mapped to templates
       const templates = {
-          monk: { title: "Monk Mode Protocol", days: 7, desc: "A 7-day reset. Focus on meditation and selective trading.", rules: ["10m Meditation", "No Overtrading", "Journal Every Trade"] },
-          iron: { title: "Iron Risk 30", days: 30, desc: "Strict risk management check. Violate once, start over.", rules: ["Max Loss respected", "Review Playbook daily", "Cold Shower"] },
-          savage: { title: "Trader 75 Hard", days: 75, desc: "The ultimate test of discipline and grit.", rules: ["Workout 2x/day", "Strict Diet", "No Alcohol", "Trade only A+ Setups", "Read 10 pages"] }
+          monk: { 
+              title: "Monk Mode Protocol", days: 7, desc: "A 7-day reset. Focus on meditation and selective trading.", 
+              tasks: [
+                  { label: "10m Meditation", type: 'manual' },
+                  { label: "Max 3 Trades/Day", type: 'max_trades', thresh: 3 },
+                  { label: "Journal All Trades", type: 'journal_all' }
+              ] 
+          },
+          iron: { 
+              title: "Iron Risk 30", days: 30, desc: "Strict risk management check. Violate once, start over.", 
+              tasks: [
+                  { label: "Max Loss $500", type: 'max_loss', thresh: 500 },
+                  { label: "Review Playbook", type: 'manual' },
+                  { label: "Cold Shower", type: 'manual' }
+              ] 
+          },
+          savage: { 
+              title: "Trader 75 Hard", days: 75, desc: "The ultimate test of discipline and grit.", 
+              tasks: [
+                  { label: "Workout 2x/day", type: 'manual' },
+                  { label: "Max Loss $250", type: 'max_loss', thresh: 250 },
+                  { label: "Trade A+ Setups Only", type: 'manual' },
+                  { label: "Read 10 Pages", type: 'manual' }
+              ] 
+          }
       };
       const t = templates[type];
       
@@ -1084,12 +1509,56 @@ const App: React.FC = () => {
           startDate: new Date().toISOString(),
           currentDay: 1,
           status: 'active',
-          rules: t.rules,
+          rules: t.tasks.map(task => task.label),
           theme: type,
+          xp: 0,
           days: Array.from({ length: t.days }, (_, i) => ({
               dayNumber: i + 1,
               date: new Date(Date.now() + i * 86400000).toISOString(),
-              tasks: t.rules.map((r, ri) => ({ id: `${i}_${ri}`, label: r, completed: false })),
+              tasks: t.tasks.map((r, ri) => ({ 
+                  id: `${i}_${ri}`, 
+                  label: r.label, 
+                  completed: false,
+                  verificationType: r.type as any,
+                  threshold: r.thresh,
+                  status: 'pending'
+              })),
+              status: 'pending'
+          }))
+      };
+      
+      await startChallenge(newChallenge, user.uid);
+  };
+  
+  const handleCreateCustomChallenge = async (custom: any) => {
+      if (!user) return;
+      const tasksConfig = custom.taskConfig as {label: string, type: string, thresh?: number}[];
+      
+      const newChallenge: Challenge = {
+          id: Date.now().toString(),
+          userId: user.uid,
+          title: custom.title,
+          description: custom.description,
+          totalDays: custom.totalDays,
+          startDate: new Date().toISOString(),
+          currentDay: 1,
+          status: 'active',
+          rules: tasksConfig.map(t => t.label),
+          theme: 'custom',
+          themeColor: custom.themeColor,
+          stakes: custom.stakes,
+          xp: 0,
+          days: Array.from({ length: custom.totalDays }, (_, i) => ({
+              dayNumber: i + 1,
+              date: new Date(Date.now() + i * 86400000).toISOString(),
+              tasks: tasksConfig.map((r, ri) => ({ 
+                  id: `${i}_${ri}`, 
+                  label: r.label, 
+                  completed: false,
+                  verificationType: r.type as any,
+                  threshold: r.thresh,
+                  status: 'pending'
+              })),
               status: 'pending'
           }))
       };
@@ -1102,7 +1571,17 @@ const App: React.FC = () => {
       const updatedDays = [...activeChallenge.days];
       const day = updatedDays[dayIdx];
       const task = day.tasks.find(t => t.id === taskId);
-      if (task) task.completed = !task.completed;
+      
+      if (task) {
+          // Tribunal Override: Don't allow manual toggle if failed by system
+          if (task.status === 'failed') {
+              alert("Tribunal Lock: This task has been failed by the system based on your trading data.");
+              return;
+          }
+          task.completed = !task.completed;
+          if(task.completed) task.status = 'completed';
+          else task.status = 'pending';
+      }
       
       // Update status if all completed
       if (day.tasks.every(t => t.completed)) day.status = 'completed';
@@ -1166,6 +1645,19 @@ const App: React.FC = () => {
   const avgRR = (avgWin / (avgLoss || 1)).toFixed(2);
   const communityPosts = [ { id: 1, user: 'CryptoKing', time: 'Just now', pair: 'BTCUSD', direction: 'LONG', roi: '+12.5%', image: 'https://images.unsplash.com/photo-1611974765270-ca12586343bb?auto=format&fit=crop&q=80&w=600', likes: 24, comments: 5 }, { id: 2, user: 'ForexSniper', time: '2m ago', pair: 'EURUSD', direction: 'SHORT', roi: '+4.2%', image: 'https://images.unsplash.com/photo-1535320903710-d9cf113d2054?auto=format&fit=crop&q=80&w=600', likes: 11, comments: 2 }, { id: 3, user: 'GoldBug', time: '12m ago', pair: 'XAUUSD', direction: 'LONG', roi: '-1.2%', image: 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&q=80&w=600', likes: 5, comments: 8 } ];
 
+  // --- PROFILE LOGIC ---
+  const getRank = (pnl: number) => {
+    if (pnl < 0) return { title: 'ROOKIE', color: 'gray' };
+    if (pnl < 5000) return { title: 'TRADER', color: 'cyan' };
+    if (pnl < 25000) return { title: 'PRO', color: 'purple' };
+    if (pnl < 100000) return { title: 'ELITE', color: 'rose' };
+    return { title: 'WHALE', color: 'yellow' };
+  };
+
+  const userRank = getRank(totalPnL);
+  const bestTrade = filteredTrades.length > 0 ? Math.max(...filteredTrades.map(t => t.pnl || 0)) : 0;
+  const worstTrade = filteredTrades.length > 0 ? Math.min(...filteredTrades.map(t => t.pnl || 0)) : 0;
+
   return (
     <ThemeContext.Provider value={{ theme: 'dark', toggleTheme: () => {} }}>
       <div className="flex min-h-screen bg-[#05070A] text-slate-100 font-sans selection:bg-cyan-500/30">
@@ -1173,6 +1665,7 @@ const App: React.FC = () => {
         <Ticker />
         <WelcomeToast username={user.displayName || 'Trader'} visible={showWelcome} />
         <CooldownModal isOpen={isCooldownOpen} onClose={() => setIsCooldownOpen(false)} />
+        <CreateChallengeModal isOpen={isCreateChallengeOpen} onClose={() => setIsCreateChallengeOpen(false)} onCreate={handleCreateCustomChallenge} />
         <Navigation activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
 
         <main className="flex-1 md:ml-20 pb-24 md:pb-8 relative z-10 transition-all duration-300">
@@ -1213,7 +1706,7 @@ const App: React.FC = () => {
           </header>
 
           <div className="p-6 max-w-7xl mx-auto">
-            {/* --- JOURNAL --- */}
+            {/* ... (Existing Journal View) ... */}
             {activeTab === 'journal' && (
                 <div className="space-y-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1310,7 +1803,7 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- CHALLENGES --- */}
+            {/* --- CHALLENGES (OVERHAULED) --- */}
             {activeTab === 'challenges' && (
                 <div className="h-full">
                     {!activeChallenge ? (
@@ -1319,7 +1812,7 @@ const App: React.FC = () => {
                                 <h2 className="text-3xl font-display font-bold text-white mb-2">Select Your Protocol</h2>
                                 <p className="text-slate-400">Choose a discipline challenge to forge your mindset.</p>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                                 <Card className="relative overflow-hidden group hover:border-cyan-500/50 transition-all cursor-pointer" onClick={() => handleStartChallenge('monk')}>
                                     <div className="absolute inset-0 bg-gradient-to-b from-cyan-900/10 to-transparent opacity-50"></div>
                                     <div className="relative z-10 text-center space-y-4">
@@ -1329,7 +1822,7 @@ const App: React.FC = () => {
                                         <p className="text-sm text-slate-400">A short reset for focus. Meditation, minimal trading, clear mind.</p>
                                         <ul className="text-left text-xs text-slate-300 space-y-2 bg-black/30 p-4 rounded-xl">
                                             <li>• 10m Meditation Daily</li>
-                                            <li>• No Overtrading</li>
+                                            <li>• No Overtrading (Max 3)</li>
                                             <li>• Journal All Trades</li>
                                         </ul>
                                         <Button className="w-full" variant="neon">Begin Protocol</Button>
@@ -1343,9 +1836,9 @@ const App: React.FC = () => {
                                         <Badge color="purple">30 Days</Badge>
                                         <p className="text-sm text-slate-400">Strict risk management. One violation resets the clock.</p>
                                         <ul className="text-left text-xs text-slate-300 space-y-2 bg-black/30 p-4 rounded-xl">
-                                            <li>• Strict Max Loss Limit</li>
-                                            <li>• Cold Exposure Daily</li>
+                                            <li>• Max Loss $500</li>
                                             <li>• Review Playbook</li>
+                                            <li>• Cold Shower</li>
                                         </ul>
                                         <Button className="w-full bg-purple-600 hover:bg-purple-500" variant="primary">Begin Protocol</Button>
                                     </div>
@@ -1359,103 +1852,158 @@ const App: React.FC = () => {
                                         <p className="text-sm text-slate-400">The ultimate test. Mental and physical hardening.</p>
                                         <ul className="text-left text-xs text-slate-300 space-y-2 bg-black/30 p-4 rounded-xl">
                                             <li>• 2x Workouts Daily</li>
-                                            <li>• Strict Diet (No Alcohol)</li>
+                                            <li>• Max Loss $250</li>
                                             <li>• Trade Only A+ Setups</li>
                                         </ul>
                                         <Button className="w-full" variant="danger">Begin Protocol</Button>
                                     </div>
                                 </Card>
+                                
+                                {/* CUSTOM CHALLENGE CARD */}
+                                <Card className="relative overflow-hidden group hover:border-amber-500/50 transition-all cursor-pointer flex flex-col items-center justify-center border-dashed border-2 border-white/10" onClick={() => setIsCreateChallengeOpen(true)}>
+                                    <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4 group-hover:scale-110 transition-transform"><Wand2 size={32}/></div>
+                                    <h3 className="text-lg font-bold text-white mb-2">Create Custom</h3>
+                                    <p className="text-xs text-slate-500 text-center">Design your own rules, duration, and tribunal system.</p>
+                                </Card>
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-6 animate-fade-in">
-                            {/* Dashboard Hero */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <Card className="md:col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 border-white/10 relative overflow-hidden">
-                                     <div className="absolute top-0 right-0 p-8 opacity-10"><Swords size={120} /></div>
-                                     <div className="relative z-10 flex items-center justify-between">
-                                         <div>
-                                             <div className="flex items-center gap-3 mb-2">
-                                                <h2 className="text-2xl font-bold text-white">{activeChallenge.title}</h2>
-                                                <Badge color="cyan">Active</Badge>
-                                             </div>
-                                             <div className="text-5xl font-mono font-bold text-white mb-2">Day {activeChallenge.currentDay} <span className="text-lg text-slate-500 font-sans font-normal">of {activeChallenge.totalDays}</span></div>
-                                             <div className="w-full h-2 bg-slate-800 rounded-full mt-4 max-w-sm overflow-hidden">
-                                                 <div className="h-full bg-cyan-500 shadow-[0_0_10px_cyan]" style={{ width: `${(activeChallenge.currentDay / activeChallenge.totalDays) * 100}%` }}></div>
-                                             </div>
-                                         </div>
-                                         <div className="text-right hidden md:block">
-                                             <div className="text-xs text-slate-400 uppercase font-bold mb-2">Mentor says</div>
-                                             <div className="bg-black/30 p-4 rounded-xl border border-white/5 max-w-xs italic text-sm text-slate-300">
-                                                 "{challengeMotivation}"
-                                             </div>
-                                         </div>
-                                     </div>
-                                </Card>
-                                <Card className="flex flex-col justify-center items-center bg-[#0B0F19]">
-                                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Challenge Status</h3>
-                                     <div className="relative w-32 h-32 flex items-center justify-center">
-                                         <svg className="w-full h-full transform -rotate-90">
-                                             <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
-                                             <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-emerald-500" strokeDasharray={351} strokeDashoffset={351 - (351 * (activeChallenge.currentDay / activeChallenge.totalDays))} />
-                                         </svg>
-                                         <div className="absolute text-2xl font-bold text-white">{Math.round((activeChallenge.currentDay / activeChallenge.totalDays) * 100)}%</div>
-                                     </div>
-                                     <Button variant="danger" size="sm" className="mt-6 w-full" onClick={handleChallengeFail}>I Failed Today</Button>
-                                </Card>
+                        <div className="space-y-6 animate-fade-in relative">
+                            {/* --- HERO'S JOURNEY HEADER --- */}
+                            <div className="flex items-end justify-between mb-4 border-b border-white/5 pb-4">
+                                <div>
+                                    <h2 className="text-3xl font-display font-bold text-white flex items-center gap-3">
+                                        {activeChallenge.title}
+                                        <Badge color="cyan">Level {currentLevel}</Badge>
+                                    </h2>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <div className="w-48 h-2 bg-slate-800 rounded-full overflow-hidden">
+                                            <div className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-1000" style={{ width: `${xpProgress}%` }}></div>
+                                        </div>
+                                        <span className="text-xs text-slate-500">{currentXP} XP</span>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="secondary" size="sm" onClick={() => setShowShareCard(!showShareCard)}>
+                                        <Share2 size={16} className="mr-2"/> Proof of Discipline
+                                    </Button>
+                                    <Button variant="danger" size="sm" onClick={handleChallengeFail}>
+                                        <AlertCircle size={16} className="mr-2"/> Report Failure
+                                    </Button>
+                                </div>
                             </div>
+                            
+                            {/* SHARE CARD MODAL */}
+                            {showShareCard && (
+                                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4" onClick={() => setShowShareCard(false)}>
+                                    <div className="space-y-4" onClick={e => e.stopPropagation()}>
+                                        <ShareableChallengeCard challenge={activeChallenge} user={user?.displayName || 'Trader'} winRate={winRate} pnl={totalPnL} />
+                                        <div className="text-center">
+                                            <p className="text-xs text-slate-500 mb-2">Screenshot this card to share.</p>
+                                            <Button variant="neon" size="sm" onClick={() => setShowShareCard(false)}>Close</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* Daily Checklist */}
-                                <div className="lg:col-span-1 space-y-4">
-                                     <h3 className="text-lg font-bold text-white">Daily Tasks</h3>
-                                     <div className="space-y-2">
+                            {/* MAIN DASHBOARD */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* STREAK FLAME CARD */}
+                                <Card className="bg-[#0B0F19] flex flex-col items-center justify-center relative overflow-hidden group">
+                                     <div className="absolute inset-0 bg-gradient-to-t from-orange-500/10 to-transparent opacity-50"></div>
+                                     <FlameStreak streak={activeChallenge.currentDay} />
+                                     <div className="relative z-10 text-center mt-4">
+                                         <div className="text-4xl font-display font-bold text-white">Day {activeChallenge.currentDay}</div>
+                                         <div className="text-xs text-slate-400 uppercase tracking-widest">of {activeChallenge.totalDays}</div>
+                                     </div>
+                                     {activeChallenge.stakes && <div className="mt-4 p-2 bg-red-900/20 text-red-300 text-[10px] rounded border border-red-500/20 max-w-[200px] text-center">"{activeChallenge.stakes}"</div>}
+                                </Card>
+
+                                {/* DAILY TASKS (THE TRIBUNAL) */}
+                                <div className="md:col-span-2">
+                                     <div className="flex items-center justify-between mb-4">
+                                         <h3 className="text-lg font-bold text-white flex items-center gap-2"><CheckSquare className="text-emerald-500"/> Daily Tribunal</h3>
+                                         <span className="text-xs text-slate-500 italic">Auto-verified by TradeFlow</span>
+                                     </div>
+                                     <div className="space-y-3">
                                          {activeChallenge.days[activeChallenge.currentDay - 1]?.tasks.map((task) => (
                                              <div key={task.id} 
-                                                className={`p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${task.completed ? 'bg-emerald-900/10 border-emerald-500/30' : 'bg-slate-900 border-white/5 hover:border-cyan-500/30'}`}
-                                                onClick={() => handleChallengeTaskToggle(activeChallenge.currentDay - 1, task.id)}
+                                                className={`p-4 rounded-xl border flex items-center justify-between transition-all relative overflow-hidden ${
+                                                    task.status === 'failed' ? 'bg-rose-900/20 border-rose-500/50' :
+                                                    task.completed ? 'bg-emerald-900/10 border-emerald-500/30' : 
+                                                    'bg-slate-900 border-white/5 hover:border-cyan-500/30'
+                                                }`}
                                              >
-                                                 <div className="flex items-center gap-3">
-                                                     <div className={`w-6 h-6 rounded-md flex items-center justify-center border ${task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-600 bg-transparent'}`}>
+                                                 {/* Status Indicator */}
+                                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                                                     task.status === 'failed' ? 'bg-rose-500' : 
+                                                     task.status === 'passing' ? 'bg-yellow-500' :
+                                                     task.completed ? 'bg-emerald-500' : 'bg-slate-700'
+                                                 }`}></div>
+
+                                                 <div className="flex items-center gap-4 pl-4">
+                                                     <button 
+                                                        onClick={() => handleChallengeTaskToggle(activeChallenge.currentDay - 1, task.id)}
+                                                        disabled={task.verificationType !== 'manual' && task.status === 'failed'}
+                                                        className={`w-6 h-6 rounded-md flex items-center justify-center border transition-all ${
+                                                            task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 
+                                                            task.status === 'failed' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
+                                                            'border-slate-600 bg-transparent hover:border-cyan-400'
+                                                        }`}
+                                                     >
                                                          {task.completed && <Check size={14} />}
+                                                         {task.status === 'failed' && <X size={14} />}
+                                                     </button>
+                                                     <div>
+                                                         <span className={`${task.completed ? 'text-emerald-400 line-through' : task.status === 'failed' ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>{task.label}</span>
+                                                         {task.verificationType !== 'manual' && (
+                                                             <div className="flex items-center gap-1 mt-1">
+                                                                 <Badge color={task.status === 'failed' ? 'red' : task.status === 'passing' ? 'yellow' : 'gray'}>
+                                                                     {task.status === 'passing' ? 'LIVE MONITORING' : task.status === 'failed' ? 'VIOLATION DETECTED' : 'AUTO'}
+                                                                 </Badge>
+                                                                 <span className="text-[10px] text-slate-500">
+                                                                     {task.verificationType === 'max_loss' ? `(Limit: $${task.threshold})` : 
+                                                                      task.verificationType === 'max_trades' ? `(Limit: ${task.threshold})` : ''}
+                                                                 </span>
+                                                             </div>
+                                                         )}
                                                      </div>
-                                                     <span className={task.completed ? 'text-emerald-400 line-through' : 'text-slate-300'}>{task.label}</span>
                                                  </div>
                                              </div>
                                          ))}
                                      </div>
                                 </div>
-
-                                {/* Progress Map */}
-                                <div className="lg:col-span-2">
-                                     <Card className="h-full">
-                                         <h3 className="text-lg font-bold text-white mb-4">Consistency Map</h3>
-                                         <div className="grid grid-cols-10 gap-2">
-                                             {activeChallenge.days.map((day) => {
-                                                 const isPast = day.dayNumber < activeChallenge.currentDay;
-                                                 const isToday = day.dayNumber === activeChallenge.currentDay;
-                                                 const allDone = day.tasks.every(t => t.completed);
-                                                 
-                                                 return (
-                                                     <div key={day.dayNumber} className={`aspect-square rounded-md flex items-center justify-center text-xs font-bold border ${
-                                                         isToday ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400 animate-pulse' :
-                                                         isPast && allDone ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' :
-                                                         isPast && !allDone ? 'bg-rose-500/20 border-rose-500/50 text-rose-400' :
-                                                         'bg-slate-800 border-slate-700 text-slate-600'
-                                                     }`}>
-                                                         {day.dayNumber}
-                                                     </div>
-                                                 );
-                                             })}
-                                         </div>
-                                     </Card>
-                                </div>
                             </div>
+                            
+                            {/* PROGRESS MAP */}
+                            <Card className="mt-6">
+                                 <h3 className="text-lg font-bold text-white mb-4">The Journey</h3>
+                                 <div className="grid grid-cols-10 gap-2">
+                                     {activeChallenge.days.map((day) => {
+                                         const isPast = day.dayNumber < activeChallenge.currentDay;
+                                         const isToday = day.dayNumber === activeChallenge.currentDay;
+                                         const allDone = day.tasks.every(t => t.completed);
+                                         
+                                         return (
+                                             <div key={day.dayNumber} className={`aspect-square rounded-md flex items-center justify-center text-xs font-bold border transition-all ${
+                                                 isToday ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400 shadow-[0_0_10px_cyan]' :
+                                                 isPast && allDone ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' :
+                                                 isPast && !allDone ? 'bg-rose-500/20 border-rose-500/50 text-rose-400' :
+                                                 'bg-slate-800 border-slate-700 text-slate-600 opacity-50'
+                                             }`}>
+                                                 {day.dayNumber}
+                                             </div>
+                                         );
+                                     })}
+                                 </div>
+                             </Card>
                         </div>
                     )}
                 </div>
             )}
             
+            {/* ... (Existing Analytics, Playbook, etc. Tabs) ... */}
+            {/* ... [Analytics, Playbook, Community, Mindset, Red Folder, AI Coach, Profile views remain unchanged] ... */}
             {activeTab === 'analytics' && (
                 <div className="space-y-6 flex flex-col">
                     <Card className="flex items-center justify-between bg-gradient-to-r from-blue-900/20 to-transparent border-blue-500/20">
@@ -1515,7 +2063,6 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- PLAYBOOK --- */}
             {activeTab === 'playbook' && (
                 <div className="space-y-6">
                     {/* Header Controls */}
@@ -1594,7 +2141,6 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- COMMUNITY --- */}
             {activeTab === 'community' && (
                 <div className="max-w-2xl mx-auto space-y-6">
                     <div className="flex items-center gap-2 mb-6">
@@ -1629,7 +2175,6 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* --- MINDSET --- */}
             {activeTab === 'discipline' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
                     {/* Col 1: Protocol */}
@@ -1685,8 +2230,8 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- RED FOLDER (NEWS) --- */}
-            {activeTab === 'news' && (
+            {/* ... [Rest of tabs remain same] ... */}
+             {activeTab === 'news' && (
                 <div className="space-y-6">
                     {/* Market Clocks */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1764,7 +2309,6 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- AI COACH --- */}
             {activeTab === 'ai-coach' && (
                 <div className="h-[calc(100vh-140px)] flex flex-col max-w-4xl mx-auto">
                      <Card className="flex-1 flex flex-col overflow-hidden bg-[#0B0F19] border-white/10 relative">
@@ -1831,7 +2375,6 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- PROFILE --- */}
             {activeTab === 'profile' && user && (
                  <div className="max-w-4xl mx-auto space-y-8">
                      {/* Identity Card */}
@@ -1848,8 +2391,8 @@ const App: React.FC = () => {
                          <div className="text-center md:text-left z-10">
                              <h2 className="text-3xl font-display font-bold text-white mb-2">{user.displayName}</h2>
                              <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
-                                 <Badge color="cyan">PRO PLAN</Badge>
-                                 <span className="text-slate-400 text-sm">Member since 2024</span>
+                                 <Badge color={userRank.color as any}>{userRank.title}</Badge>
+                                 <span className="text-slate-400 text-sm">Member since {new Date(user.metadata.creationTime || Date.now()).toLocaleDateString()}</span>
                              </div>
                              <div className="flex gap-4">
                                  <div className="text-center px-4 py-2 bg-white/5 rounded-xl border border-white/5">
@@ -1867,7 +2410,7 @@ const App: React.FC = () => {
                      <div className="flex flex-col md:flex-row gap-8">
                          {/* Settings Sidebar */}
                          <div className="w-full md:w-64 space-y-2">
-                             {['account', 'billing', 'data', 'security'].map(t => (
+                             {['account', 'stats', 'data', 'security'].map(t => (
                                  <button 
                                     key={t} 
                                     onClick={() => setProfileSettingsTab(t)}
@@ -1888,6 +2431,29 @@ const App: React.FC = () => {
                                          <div><label className="text-xs text-slate-500 uppercase font-bold">Email</label><Input defaultValue={user.email || ''} disabled className="opacity-50" /></div>
                                      </div>
                                      <Button variant="secondary">Update Profile</Button>
+                                 </div>
+                             )}
+                             {profileSettingsTab === 'stats' && (
+                                 <div className="space-y-6">
+                                     <h3 className="text-xl font-bold text-white border-b border-white/5 pb-4">Detailed Statistics</h3>
+                                     <div className="grid grid-cols-2 gap-4">
+                                         <div className="p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                                            <div className="text-xs text-emerald-400 uppercase font-bold mb-1">Best Trade</div>
+                                            <div className="text-2xl font-mono font-bold text-white">{formatCurrency(bestTrade)}</div>
+                                         </div>
+                                         <div className="p-4 bg-rose-500/10 rounded-xl border border-rose-500/20">
+                                            <div className="text-xs text-rose-400 uppercase font-bold mb-1">Worst Trade</div>
+                                            <div className="text-2xl font-mono font-bold text-white">{formatCurrency(worstTrade)}</div>
+                                         </div>
+                                         <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                                            <div className="text-xs text-slate-400 uppercase font-bold mb-1">Avg Win</div>
+                                            <div className="text-xl font-mono font-bold text-white">{formatCurrency(avgWin)}</div>
+                                         </div>
+                                         <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                                            <div className="text-xs text-slate-400 uppercase font-bold mb-1">Avg Loss</div>
+                                            <div className="text-xl font-mono font-bold text-white">{formatCurrency(avgLoss)}</div>
+                                         </div>
+                                     </div>
                                  </div>
                              )}
                              {profileSettingsTab === 'data' && (
