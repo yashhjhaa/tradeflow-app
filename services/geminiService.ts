@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI } from "@google/genai";
 import { Trade, CalendarEvent, ChatMessage } from "../types";
 
@@ -531,3 +532,26 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
       };
   }
 }
+
+export const generateChallengeMotivation = async (day: number, challengeTitle: string): Promise<string> => {
+    if (!ai) return "Stay hard. Stay disciplined.";
+    try {
+        const prompt = `
+            You are a Stoic Trading Mentor and Drill Sergeant. 
+            The user is on Day ${day} of the "${challengeTitle}" challenge.
+            
+            Give them a short, punchy (1-2 sentences) motivational quote or directive to stay the course.
+            If Day 1: Welcome to hell/glory.
+            If Day 7/14/etc: Acknowledge the milestone.
+            If middle days: Remind them why they started.
+        `;
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: { thinkingConfig: { thinkingBudget: 4096 } }
+        });
+        return response.text || "Keep pushing.";
+    } catch(e) {
+        return "Discipline equals freedom.";
+    }
+};
