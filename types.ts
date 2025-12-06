@@ -1,4 +1,5 @@
 
+
 export enum TradeDirection {
   BUY = 'BUY',
   SELL = 'SELL',
@@ -51,6 +52,7 @@ export interface Trade {
   confidence?: number; // 1-100
   setup?: string; // e.g. "Breakout"
   checklistScore?: string; // Grade (A, B, C...)
+  dailyBias?: 'Bullish' | 'Bearish' | 'Neutral'; // AI Context
 }
 
 export interface DisciplineLog {
@@ -87,7 +89,6 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-
 export interface TradeFilter {
   pair: string;
   outcome: TradeOutcome | 'all';
@@ -95,3 +96,32 @@ export interface TradeFilter {
 }
 
 export type DateRange = '7d' | '30d' | '90d' | 'all';
+
+// --- CHALLENGE TYPES ---
+export interface ChallengeTask {
+    id: string;
+    label: string;
+    completed: boolean;
+}
+
+export interface ChallengeDay {
+    dayNumber: number; // 1 to totalDays
+    date: string; // ISO
+    tasks: ChallengeTask[];
+    status: 'completed' | 'failed' | 'active' | 'pending';
+    notes?: string;
+}
+
+export interface Challenge {
+    id: string;
+    userId: string;
+    title: string; // e.g., "Trader 75"
+    description: string;
+    totalDays: number; // e.g. 75
+    startDate: string;
+    currentDay: number;
+    status: 'active' | 'completed' | 'failed';
+    days: ChallengeDay[];
+    rules: string[]; // List of rules
+    theme: 'iron' | 'monk' | 'savage';
+}
