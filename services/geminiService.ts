@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI } from "@google/genai";
 import { Trade, CalendarEvent, ChatMessage } from "../types";
 
@@ -16,6 +14,40 @@ const getApiKey = () => {
 
 const apiKey = getApiKey();
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+
+// --- ROBUST FALLBACK WRAPPER ---
+// If the Pro model (Thinking Mode) fails due to timeouts/availability (XHR Error),
+// automatically fallback to Flash to keep the app functional.
+const generateWithFallback = async (
+  primaryModel: string, 
+  args: any, 
+  fallbackModel: string = 'gemini-2.5-flash'
+) => {
+  if (!ai) throw new Error("AI not initialized");
+
+  try {
+    return await ai.models.generateContent({
+      model: primaryModel,
+      ...args
+    });
+  } catch (error: any) {
+    console.warn(`Primary model ${primaryModel} failed. Falling back to ${fallbackModel}. Error:`, error);
+    
+    // Clean config for fallback (Flash doesn't support thinkingConfig)
+    const { config, ...rest } = args;
+    const fallbackConfig = { ...config };
+    if (fallbackConfig.thinkingConfig) {
+      delete fallbackConfig.thinkingConfig;
+    }
+
+    // Retry with fallback
+    return await ai.models.generateContent({
+      model: fallbackModel,
+      config: fallbackConfig,
+      ...rest
+    });
+  }
+};
 
 export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
   if (!ai) return "AI Analysis Unavailable (API Key Missing)";
@@ -42,13 +74,15 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
       Format the output clearly in Markdown. Be direct and concise.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 32768 }
+    const response = await generateWithFallback(
+      'gemini-3-pro-preview',
+      {
+        contents: prompt,
+        config: {
+          thinkingConfig: { thinkingBudget: 16384 } // Reduced budget for stability
+        }
       }
-    });
+    );
 
     return response.text || "Could not generate analysis.";
   } catch (error) {
@@ -82,17 +116,19 @@ export const analyzeDeepPsychology = async (trade: Trade): Promise<string> => {
             Output Format: Markdown. Be direct, professional, and insightful.
         `;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
+        const response = await generateWithFallback(
+          'gemini-3-pro-preview',
+          {
             contents: prompt,
             config: {
-                thinkingConfig: { thinkingBudget: 32768 }
+                thinkingConfig: { thinkingBudget: 16384 }
             }
-        });
+          }
+        );
 
         return response.text || "Could not generate deep analysis.";
     } catch (e) {
-        return "Analysis failed.";
+        return "Analysis failed. Please check connection.";
     }
 };
 
@@ -102,6 +138,8 @@ export const analyzeTradeScreenshot = async (base64Image: string, pair: string):
   try {
     const base64Data = base64Image.replace(/^data:image\/(png|jpg|jpeg|webp);base64,/, "");
 
+    // Vision tasks are best on Flash 2.5 currently or Pro 3 Vision if available. 
+    // Sticking to Flash 2.5 for speed/reliability on images.
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: {
@@ -148,13 +186,15 @@ export const generatePerformanceReview = async (trades: Trade[]): Promise<string
         4. **Rating**: (1-10)
       `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview', 
-        contents: prompt,
-        config: {
-          thinkingConfig: { thinkingBudget: 32768 }
+      const response = await generateWithFallback(
+        'gemini-3-pro-preview',
+        {
+            contents: prompt,
+            config: {
+              thinkingConfig: { thinkingBudget: 16384 }
+            }
         }
-      });
+      );
   
       return response.text || "Review unavailable.";
     } catch (error) {
@@ -188,13 +228,15 @@ export const generateTradingStrategy = async (concept: string): Promise<string> 
             - R:R Expectancy
         `;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: {
-                thinkingConfig: { thinkingBudget: 32768 }
+        const response = await generateWithFallback(
+            'gemini-3-pro-preview',
+            {
+                contents: prompt,
+                config: {
+                    thinkingConfig: { thinkingBudget: 16384 }
+                }
             }
-        });
+        );
 
         return response.text || "Could not generate strategy.";
     } catch (e) {
@@ -216,10 +258,10 @@ export const generateStrategyChecklist = async (strategyText: string): Promise<s
             
             Output ONLY the JSON array.
         `;
+        // Using Flash for speed on simple extraction
         const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-2.5-flash',
             contents: prompt,
-            config: { thinkingConfig: { thinkingBudget: 8192 } }
         });
         
         const text = response.text || "[]";
@@ -240,11 +282,13 @@ export const analyzeStrategyEdgeCases = async (strategyText: string): Promise<st
             
             Output a concise bulleted list (Markdown) of 3 specific market conditions to AVOID when using this system.
         `;
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: { thinkingConfig: { thinkingBudget: 8192 } }
-        });
+        const response = await generateWithFallback(
+            'gemini-3-pro-preview',
+            {
+                contents: prompt,
+                config: { thinkingConfig: { thinkingBudget: 8192 } }
+            }
+        );
         return response.text || "Avoid high impact news events.";
     } catch(e) {
         return "Avoid News Events.";
@@ -271,13 +315,15 @@ export const critiqueTradingStrategy = async (strategy: string): Promise<string>
             (1-10)/10
         `;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: {
-                thinkingConfig: { thinkingBudget: 32768 }
+        const response = await generateWithFallback(
+            'gemini-3-pro-preview',
+            {
+                contents: prompt,
+                config: {
+                    thinkingConfig: { thinkingBudget: 16384 }
+                }
             }
-        });
+        );
 
         return response.text || "Could not critique strategy.";
     } catch (e) {
@@ -289,8 +335,6 @@ export const transcribeAudioNote = async (base64Audio: string): Promise<{ text: 
   if (!ai) return { text: "AI Unavailable", sentiment: "Neutral" };
   try {
     const base64Data = base64Audio.split(',')[1] || base64Audio;
-    // We assume the browser records in webm, but Gemini handles various formats.
-    // mimeType 'audio/webm' is standard for MediaRecorder.
     
     const prompt = `
       Transcribe this audio recording of a trader's notes.
@@ -302,6 +346,7 @@ export const transcribeAudioNote = async (base64Audio: string): Promise<{ text: 
         "sentiment": "Confident"
       }
       
+      IMPORTANT: Ensure no unescaped double quotes are used inside the JSON string values.
       Only output the JSON.
     `;
 
@@ -345,16 +390,20 @@ export const validateTradeAgainstStrategy = async (trade: any, strategyRules: st
       "valid": boolean,
       "reason": "Short explanation if invalid, otherwise 'Looks good'"
     }
+    
+    IMPORTANT: Ensure no unescaped double quotes are used inside the 'reason' string. Use single quotes if needed.
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 4096 }
-      }
-    });
+    const response = await generateWithFallback(
+        'gemini-3-pro-preview',
+        {
+            contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 4096 }
+            }
+        }
+    );
 
     const jsonText = response.text || "{}";
     const cleanJson = jsonText.match(/\{[\s\S]*\}/)?.[0] || "{}";
@@ -414,17 +463,15 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
       
       let context = "You are an expert trading coach and technical analyst. Be concise, professional, and helpful. If an image is provided, analyze the chart market structure, liquidity zones, and price action patterns.\n\n";
       
-      // Add History
       if (history.length > 0) {
           context += "Previous conversation:\n" + history.slice(-6).map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n') + "\n\n";
       }
       
-      // Add Image if present
       if (image) {
           const base64Data = image.replace(/^data:image\/(png|jpg|jpeg|webp);base64,/, "");
           parts.push({
               inlineData: {
-                  mimeType: 'image/png', // Gemini supports png/jpeg/webp
+                  mimeType: 'image/png', 
                   data: base64Data
               }
           });
@@ -434,13 +481,15 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
       context += "User Query: " + newMessage;
       parts.push({ text: context });
   
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents: { parts },
-        config: {
-          thinkingConfig: { thinkingBudget: 32768 }
-        }
-      });
+      const response = await generateWithFallback(
+          'gemini-3-pro-preview',
+          {
+            contents: { parts },
+            config: {
+                thinkingConfig: { thinkingBudget: 16384 }
+            }
+          }
+      );
   
       return response.text || "No response.";
     } catch (e) {
@@ -452,28 +501,27 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
 export const getLiveMarketNews = async (): Promise<{sentiment: string, events: CalendarEvent[]}> => {
   if (!ai) {
       return { 
-          sentiment: "Demo Mode: API Key missing. Please set VITE_API_KEY in Vercel environment variables to enable live data.", 
+          sentiment: "Demo Mode: API Key missing.", 
           events: [
               { id: '1', time: '08:30 AM', currency: 'USD', impact: 'High', event: 'CPI m/m', actual: '0.4%', forecast: '0.3%', previous: '0.4%', isBetter: false },
               { id: '2', time: '02:00 PM', currency: 'USD', impact: 'High', event: 'FOMC Statement', actual: '', forecast: '', previous: '', isBetter: false },
-              { id: '3', time: '02:30 PM', currency: 'USD', impact: 'High', event: 'FOMC Press Conference', actual: '', forecast: '', previous: '', isBetter: false },
           ] 
       };
   }
 
   try {
+      // Flash 2.5 is sufficient and faster for Search
       const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: `
             Retrieve the upcoming High Impact "Red Folder" economic calendar events for the current week.
             Focus on major pairs (USD, EUR, GBP, JPY).
-            Look for: FOMC, CPI, NFP, GDP, Interest Rate Decisions, PPI, Retail Sales.
             
-            Provide 2 things:
+            Provide:
             1. A short "Weekly Outlook" summary (2 sentences).
             2. A list of 5-7 HIGH IMPACT events.
 
-            Strictly output valid JSON in the following format:
+            Strictly output valid JSON:
             {
               "sentiment": "string",
               "events": [
@@ -485,49 +533,45 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
                    "actual": "Value or --",
                    "forecast": "Value or --",
                    "previous": "Value or --",
-                   "isBetter": boolean (true if actual is better than forecast for the currency)
+                   "isBetter": boolean
                 }
               ]
             }
 
-            Use Google Search to get the latest calendar data from ForexFactory or TradingEconomics.
+            CRITICAL FORMATTING RULES:
+            1. The response MUST be valid JSON.
+            2. Do NOT use double quotes (") inside any string value. Use single quotes (') instead. 
+               Example: "sentiment": "The 'Red Folder' events are..." 
+               INCORRECT: "sentiment": "The "Red Folder" events are..."
+            3. Do not include markdown formatting (like \`\`\`json). Just the raw JSON object.
           `,
           config: {
               tools: [{ googleSearch: {} }],
           }
       });
 
-      let sourcesText = "";
-      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      if (chunks) {
-        const urls = chunks
-            .map((c: any) => c.web?.uri)
-            .filter((u: string) => u);
-        if (urls.length > 0) {
-            sourcesText = "\n\nSources:\n" + [...new Set(urls)].map((u: unknown) => `- ${u}`).join('\n');
-        }
-      }
-
       const jsonText = response.text || "{}";
-      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      // Enhance cleaning to remove possible markdown
+      const cleanText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
       
       let data;
       try {
         data = JSON.parse(cleanJson);
       } catch (parseError) {
-        console.error("JSON Parse Failed:", parseError, cleanJson);
-        return { sentiment: "Error parsing market data.", events: [] };
+        console.error("JSON Parse Error", parseError, cleanJson);
+        return { sentiment: "Error parsing live market data.", events: [] };
       }
       
       return {
-          sentiment: (data.sentiment || "Market data currently unavailable.") + sourcesText,
+          sentiment: data.sentiment || "Market data currently unavailable.",
           events: data.events || []
       };
   } catch (e) {
       console.error(e);
       return { 
-          sentiment: "Data unavailable.", 
+          sentiment: "Data unavailable (Connection Error).", 
           events: [] 
       };
   }
@@ -537,19 +581,17 @@ export const generateChallengeMotivation = async (day: number, challengeTitle: s
     if (!ai) return "Stay hard. Stay disciplined.";
     try {
         const prompt = `
-            You are a Stoic Trading Mentor and Drill Sergeant. 
+            You are a Stoic Trading Mentor. 
             The user is on Day ${day} of the "${challengeTitle}" challenge.
-            
-            Give them a short, punchy (1-2 sentences) motivational quote or directive to stay the course.
-            If Day 1: Welcome to hell/glory.
-            If Day 7/14/etc: Acknowledge the milestone.
-            If middle days: Remind them why they started.
+            Give them a short, punchy (1-2 sentences) motivational directive.
         `;
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: { thinkingConfig: { thinkingBudget: 4096 } }
-        });
+        const response = await generateWithFallback(
+            'gemini-3-pro-preview',
+            {
+                contents: prompt,
+                config: { thinkingConfig: { thinkingBudget: 4096 } }
+            }
+        );
         return response.text || "Keep pushing.";
     } catch(e) {
         return "Discipline equals freedom.";
