@@ -3,7 +3,7 @@ import React from 'react';
 export const Card: React.FC<{ children: React.ReactNode; className?: string; onClick?: React.MouseEventHandler<HTMLDivElement> }> = ({ children, className = '', onClick }) => (
   <div 
     onClick={onClick}
-    className={`glass-card rounded-3xl p-6 transition-all duration-300 relative overflow-hidden group ${onClick ? 'cursor-pointer active:scale-[0.98]' : ''} ${className}`}
+    className={`glass-card rounded-3xl p-6 transition-all duration-300 relative overflow-hidden group ${onClick ? 'cursor-pointer active:scale-[0.98] hover:scale-[1.02] hover:shadow-xl hover:shadow-cyan-500/10' : ''} ${className}`}
   >
     {/* Subtle gradient sheen on hover */}
     <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none duration-700" />
