@@ -1,4 +1,5 @@
 
+
 import { 
     collection, 
     query, 
@@ -24,7 +25,7 @@ import {
 } from "firebase/auth";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { auth, db, storage, isFirebaseReady } from "./firebase";
-import { Trade, Account, DisciplineLog } from "../types";
+import { Trade, Account, DisciplineLog, Challenge } from "../types";
 
 // Helper for permission errors
 const handleFirestoreError = (error: any) => {
@@ -109,8 +110,6 @@ export const registerUser = async (email: string, pass: string, username: string
         if (error.message.includes("Username is already taken")) {
             throw error;
         }
-        // If we created the user but DB failed, we strictly shouldn't leave them hanging, 
-        // but for now we just throw the error so the UI shows it.
         console.error("Registration Flow Error:", error);
         throw error;
     }
@@ -165,7 +164,7 @@ export const addTradeToDb = async (trade: Trade, userId: string): Promise<string
         return id;
     }
     
-    // Ensure we don't pass an undefined ID to addDoc
+    // Explicitly destructure to ensure we don't try to pass an undefined ID if it exists
     const { id, ...tradeData } = trade;
     const cleanData = cleanUndefined(tradeData);
     const docRef = await addDoc(collection(db, "trades"), { ...cleanData, userId });
@@ -206,8 +205,7 @@ export const subscribeToAccounts = (userId: string, callback: (accounts: Account
             callback(JSON.parse(local));
         } else {
              const defaults = [
-                { id: '1', name: 'Alpha Live', broker: 'IC Markets', balance: 10500, currency: 'USD', userId },
-                { id: '2', name: 'Prop Challenge', broker: 'FTMO', balance: 99800, currency: 'USD', userId },
+                { id: '1', name: 'Main Account', broker: 'Demo', balance: 10000, currency: 'USD', userId },
             ];
             callback(defaults);
             localStorage.setItem('accounts', JSON.stringify(defaults));
@@ -287,7 +285,6 @@ export const updateDisciplineLog = async (log: DisciplineLog, userId: string) =>
         window.dispatchEvent(new Event('localDataUpdate'));
         return;
     }
-    // Clean undefined values to prevent Firestore crash
     const cleanLog = cleanUndefined(log);
     await setDoc(doc(db, "discipline", log.id), { ...cleanLog, userId }, { merge: true });
 };
@@ -298,7 +295,6 @@ export const initializeTodayLog = async (userId: string) => {
     const today = new Date().toISOString().split('T')[0];
     const logId = `${userId}_${today}`;
     
-    // Check if exists
     const q = query(collection(db, "discipline"), where("__name__", "==", logId));
     const snap = await getDocs(q);
     
@@ -319,16 +315,79 @@ export const initializeTodayLog = async (userId: string) => {
 }
 
 // --- STORAGE ---
-export const uploadScreenshotToStorage = async (base64: string, userId: string) => {
-    if (!isFirebaseReady || !storage) return base64;
+export const uploadScreenshotToStorage = async (base64: string, userId: string): Promise<string | null> => {
+    // Safety check: if no base64, return null
+    if (!base64 || !base64.startsWith('data:image')) return null;
+
+    if (!isFirebaseReady || !storage) {
+        // If local demo mode, safe to return base64 locally
+        if (!isFirebaseReady) return base64;
+        return null; // Firestore is ready but Storage is not configured/enabled
+    }
 
     try {
-        const storageRef = ref(storage, `screenshots/${userId}/${Date.now()}.jpg`);
+        // Unique filename to prevent overwrites
+        const filename = `screenshots/${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+        const storageRef = ref(storage, filename);
+        
         const snapshot = await uploadString(storageRef, base64, 'data_url');
         const downloadURL = await getDownloadURL(snapshot.ref);
         return downloadURL;
     } catch (e) {
-        console.error("Upload failed", e);
-        return base64; 
+        console.error("Storage upload failed (safely handled)", e);
+        // Important: Return NULL so we don't crash Firestore with a huge base64 string
+        return null; 
     }
 };
+
+// --- CHALLENGES ---
+export const subscribeToChallenge = (userId: string, callback: (challenge: Challenge | null) => void) => {
+    if (!isFirebaseReady || !db) {
+        const local = localStorage.getItem('activeChallenge');
+        callback(local ? JSON.parse(local) : null);
+        window.addEventListener('challengeUpdate', () => {
+             const updated = localStorage.getItem('activeChallenge');
+             callback(updated ? JSON.parse(updated) : null);
+        });
+        return () => {};
+    }
+    
+    const q = query(collection(db, "challenges"), where("userId", "==", userId), where("status", "==", "active"));
+    return onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+            callback({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Challenge);
+        } else {
+            callback(null);
+        }
+    });
+};
+
+export const startChallenge = async (challenge: Challenge, userId: string) => {
+    if (!isFirebaseReady || !db) {
+        localStorage.setItem('activeChallenge', JSON.stringify({ ...challenge, userId }));
+        window.dispatchEvent(new Event('challengeUpdate'));
+        return;
+    }
+    
+    // Deactivate old challenges
+    const q = query(collection(db, "challenges"), where("userId", "==", userId), where("status", "==", "active"));
+    const snap = await getDocs(q);
+    snap.forEach(async (d) => {
+        await updateDoc(doc(db, "challenges", d.id), { status: 'failed' }); // or archived
+    });
+    
+    const { id, ...data } = challenge;
+    await addDoc(collection(db, "challenges"), { ...data, userId });
+};
+
+export const updateChallenge = async (challenge: Challenge) => {
+     if (!isFirebaseReady || !db) {
+        localStorage.setItem('activeChallenge', JSON.stringify(challenge));
+        window.dispatchEvent(new Event('challengeUpdate'));
+        return;
+    }
+    
+    const { id, ...data } = challenge;
+    if (!id) return;
+    await updateDoc(doc(db, "challenges", id), data);
+}
