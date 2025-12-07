@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation } from './services/geminiService';
@@ -1052,8 +1052,7 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                              <label className="text-xs text-slate-400">Notes & Analysis</label>
                              <button 
                                 onClick={toggleRecording} 
-                                className={`text-xs flex items-center gap-1 px-2 py-0.5 rounded-full transition-all ${isRecording ? 'bg-rose-500 text-white animate-pulse' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
-                             >
+                                className={`text-xs flex items-center gap-1 px-2 py-0.5 rounded-full transition-all ${isRecording ? 'bg-rose-500 text-white animate-pulse' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
                                  {isRecording ? <><StopCircle size={12}/> Recording...</> : <><Mic size={12}/> Voice Note</>}
                              </button>
                         </div>
@@ -1198,6 +1197,7 @@ const App: React.FC = () => {
 
   // Challenge State
   const [challengeMotivation, setChallengeMotivation] = useState('');
+  const [showSergeant, setShowSergeant] = useState(false); // AI Sergeant Modal
 
   // Mindset State
   const [journalTab, setJournalTab] = useState<'pre' | 'mid' | 'post'>('pre');
@@ -1599,6 +1599,14 @@ const App: React.FC = () => {
            setActiveChallenge(null);
        }
   };
+  
+  const handleResetChallenge = async () => {
+      if (!activeChallenge || !user) return;
+      if (confirm("⚠️ ABORT PROTOCOL: This will permanently abandon your current challenge. You cannot undo this.\n\nAre you sure you want to quit?")) {
+          await updateChallenge({ ...activeChallenge, status: 'failed' });
+          setActiveChallenge(null);
+      }
+  };
 
 
   // ... (handleCoachUpload, handleCoachSend, handleExportCSV, handleLogout)
@@ -1869,13 +1877,24 @@ const App: React.FC = () => {
                         </div>
                     ) : (
                         <div className="space-y-6 animate-fade-in relative">
-                            {/* --- HERO'S JOURNEY HEADER --- */}
+                            {/* --- HERO HEADER --- */}
                             <div className="flex items-end justify-between mb-4 border-b border-white/5 pb-4">
                                 <div>
-                                    <h2 className="text-3xl font-display font-bold text-white flex items-center gap-3">
-                                        {activeChallenge.title}
-                                        <Badge color="cyan">Level {currentLevel}</Badge>
-                                    </h2>
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-3xl font-display font-bold text-white flex items-center gap-3">
+                                            {activeChallenge.title}
+                                            <Badge color="cyan">Level {currentLevel}</Badge>
+                                        </h2>
+                                        {/* RESET / ABORT BUTTON */}
+                                        <Button 
+                                            variant="ghost" 
+                                            className="text-rose-500 hover:text-rose-400 hover:bg-rose-500/10" 
+                                            size="sm"
+                                            onClick={handleResetChallenge}
+                                        >
+                                            <RefreshCw size={14} className="mr-2"/> Abort Protocol
+                                        </Button>
+                                    </div>
                                     <div className="flex items-center gap-2 mt-2">
                                         <div className="w-48 h-2 bg-slate-800 rounded-full overflow-hidden">
                                             <div className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-1000" style={{ width: `${xpProgress}%` }}></div>
@@ -1886,9 +1905,6 @@ const App: React.FC = () => {
                                 <div className="flex gap-2">
                                     <Button variant="secondary" size="sm" onClick={() => setShowShareCard(!showShareCard)}>
                                         <Share2 size={16} className="mr-2"/> Proof of Discipline
-                                    </Button>
-                                    <Button variant="danger" size="sm" onClick={handleChallengeFail}>
-                                        <AlertCircle size={16} className="mr-2"/> Report Failure
                                     </Button>
                                 </div>
                             </div>
@@ -1916,62 +1932,104 @@ const App: React.FC = () => {
                                          <div className="text-4xl font-display font-bold text-white">Day {activeChallenge.currentDay}</div>
                                          <div className="text-xs text-slate-400 uppercase tracking-widest">of {activeChallenge.totalDays}</div>
                                      </div>
-                                     {activeChallenge.stakes && <div className="mt-4 p-2 bg-red-900/20 text-red-300 text-[10px] rounded border border-red-500/20 max-w-[200px] text-center">"{activeChallenge.stakes}"</div>}
+                                     {/* AI SERGEANT INTERACTION */}
+                                     <div className="mt-4 relative z-20">
+                                        <button 
+                                            onClick={() => setShowSergeant(!showSergeant)} 
+                                            className="text-[10px] flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1 rounded-full text-slate-300 transition-colors"
+                                        >
+                                            <Bot size={12}/> Report for Duty
+                                        </button>
+                                     </div>
+                                     {showSergeant && (
+                                         <div className="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 text-center animate-fade-in">
+                                             <div className="space-y-3">
+                                                 <Bot size={32} className="mx-auto text-cyan-400"/>
+                                                 <p className="text-sm font-bold text-white">"{challengeMotivation}"</p>
+                                                 <button onClick={() => setShowSergeant(false)} className="text-xs text-slate-500 hover:text-white mt-2">Dismiss</button>
+                                             </div>
+                                         </div>
+                                     )}
                                 </Card>
 
-                                {/* DAILY TASKS (THE TRIBUNAL) */}
-                                <div className="md:col-span-2">
-                                     <div className="flex items-center justify-between mb-4">
-                                         <h3 className="text-lg font-bold text-white flex items-center gap-2"><CheckSquare className="text-emerald-500"/> Daily Tribunal</h3>
-                                         <span className="text-xs text-slate-500 italic">Auto-verified by TradeFlow</span>
-                                     </div>
-                                     <div className="space-y-3">
-                                         {activeChallenge.days[activeChallenge.currentDay - 1]?.tasks.map((task) => (
-                                             <div key={task.id} 
-                                                className={`p-4 rounded-xl border flex items-center justify-between transition-all relative overflow-hidden ${
-                                                    task.status === 'failed' ? 'bg-rose-900/20 border-rose-500/50' :
-                                                    task.completed ? 'bg-emerald-900/10 border-emerald-500/30' : 
-                                                    'bg-slate-900 border-white/5 hover:border-cyan-500/30'
-                                                }`}
-                                             >
-                                                 {/* Status Indicator */}
-                                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                                                     task.status === 'failed' ? 'bg-rose-500' : 
-                                                     task.status === 'passing' ? 'bg-yellow-500' :
-                                                     task.completed ? 'bg-emerald-500' : 'bg-slate-700'
-                                                 }`}></div>
+                                {/* GLOBAL BENCHMARK STATS */}
+                                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <Card className="bg-gradient-to-br from-indigo-900/10 to-transparent border-indigo-500/20 relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10"><Globe size={64}/></div>
+                                            <h3 className="text-sm font-bold text-indigo-400 uppercase mb-1">Global Standing</h3>
+                                            <div className="text-3xl font-mono font-bold text-white">Top 12%</div>
+                                            <p className="text-xs text-slate-500 mt-2">Only 12% of traders make it to Day {activeChallenge.currentDay}.</p>
+                                        </Card>
+                                        
+                                        {/* DISCIPLINE LOG */}
+                                        <div className="bg-slate-900/50 rounded-xl p-4 border border-white/5">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase">Daily Log</h4>
+                                                <span className="text-[10px] text-slate-600">{new Date().toLocaleDateString()}</span>
+                                            </div>
+                                            <textarea 
+                                                className="w-full bg-black/30 text-sm text-slate-300 rounded-lg p-3 resize-none border-none focus:ring-1 focus:ring-indigo-500/50 outline-none" 
+                                                rows={3}
+                                                placeholder="How difficult was discipline today?"
+                                            />
+                                        </div>
+                                    </div>
 
-                                                 <div className="flex items-center gap-4 pl-4">
-                                                     <button 
-                                                        onClick={() => handleChallengeTaskToggle(activeChallenge.currentDay - 1, task.id)}
-                                                        disabled={task.verificationType !== 'manual' && task.status === 'failed'}
-                                                        className={`w-6 h-6 rounded-md flex items-center justify-center border transition-all ${
-                                                            task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 
-                                                            task.status === 'failed' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
-                                                            'border-slate-600 bg-transparent hover:border-cyan-400'
-                                                        }`}
-                                                     >
-                                                         {task.completed && <Check size={14} />}
-                                                         {task.status === 'failed' && <X size={14} />}
-                                                     </button>
-                                                     <div>
-                                                         <span className={`${task.completed ? 'text-emerald-400 line-through' : task.status === 'failed' ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>{task.label}</span>
-                                                         {task.verificationType !== 'manual' && (
-                                                             <div className="flex items-center gap-1 mt-1">
-                                                                 <Badge color={task.status === 'failed' ? 'red' : task.status === 'passing' ? 'yellow' : 'gray'}>
-                                                                     {task.status === 'passing' ? 'LIVE MONITORING' : task.status === 'failed' ? 'VIOLATION DETECTED' : 'AUTO'}
-                                                                 </Badge>
-                                                                 <span className="text-[10px] text-slate-500">
-                                                                     {task.verificationType === 'max_loss' ? `(Limit: $${task.threshold})` : 
-                                                                      task.verificationType === 'max_trades' ? `(Limit: ${task.threshold})` : ''}
-                                                                 </span>
-                                                             </div>
-                                                         )}
+                                    {/* DAILY TASKS (THE TRIBUNAL) */}
+                                    <div>
+                                         <div className="flex items-center justify-between mb-4">
+                                             <h3 className="text-lg font-bold text-white flex items-center gap-2"><CheckSquare className="text-emerald-500"/> Daily Tribunal</h3>
+                                             <span className="text-xs text-slate-500 italic">Auto-verified</span>
+                                         </div>
+                                         <div className="space-y-3">
+                                             {activeChallenge.days[activeChallenge.currentDay - 1]?.tasks.map((task) => (
+                                                 <div key={task.id} 
+                                                    className={`p-4 rounded-xl border flex items-center justify-between transition-all relative overflow-hidden ${
+                                                        task.status === 'failed' ? 'bg-rose-900/20 border-rose-500/50' :
+                                                        task.completed ? 'bg-emerald-900/10 border-emerald-500/30' : 
+                                                        'bg-slate-900 border-white/5 hover:border-cyan-500/30'
+                                                    }`}
+                                                 >
+                                                     {/* Status Indicator */}
+                                                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                                                         task.status === 'failed' ? 'bg-rose-500' : 
+                                                         task.status === 'passing' ? 'bg-yellow-500' :
+                                                         task.completed ? 'bg-emerald-500' : 'bg-slate-700'
+                                                     }`}></div>
+
+                                                     <div className="flex items-center gap-4 pl-4">
+                                                         <button 
+                                                            onClick={() => handleChallengeTaskToggle(activeChallenge.currentDay - 1, task.id)}
+                                                            disabled={task.verificationType !== 'manual' && task.status === 'failed'}
+                                                            className={`w-6 h-6 rounded-md flex items-center justify-center border transition-all ${
+                                                                task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 
+                                                                task.status === 'failed' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
+                                                                'border-slate-600 bg-transparent hover:border-cyan-400'
+                                                            }`}
+                                                         >
+                                                             {task.completed && <Check size={14} />}
+                                                             {task.status === 'failed' && <X size={14} />}
+                                                         </button>
+                                                         <div>
+                                                             <span className={`${task.completed ? 'text-emerald-400 line-through' : task.status === 'failed' ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>{task.label}</span>
+                                                             {task.verificationType !== 'manual' && (
+                                                                 <div className="flex items-center gap-1 mt-1">
+                                                                     <Badge color={task.status === 'failed' ? 'red' : task.status === 'passing' ? 'yellow' : 'gray'}>
+                                                                         {task.status === 'passing' ? 'LIVE MONITORING' : task.status === 'failed' ? 'VIOLATION DETECTED' : 'AUTO'}
+                                                                     </Badge>
+                                                                     <span className="text-[10px] text-slate-500">
+                                                                         {task.verificationType === 'max_loss' ? `(Limit: $${task.threshold})` : 
+                                                                          task.verificationType === 'max_trades' ? `(Limit: ${task.threshold})` : ''}
+                                                                     </span>
+                                                                 </div>
+                                                             )}
+                                                         </div>
                                                      </div>
                                                  </div>
-                                             </div>
-                                         ))}
-                                     </div>
+                                             ))}
+                                         </div>
+                                    </div>
                                 </div>
                             </div>
                             
