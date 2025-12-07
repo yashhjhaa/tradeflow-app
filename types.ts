@@ -98,10 +98,15 @@ export interface TradeFilter {
 export type DateRange = '7d' | '30d' | '90d' | 'all';
 
 // --- CHALLENGE TYPES ---
+export type VerificationType = 'manual' | 'max_loss' | 'max_trades' | 'journal_all';
+
 export interface ChallengeTask {
     id: string;
     label: string;
     completed: boolean;
+    verificationType: VerificationType;
+    threshold?: number; // e.g. 500 for max loss, 3 for max trades
+    status?: 'pending' | 'passing' | 'failed' | 'completed'; // For Tribunal Live Status
 }
 
 export interface ChallengeDay {
@@ -123,5 +128,8 @@ export interface Challenge {
     status: 'active' | 'completed' | 'failed';
     days: ChallengeDay[];
     rules: string[]; // List of rules
-    theme: 'iron' | 'monk' | 'savage';
+    theme: 'iron' | 'monk' | 'savage' | 'custom';
+    xp: number;
+    stakes?: string; // Custom stakes
+    themeColor?: string; // Custom theme color hex or tailwind class
 }
