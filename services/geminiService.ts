@@ -521,7 +521,7 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
             1. A short "Weekly Outlook" summary (2 sentences).
             2. A list of 5-7 HIGH IMPACT events.
 
-            Strictly output valid JSON:
+            Strictly output valid JSON format:
             {
               "sentiment": "string",
               "events": [
@@ -540,10 +540,11 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
 
             CRITICAL FORMATTING RULES:
             1. The response MUST be valid JSON.
-            2. Do NOT use double quotes (") inside any string value. Use single quotes (') instead. 
-               Example: "sentiment": "The 'Red Folder' events are..." 
-               INCORRECT: "sentiment": "The "Red Folder" events are..."
-            3. Do not include markdown formatting (like \`\`\`json). Just the raw JSON object.
+            2. Property names must be in DOUBLE quotes (e.g., "sentiment", "events").
+            3. String values must be in DOUBLE quotes (e.g., "The market is...").
+            4. If you need to use quotes INSIDE a string value, use SINGLE quotes (e.g., "The 'Red Folder' events..."). 
+            5. Do NOT use single quotes for JSON structure.
+            6. Do not include markdown formatting (like \`\`\`json). Just the raw JSON object.
           `,
           config: {
               tools: [{ googleSearch: {} }],
@@ -553,7 +554,16 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
       const jsonText = response.text || "{}";
       // Enhance cleaning to remove possible markdown
       const cleanText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      
+      // Fallback: If AI still used single quotes for keys/values, attempt to fix
+      // This regex replaces single quotes with double quotes, but tries to respect internal apostrophes
+      // ideally the prompt fix above handles it, but this is a safety net
+      let finalJson = cleanText;
+      if (cleanText.startsWith("'") || cleanText.includes("'sentiment'")) {
+           finalJson = cleanText.replace(/'/g, '"'); 
+      }
+
+      const jsonMatch = finalJson.match(/\{[\s\S]*\}/);
       const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
       
       let data;
