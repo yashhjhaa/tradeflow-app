@@ -1,6 +1,5 @@
-
-import React from 'react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar, Legend, ReferenceLine } from 'recharts';
+import React, { useState } from 'react';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar, Legend, ReferenceLine, Sector } from 'recharts';
 import { Trade, TradeOutcome, TradeDirection } from '../types';
 
 // --- HELPERS ---
@@ -52,6 +51,7 @@ export const EquityCurve: React.FC<{ trades: Trade[] }> = ({ trades }) => {
 };
 
 export const WinLossChart: React.FC<{ trades: Trade[] }> = ({ trades }) => {
+  const [activeIndex, setActiveIndex] = useState(-1);
   const wins = trades.filter(t => t.outcome === TradeOutcome.WIN).length;
   const losses = trades.filter(t => t.outcome === TradeOutcome.LOSS).length;
   const breakeven = trades.filter(t => t.outcome === TradeOutcome.BREAKEVEN).length;
@@ -64,10 +64,54 @@ export const WinLossChart: React.FC<{ trades: Trade[] }> = ({ trades }) => {
 
   const activeData = data.filter(d => d.value > 0);
 
+  const onPieEnter = (_: any, index: number) => {
+    setActiveIndex(index);
+  };
+  
+  const onPieLeave = () => {
+    setActiveIndex(-1);
+  };
+
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
+    return (
+      <g>
+        <text x={cx} y={cy} dy={-20} textAnchor="middle" fill={fill} className="text-xl font-bold font-mono" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+          {payload.name}
+        </text>
+        <text x={cx} y={cy} dy={5} textAnchor="middle" fill="#94a3b8" className="text-xs" style={{ fontSize: '0.85rem' }}>
+          {`${(percent * 100).toFixed(1)}%`}
+        </text>
+        <text x={cx} y={cy} dy={25} textAnchor="middle" fill="#64748b" className="text-xs" style={{ fontSize: '0.75rem' }}>
+          {value} Trades
+        </text>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius + 8}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          style={{ filter: `drop-shadow(0 0 8px ${fill})` }}
+        />
+        <Sector
+          cx={cx}
+          cy={cy}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          innerRadius={outerRadius + 10}
+          outerRadius={outerRadius + 12}
+          fill={fill}
+        />
+      </g>
+    );
+  };
+
   return (
     <div className="h-64 w-full flex items-center justify-center relative">
         <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
+        <PieChart onMouseLeave={onPieLeave}>
             <Pie
             data={activeData}
             cx="50%"
@@ -76,6 +120,9 @@ export const WinLossChart: React.FC<{ trades: Trade[] }> = ({ trades }) => {
             outerRadius={80}
             paddingAngle={5}
             dataKey="value"
+            onMouseEnter={onPieEnter}
+            cursor="pointer"
+            {...{ activeIndex, activeShape: renderActiveShape } as any}
             >
             {activeData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
@@ -84,15 +131,18 @@ export const WinLossChart: React.FC<{ trades: Trade[] }> = ({ trades }) => {
             <Tooltip 
                  contentStyle={{ backgroundColor: 'rgba(5,7,10,0.8)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px', backdropFilter: 'blur(10px)' }}
                  itemStyle={{ color: '#fff' }}
+                 formatter={(value: number, name: string) => [value, name]}
             />
         </PieChart>
         </ResponsiveContainer>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center">
-                <span className="text-2xl font-bold text-slate-800 dark:text-white">{trades.length}</span>
-                <span className="block text-xs text-slate-400">Trades</span>
+        {activeIndex === -1 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300">
+                <div className="text-center">
+                    <span className="text-2xl font-bold text-slate-800 dark:text-white">{trades.length}</span>
+                    <span className="block text-xs text-slate-400">Trades</span>
+                </div>
             </div>
-        </div>
+        )}
     </div>
   );
 };
