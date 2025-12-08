@@ -1,5 +1,3 @@
-
-
 import { 
     collection, 
     query, 
@@ -171,10 +169,10 @@ export const addTradeToDb = async (trade: Trade, userId: string): Promise<string
     return docRef.id;
 };
 
-export const updateTradeInDb = async (trade: Trade) => {
+export const updateTradeInDb = async (trade: Partial<Trade>) => {
     if (!isFirebaseReady || !db) {
         const local = JSON.parse(localStorage.getItem('trades') || '[]');
-        const updated = local.map((t: Trade) => t.id === trade.id ? trade : t);
+        const updated = local.map((t: Trade) => t.id === trade.id ? { ...t, ...trade } : t);
         localStorage.setItem('trades', JSON.stringify(updated));
         window.dispatchEvent(new Event('localDataUpdate'));
         return;
