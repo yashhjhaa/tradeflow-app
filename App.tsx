@@ -1142,7 +1142,7 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                     </div>
 
                     <Button variant="neon" className="w-full" onClick={handleSaveClick} disabled={isSaving}>
-                        {isSaving ? <><Loader2 className="animate-spin" size={18}/> Validating & Saving...</> : 'Save to Journal'}
+                        {isSaving ? <><Loader2 className="animate-spin" size={18}/> Saving...</> : 'Save to Journal'}
                     </Button>
                 </div>
                 {/* Media */}
@@ -1487,28 +1487,62 @@ const App: React.FC = () => {
       setIsSavingTrade(true);
       
       try {
+          // 1. Upload Screenshot (Blocking for data integrity)
           let finalScreenshot = tradeData.screenshot;
           if (tradeData.screenshot && tradeData.screenshot.startsWith('data:image')) {
                const url = await uploadScreenshotToStorage(tradeData.screenshot, user.uid);
                if (url) { finalScreenshot = url; } else {
+                   // Fallback for failed upload - check size limits
                    const size = getStringSizeInBytes(tradeData.screenshot);
-                   if (size > 800000) { finalScreenshot = undefined; console.warn("Screenshot too large."); } else { finalScreenshot = tradeData.screenshot; }
+                   if (size > 800000) { 
+                       finalScreenshot = undefined; 
+                       console.warn("Screenshot upload failed and too large for Firestore."); 
+                   } else { 
+                       finalScreenshot = tradeData.screenshot; 
+                   }
                }
           }
+
           const tradeToSave = { ...tradeData, screenshot: finalScreenshot };
 
           if (tradeToSave.id) {
               await updateTradeInDb(tradeToSave as Trade);
           } else {
+              // New Trade Logic
               let outcome = tradeToSave.outcome || TradeOutcome.PENDING;
-              if (tradeToSave.pnl) { outcome = tradeToSave.pnl > 0 ? TradeOutcome.WIN : tradeToSave.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; }
+              if (tradeToSave.pnl) { 
+                  outcome = tradeToSave.pnl > 0 ? TradeOutcome.WIN : tradeToSave.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; 
+              }
               const newTrade: any = { ...tradeToSave, date: tradeToSave.date || new Date().toISOString(), userId: user.uid, accountId, outcome, tags: tradeToSave.tags || [] };
+              
+              // 2. Save to Firestore (Blocking)
               const savedId = await addTradeToDb(newTrade, user.uid);
-              if (newTrade.notes && !newTrade.aiAnalysis) { analyzeTradePsychology(newTrade).then(async (analysis) => { await updateTradeInDb({ ...newTrade, id: savedId, aiAnalysis: analysis }); }); }
-              if (newTrade.pnl) { const acc = accounts.find(a => a.id === accountId); if (acc) await updateAccountBalance(accountId, acc.balance + newTrade.pnl); }
+
+              // 3. AI Analysis (BACKGROUND - Non-blocking for speed)
+              if (newTrade.notes && !newTrade.aiAnalysis) { 
+                  analyzeTradePsychology(newTrade).then(async (analysis) => { 
+                      await updateTradeInDb({ ...newTrade, id: savedId, aiAnalysis: analysis }); 
+                  }).catch(console.error); 
+              }
+
+              // 4. Update Balance (Blocking - fast)
+              if (newTrade.pnl) { 
+                  const acc = accounts.find(a => a.id === accountId); 
+                  if (acc) await updateAccountBalance(accountId, acc.balance + newTrade.pnl); 
+              }
           }
-          setIsAddTradeOpen(false); setEditingTrade(undefined); alert("Trade Saved Successfully!");
-      } catch (error) { console.error("Failed to save trade", error); alert("Failed to save trade."); } finally { setIsSavingTrade(false); }
+          
+          setIsAddTradeOpen(false); 
+          setEditingTrade(undefined); 
+          // Quick alert without blocking the UI rendering cycle heavily
+          setTimeout(() => alert("Trade Saved!"), 100); 
+
+      } catch (error) { 
+          console.error("Failed to save trade", error); 
+          alert("Failed to save trade."); 
+      } finally { 
+          setIsSavingTrade(false); 
+      }
   };
 
   const handleAddAccount = async (accountData: Partial<Account>) => {
