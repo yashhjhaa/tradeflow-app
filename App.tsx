@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
-import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation } from './services/geminiService';
+import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation, reframeNegativeThought } from './services/geminiService';
 import { Trade, Account, DisciplineLog, CalendarEvent, TradeDirection, TradeOutcome, TradingSession, ChatMessage, DateRange, Challenge, ChallengeDay, ChallengeTask } from './types';
 import { 
     subscribeToAuth, loginUser, logoutUser, registerUser, subscribeToTrades, 
@@ -1307,6 +1307,14 @@ const App: React.FC = () => {
 
   // Mindset State
   const [journalTab, setJournalTab] = useState<'pre' | 'mid' | 'post'>('pre');
+  const [tiltLevel, setTiltLevel] = useState(0);
+  const [currentMood, setCurrentMood] = useState('Neutral');
+  const [negativeThought, setNegativeThought] = useState('');
+  const [reframedThought, setReframedThought] = useState('');
+  const [isReframing, setIsReframing] = useState(false);
+  const [preSessionChecks, setPreSessionChecks] = useState<{[key: string]: boolean}>({
+    risk: false, plan: false, sleep: false, distraction: false
+  });
   
   // Analytics State
   const [selectedPsychoTradeId, setSelectedPsychoTradeId] = useState<string>('');
@@ -1625,6 +1633,14 @@ const App: React.FC = () => {
       }
       setIsAnalyzingPsycho(false);
   }
+  
+  const handleReframeThought = async () => {
+      if (!negativeThought.trim()) return;
+      setIsReframing(true);
+      const result = await reframeNegativeThought(negativeThought);
+      setReframedThought(result);
+      setIsReframing(false);
+  };
 
   // --- CHALLENGE HANDLERS ---
   const handleStartChallenge = async (type: 'monk' | 'iron' | 'savage') => {
@@ -2395,57 +2411,174 @@ const App: React.FC = () => {
             )}
 
             {activeTab === 'discipline' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
-                    {/* Col 1: Protocol */}
-                    <Card className="flex flex-col h-full bg-gradient-to-b from-slate-900 to-[#0B0F19]">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><CheckSquare size={20}/></div>
-                            <h3 className="font-display font-bold text-lg text-white">Daily Protocol</h3>
-                        </div>
-                        <div className="space-y-4 flex-1">
-                            {['Review Playbook', 'Visualize Success', 'No Phone 30m', 'Check News', 'Hydrate'].map((item, i) => (
-                                <div key={i} className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all cursor-pointer group">
-                                    <span className="text-slate-300 font-medium group-hover:text-white">{item}</span>
-                                    <div className="w-6 h-6 rounded-md border-2 border-slate-700 group-hover:border-purple-500 transition-colors"></div>
+                <div className="grid grid-cols-12 gap-6 h-full overflow-y-auto pr-2 pb-24">
+                    {/* LEFT COL: Vitals & State (4 cols) */}
+                    <div className="col-span-12 lg:col-span-4 space-y-6">
+                        {/* TILT THERMOMETER */}
+                        <Card className="bg-[#0B0F19] relative overflow-hidden">
+                             <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-white flex items-center gap-2"><ThermometerSnowflake size={18} className="text-rose-500"/> Tilt Thermometer</h3>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded ${tiltLevel > 75 ? 'bg-rose-500 text-white' : tiltLevel > 40 ? 'bg-orange-500/20 text-orange-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                    {tiltLevel}% {tiltLevel > 75 ? 'CRITICAL' : tiltLevel > 40 ? 'ELEVATED' : 'STABLE'}
+                                </span>
+                             </div>
+                             <div className="relative h-64 bg-slate-800/50 rounded-xl w-12 mx-auto flex flex-col justify-end overflow-hidden border border-white/10">
+                                <div 
+                                    className={`w-full transition-all duration-300 ${tiltLevel > 75 ? 'bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.5)]' : tiltLevel > 40 ? 'bg-orange-500' : 'bg-emerald-500'}`} 
+                                    style={{ height: `${tiltLevel}%` }}
+                                ></div>
+                                {/* Scale markings */}
+                                <div className="absolute inset-0 flex flex-col justify-between py-2 pointer-events-none">
+                                    {[100, 75, 50, 25, 0].map(m => <div key={m} className="w-full border-t border-white/20 h-px"></div>)}
                                 </div>
-                            ))}
-                        </div>
-                    </Card>
+                             </div>
+                             <input 
+                                type="range" 
+                                min="0" max="100" 
+                                value={tiltLevel} 
+                                onChange={(e) => setTiltLevel(Number(e.target.value))}
+                                className="w-full mt-6 accent-rose-500 bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
+                             />
+                             <p className="text-center text-xs text-slate-500 mt-2">Adjust to match your current frustration level.</p>
+                        </Card>
 
-                    {/* Col 2: Vitals */}
-                    <div className="flex flex-col gap-6 h-full">
-                         <Card className="flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-b from-cyan-900/10 to-[#0B0F19]">
-                             <h3 className="absolute top-6 left-6 font-display font-bold text-lg text-white flex items-center gap-2"><Activity size={18} className="text-cyan-400"/> Live Vitals</h3>
+                        {/* EMOTIONAL WEATHER */}
+                        <Card>
+                            <h3 className="font-bold text-white flex items-center gap-2 mb-4"><Wind size={18} className="text-cyan-400"/> Emotional Weather</h3>
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { label: 'Flow', color: 'bg-emerald-500' },
+                                    { label: 'Fear', color: 'bg-indigo-500' },
+                                    { label: 'Greed', color: 'bg-amber-500' },
+                                    { label: 'Revenge', color: 'bg-rose-600' },
+                                    { label: 'Boredom', color: 'bg-slate-500' },
+                                    { label: 'Confidence', color: 'bg-cyan-500' },
+                                ].map((mood) => (
+                                    <button 
+                                        key={mood.label}
+                                        onClick={() => setCurrentMood(mood.label)}
+                                        className={`p-2 rounded-lg text-xs font-bold transition-all border ${currentMood === mood.label ? `${mood.color} text-white border-transparent scale-105 shadow-lg` : 'bg-slate-800/50 text-slate-400 border-white/5 hover:border-white/20'}`}
+                                    >
+                                        {mood.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </Card>
+
+                        {/* BREATHING WIDGET */}
+                        <Card className="bg-gradient-to-b from-cyan-900/10 to-[#0B0F19]">
                              <BreathingExercise />
-                             <p className="mt-6 text-xs text-slate-500 text-center max-w-[200px]">Regulate your nervous system before entering the market.</p>
-                         </Card>
-                         <Card className="h-1/3 flex flex-col justify-center relative overflow-hidden">
-                             <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/20 to-transparent"></div>
-                             <div className="relative z-10 flex items-center justify-between px-4">
-                                 <div>
-                                     <h4 className="text-sm font-bold text-slate-400 mb-1">Psych Battery</h4>
-                                     <div className="text-3xl font-mono font-bold text-emerald-400">92%</div>
+                        </Card>
+                    </div>
+
+                    {/* MID COL: Journaling & AI Tools (5 cols) */}
+                    <div className="col-span-12 lg:col-span-5 space-y-6">
+                         {/* REFLECTIVE JOURNAL */}
+                         <Card className="min-h-[400px] flex flex-col bg-[#0B0F19]">
+                             <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-4">
+                                 {['pre', 'mid', 'post'].map(t => (
+                                     <button key={t} onClick={() => setJournalTab(t as any)} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${journalTab === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                                         {t}-Session
+                                     </button>
+                                 ))}
+                             </div>
+                             
+                             <div className="flex-1 flex flex-col gap-4">
+                                 <div className="flex gap-2 text-xs">
+                                     <Badge color={tiltLevel > 50 ? 'red' : 'green'}>Tilt: {tiltLevel}%</Badge>
+                                     <Badge color="blue">Mood: {currentMood}</Badge>
                                  </div>
-                                 <Battery size={48} className="text-emerald-500 opacity-80" />
+                                 <textarea 
+                                    className="flex-1 bg-black/20 rounded-xl border border-white/5 p-4 text-sm text-slate-300 resize-none focus:ring-1 focus:ring-cyan-500/50 outline-none leading-relaxed" 
+                                    placeholder={`Write your ${journalTab}-session thoughts here. Be honest about your feelings...`} 
+                                 />
                              </div>
-                             <div className="w-full bg-slate-800 h-1.5 mt-4 rounded-full overflow-hidden">
-                                 <div className="bg-emerald-500 h-full w-[92%] shadow-[0_0_10px_#10b981]"></div>
+                             <Button variant="secondary" className="mt-4 w-full">Save Entry to Database</Button>
+                         </Card>
+
+                         {/* COGNITIVE REFRAMING TOOL */}
+                         <Card className="border border-purple-500/20 bg-gradient-to-br from-purple-900/10 to-transparent">
+                             <h3 className="font-bold text-white flex items-center gap-2 mb-2"><Brain size={18} className="text-purple-400"/> Cognitive Reframing</h3>
+                             <p className="text-xs text-slate-400 mb-4">Input a negative thought. The AI will reframe it into a stoic, productive belief.</p>
+                             
+                             <div className="flex gap-2 mb-4">
+                                 <Input 
+                                    value={negativeThought} 
+                                    onChange={e => setNegativeThought(e.target.value)} 
+                                    placeholder="e.g. 'I must win this trade to feel good...'" 
+                                    className="bg-black/40 text-sm"
+                                 />
+                                 <Button size="sm" variant="neon" onClick={handleReframeThought} disabled={isReframing}>
+                                     {isReframing ? <Sparkles size={16} className="animate-spin"/> : 'Reframe'}
+                                 </Button>
                              </div>
+
+                             {reframedThought && (
+                                 <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl animate-fade-in">
+                                     <div className="text-[10px] text-purple-400 uppercase font-bold mb-1">New Perspective</div>
+                                     <p className="text-sm text-white italic">"{reframedThought}"</p>
+                                 </div>
+                             )}
                          </Card>
                     </div>
 
-                    {/* Col 3: Journal */}
-                    <Card className="flex flex-col h-full bg-[#0B0F19]">
-                         <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-4">
-                             {['pre', 'mid', 'post'].map(t => (
-                                 <button key={t} onClick={() => setJournalTab(t as any)} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${journalTab === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-                                     {t}-Session
-                                 </button>
-                             ))}
-                         </div>
-                         <textarea className="flex-1 bg-black/20 rounded-xl border border-white/5 p-4 text-sm text-slate-300 resize-none focus:ring-1 focus:ring-cyan-500/50 outline-none leading-relaxed" placeholder={`Write your ${journalTab}-session thoughts here...`} />
-                         <Button variant="secondary" className="mt-4 w-full">Save Entry</Button>
-                    </Card>
+                    {/* RIGHT COL: Protocol & Audio (3 cols) */}
+                    <div className="col-span-12 lg:col-span-3 space-y-6">
+                         {/* PRE-SESSION CHECKLIST */}
+                         <Card>
+                            <h3 className="font-bold text-white flex items-center gap-2 mb-4"><CheckCircle size={18} className="text-emerald-500"/> Readiness Protocol</h3>
+                            <div className="space-y-3">
+                                {[
+                                    { id: 'risk', label: 'Accepted Risk?' },
+                                    { id: 'plan', label: 'Trading Plan Ready?' },
+                                    { id: 'distraction', label: 'No Distractions?' },
+                                    { id: 'sleep', label: 'Slept Well?' },
+                                ].map((item) => (
+                                    <div 
+                                        key={item.id} 
+                                        className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between ${preSessionChecks[item.id] ? 'bg-emerald-900/20 border-emerald-500/30' : 'bg-slate-800/30 border-white/5 hover:bg-slate-800'}`}
+                                        onClick={() => setPreSessionChecks(prev => ({...prev, [item.id]: !prev[item.id]}))}
+                                    >
+                                        <span className={`text-sm ${preSessionChecks[item.id] ? 'text-emerald-400' : 'text-slate-400'}`}>{item.label}</span>
+                                        {preSessionChecks[item.id] && <Check size={14} className="text-emerald-500"/>}
+                                    </div>
+                                ))}
+                            </div>
+                         </Card>
+
+                         {/* AUDIO LIBRARY */}
+                         <Card>
+                            <h3 className="font-bold text-white flex items-center gap-2 mb-4"><Volume2 size={18} className="text-cyan-400"/> Focus Deck</h3>
+                            <div className="space-y-2">
+                                {[
+                                    { title: 'Pre-Market Focus', duration: '5:00' },
+                                    { title: 'Mid-Session Reset', duration: '3:00' },
+                                    { title: 'Post-Loss Recovery', duration: '7:00' },
+                                    { title: 'Deep Work (Binaural)', duration: '∞' },
+                                ].map((track, i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group cursor-pointer">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500 group-hover:text-white transition-colors">
+                                                <Play size={12} fill="currentColor"/>
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-medium text-slate-200">{track.title}</div>
+                                                <div className="text-[10px] text-slate-500">{track.duration}</div>
+                                            </div>
+                                        </div>
+                                        <div className="w-4 h-4">
+                                            {/* Equalizer Animation Placeholder */}
+                                            <div className="flex gap-0.5 h-full items-end opacity-0 group-hover:opacity-100">
+                                                <div className="w-0.5 bg-cyan-500 h-[60%] animate-pulse"></div>
+                                                <div className="w-0.5 bg-cyan-500 h-[100%] animate-pulse delay-75"></div>
+                                                <div className="w-0.5 bg-cyan-500 h-[40%] animate-pulse delay-150"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                         </Card>
+                    </div>
                 </div>
             )}
             
