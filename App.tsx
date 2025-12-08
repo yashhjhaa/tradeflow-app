@@ -1018,6 +1018,7 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
             }
         }
 
+        // Optimistic Save - Don't wait for response to close, but set saving state briefly
         setIsSaving(true);
         await onSave({ ...formData, screenshot: screenshotPreview, accountId: formData.accountId });
         setIsSaving(false);
@@ -1484,64 +1485,79 @@ const App: React.FC = () => {
           return;
       }
       const accountId = tradeData.accountId || accounts[0]?.id || 'demo';
+      
+      // OPTIMISTIC UPDATE / FAST SAVE
       setIsSavingTrade(true);
       
       try {
-          // 1. Upload Screenshot (Blocking for data integrity)
-          let finalScreenshot = tradeData.screenshot;
-          if (tradeData.screenshot && tradeData.screenshot.startsWith('data:image')) {
-               const url = await uploadScreenshotToStorage(tradeData.screenshot, user.uid);
-               if (url) { finalScreenshot = url; } else {
-                   // Fallback for failed upload - check size limits
-                   const size = getStringSizeInBytes(tradeData.screenshot);
-                   if (size > 800000) { 
-                       finalScreenshot = undefined; 
-                       console.warn("Screenshot upload failed and too large for Firestore."); 
-                   } else { 
-                       finalScreenshot = tradeData.screenshot; 
-                   }
-               }
-          }
-
-          const tradeToSave = { ...tradeData, screenshot: finalScreenshot };
-
-          if (tradeToSave.id) {
-              await updateTradeInDb(tradeToSave as Trade);
-          } else {
-              // New Trade Logic
-              let outcome = tradeToSave.outcome || TradeOutcome.PENDING;
-              if (tradeToSave.pnl) { 
-                  outcome = tradeToSave.pnl > 0 ? TradeOutcome.WIN : tradeToSave.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; 
-              }
-              const newTrade: any = { ...tradeToSave, date: tradeToSave.date || new Date().toISOString(), userId: user.uid, accountId, outcome, tags: tradeToSave.tags || [] };
-              
-              // 2. Save to Firestore (Blocking)
-              const savedId = await addTradeToDb(newTrade, user.uid);
-
-              // 3. AI Analysis (BACKGROUND - Non-blocking for speed)
-              if (newTrade.notes && !newTrade.aiAnalysis) { 
-                  analyzeTradePsychology(newTrade).then(async (analysis) => { 
-                      await updateTradeInDb({ ...newTrade, id: savedId, aiAnalysis: analysis }); 
-                  }).catch(console.error); 
-              }
-
-              // 4. Update Balance (Blocking - fast)
-              if (newTrade.pnl) { 
-                  const acc = accounts.find(a => a.id === accountId); 
-                  if (acc) await updateAccountBalance(accountId, acc.balance + newTrade.pnl); 
-              }
-          }
+          // 1. Prepare Core Data (Lightweight)
+          // We STRIP the screenshot base64 to avoid saving it to Firestore directly (slow/large).
+          const { screenshot, ...coreData } = tradeData;
           
-          setIsAddTradeOpen(false); 
-          setEditingTrade(undefined); 
-          // Quick alert without blocking the UI rendering cycle heavily
-          setTimeout(() => alert("Trade Saved!"), 100); 
+          let outcome = coreData.outcome || TradeOutcome.PENDING;
+          if (coreData.pnl) { 
+              outcome = coreData.pnl > 0 ? TradeOutcome.WIN : coreData.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; 
+          }
 
-      } catch (error) { 
-          console.error("Failed to save trade", error); 
-          alert("Failed to save trade."); 
-      } finally { 
-          setIsSavingTrade(false); 
+          const tradePayload: any = {
+              ...coreData,
+              date: coreData.date || new Date().toISOString(),
+              userId: user.uid,
+              accountId,
+              outcome,
+              tags: coreData.tags || []
+          };
+
+          let savedId = tradeData.id;
+
+          // 2. Save Core Data to DB (Blocking but fast - text only)
+          if (tradePayload.id) {
+              await updateTradeInDb(tradePayload as Trade);
+          } else {
+              savedId = await addTradeToDb(tradePayload, user.uid);
+              // Update Balance
+               if (tradePayload.pnl) { 
+                  const acc = accounts.find(a => a.id === accountId); 
+                  if (acc) await updateAccountBalance(accountId, acc.balance + tradePayload.pnl); 
+              }
+          }
+
+          // 3. Close UI Immediately
+          setIsAddTradeOpen(false);
+          setEditingTrade(undefined);
+          setIsSavingTrade(false);
+
+          // 4. Background Processes (Uploads & AI)
+          // We use the 'savedId' and the 'screenshot' extracted earlier
+          (async () => {
+              // A. Image Upload
+              if (screenshot && screenshot.startsWith('data:image')) {
+                  try {
+                      const url = await uploadScreenshotToStorage(screenshot, user.uid);
+                      if (url && savedId) {
+                          // Update the trade with the URL
+                          await updateTradeInDb({ id: savedId, screenshot: url } as any);
+                      }
+                  } catch (e) {
+                      console.error("Background upload failed", e);
+                  }
+              }
+
+              // B. AI Analysis
+              if (tradePayload.notes && !tradePayload.aiAnalysis && savedId) {
+                  try {
+                      const analysis = await analyzeTradePsychology({ ...tradePayload, id: savedId });
+                      await updateTradeInDb({ id: savedId, aiAnalysis: analysis } as any);
+                  } catch (e) {
+                      console.error("Background AI failed", e);
+                  }
+              }
+          })();
+
+      } catch (error) {
+          console.error("Failed to save trade", error);
+          alert("Failed to save trade data.");
+          setIsSavingTrade(false);
       }
   };
 
