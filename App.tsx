@@ -519,48 +519,6 @@ const CreateChallengeModal: React.FC<{ isOpen: boolean; onClose: () => void; onC
     );
 };
 
-const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (a: Partial<Account>) => void }> = ({ isOpen, onClose, onSave }) => {
-    const [data, setData] = useState<Partial<Account>>({ name: '', broker: '', balance: 10000, currency: 'USD' });
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[80] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-            <Card className="w-full max-w-md bg-[#0B0F19] border border-white/10 shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-white">Add Trading Account</h2>
-                    <button onClick={onClose}><X size={20} className="text-slate-500 hover:text-white"/></button>
-                </div>
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Account Name</label>
-                        <Input placeholder="e.g. Prop Firm Challenge" value={data.name} onChange={e => setData({...data, name: e.target.value})} autoFocus />
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Broker / Platform</label>
-                        <Input placeholder="e.g. FTMO, MetaTrader" value={data.broker} onChange={e => setData({...data, broker: e.target.value})} />
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Initial Balance</label>
-                        <Input type="number" placeholder="10000" value={data.balance} onChange={e => setData({...data, balance: Number(e.target.value)})} />
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Currency</label>
-                        <Select value={data.currency} onChange={e => setData({...data, currency: e.target.value})}>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="GBP">GBP</option>
-                            <option value="JPY">JPY</option>
-                        </Select>
-                    </div>
-                    <div className="pt-4 flex gap-3">
-                        <Button variant="ghost" onClick={onClose} className="flex-1">Cancel</Button>
-                        <Button variant="neon" onClick={() => onSave(data)} className="flex-1">Create Account</Button>
-                    </div>
-                </div>
-            </Card>
-        </div>
-    );
-};
-
 const ShareableChallengeCard: React.FC<{ challenge: Challenge, user: string, winRate: string, pnl: number }> = ({ challenge, user, winRate, pnl }) => {
     return (
         <div id="share-card" className="w-[400px] h-[600px] bg-[#05070A] relative overflow-hidden flex flex-col p-8 border border-white/10 rounded-3xl">
@@ -617,6 +575,48 @@ const ShareableChallengeCard: React.FC<{ challenge: Challenge, user: string, win
                 <span className="text-sm font-bold text-slate-300">{user}</span>
                 <div className="ml-auto text-xs text-slate-500">#TradeFlowChallenge</div>
             </div>
+        </div>
+    );
+};
+
+const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (a: Partial<Account>) => void }> = ({ isOpen, onClose, onAdd }) => {
+    const [name, setName] = useState('');
+    const [broker, setBroker] = useState('');
+    const [balance, setBalance] = useState('10000');
+    const [currency, setCurrency] = useState('USD');
+
+    if (!isOpen) return null;
+
+    const handleSubmit = () => {
+        if(!name || !broker) return alert("Please fill all fields");
+        onAdd({ name, broker, balance: Number(balance), currency });
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
+             <Card className="w-full max-w-md bg-[#0B0F19] border-white/10 shadow-2xl">
+                 <div className="flex justify-between items-center mb-6">
+                     <h2 className="text-xl font-bold text-white">Add Trading Account</h2>
+                     <button onClick={onClose}><X size={20} className="text-slate-500 hover:text-white"/></button>
+                 </div>
+                 <div className="space-y-4">
+                     <div><label className="text-xs uppercase font-bold text-slate-500">Account Name</label><Input placeholder="e.g. Prop Firm Challenge" value={name} onChange={e => setName(e.target.value)} autoFocus /></div>
+                     <div><label className="text-xs uppercase font-bold text-slate-500">Broker / Firm</label><Input placeholder="e.g. FTMO, IC Markets" value={broker} onChange={e => setBroker(e.target.value)} /></div>
+                     <div className="grid grid-cols-2 gap-4">
+                         <div><label className="text-xs uppercase font-bold text-slate-500">Initial Balance</label><Input type="number" value={balance} onChange={e => setBalance(e.target.value)} /></div>
+                         <div>
+                             <label className="text-xs uppercase font-bold text-slate-500">Currency</label>
+                             <Select value={currency} onChange={e => setCurrency(e.target.value)}>
+                                 <option value="USD">USD</option>
+                                 <option value="EUR">EUR</option>
+                                 <option value="GBP">GBP</option>
+                             </Select>
+                         </div>
+                     </div>
+                     <Button variant="neon" className="w-full mt-2" onClick={handleSubmit}>Create Account</Button>
+                 </div>
+             </Card>
         </div>
     );
 };
@@ -1265,48 +1265,6 @@ interface PlaybookEntry {
     tags?: string[];
 }
 
-const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (a: Partial<Account>) => void }> = ({ isOpen, onClose, onSave }) => {
-    const [data, setData] = useState<Partial<Account>>({ name: '', broker: '', balance: 10000, currency: 'USD' });
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[80] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-            <Card className="w-full max-w-md bg-[#0B0F19] border border-white/10 shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-white">Add Trading Account</h2>
-                    <button onClick={onClose}><X size={20} className="text-slate-500 hover:text-white"/></button>
-                </div>
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Account Name</label>
-                        <Input placeholder="e.g. Prop Firm Challenge" value={data.name} onChange={e => setData({...data, name: e.target.value})} autoFocus />
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Broker / Platform</label>
-                        <Input placeholder="e.g. FTMO, MetaTrader" value={data.broker} onChange={e => setData({...data, broker: e.target.value})} />
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Initial Balance</label>
-                        <Input type="number" placeholder="10000" value={data.balance} onChange={e => setData({...data, balance: Number(e.target.value)})} />
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Currency</label>
-                        <Select value={data.currency} onChange={e => setData({...data, currency: e.target.value})}>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="GBP">GBP</option>
-                            <option value="JPY">JPY</option>
-                        </Select>
-                    </div>
-                    <div className="pt-4 flex gap-3">
-                        <Button variant="ghost" onClick={onClose} className="flex-1">Cancel</Button>
-                        <Button variant="neon" onClick={() => onSave(data)} className="flex-1">Create Account</Button>
-                    </div>
-                </div>
-            </Card>
-        </div>
-    );
-};
-
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('journal');
@@ -1323,8 +1281,8 @@ const App: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false); // FOR SHARING
   const [isCreateChallengeOpen, setIsCreateChallengeOpen] = useState(false); // FOR CUSTOM CHALLENGES
-  const [isAddAccountOpen, setIsAddAccountOpen] = useState(false); // ADD ACCOUNT MODAL
-  
+  const [isAddAccountOpen, setIsAddAccountOpen] = useState(false); // FOR ADDING ACCOUNTS
+
   // Realtime Clock State
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -1552,6 +1510,11 @@ const App: React.FC = () => {
           setIsAddTradeOpen(false); setEditingTrade(undefined); alert("Trade Saved Successfully!");
       } catch (error) { console.error("Failed to save trade", error); alert("Failed to save trade."); } finally { setIsSavingTrade(false); }
   };
+
+  const handleAddAccount = async (accountData: Partial<Account>) => {
+      if (!user) return;
+      await addAccountToDb(accountData as Account, user.uid);
+  }
   
   const handleAnalyzeTrade = async (trade: Trade) => {
       setSelectedTrade({ ...trade, aiAnalysis: "Analyzing..." });
@@ -1612,21 +1575,6 @@ const App: React.FC = () => {
       }
       setIsAnalyzingPsycho(false);
   }
-  
-  const handleAddAccount = async (acc: Partial<Account>) => {
-      if (!user) return;
-      if (!acc.name || acc.balance === undefined) {
-          alert("Please provide account name and balance.");
-          return;
-      }
-      const newAccount: any = { 
-          ...acc, 
-          userId: user.uid,
-          id: Date.now().toString() 
-      };
-      await addAccountToDb(newAccount, user.uid);
-      setIsAddAccountOpen(false);
-  };
 
   // --- CHALLENGE HANDLERS ---
   const handleStartChallenge = async (type: 'monk' | 'iron' | 'savage') => {
@@ -1836,7 +1784,7 @@ const App: React.FC = () => {
         <WelcomeToast username={user.displayName || 'Trader'} visible={showWelcome} />
         <CooldownModal isOpen={isCooldownOpen} onClose={() => setIsCooldownOpen(false)} />
         <CreateChallengeModal isOpen={isCreateChallengeOpen} onClose={() => setIsCreateChallengeOpen(false)} onCreate={handleCreateCustomChallenge} />
-        <AddAccountModal isOpen={isAddAccountOpen} onClose={() => setIsAddAccountOpen(false)} onSave={handleAddAccount} />
+        <AddAccountModal isOpen={isAddAccountOpen} onClose={() => setIsAddAccountOpen(false)} onAdd={handleAddAccount} />
         <Navigation activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
 
         <main className="flex-1 md:ml-20 pb-24 md:pb-8 relative z-10 transition-all duration-300">
@@ -1974,7 +1922,7 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* ... (Existing Tabs) ... */}
+            {/* --- CHALLENGES (OVERHAULED) --- */}
             {activeTab === 'challenges' && (
                 <div className="h-full">
                     {!activeChallenge ? (
@@ -2224,6 +2172,7 @@ const App: React.FC = () => {
             )}
             
             {/* ... (Existing Analytics, Playbook, etc. Tabs) ... */}
+            {/* ... [Analytics, Playbook, Community, Mindset, Red Folder, AI Coach, Profile views remain unchanged] ... */}
             {activeTab === 'analytics' && (
                 <div className="space-y-6 flex flex-col">
                     <Card className="flex items-center justify-between bg-gradient-to-r from-blue-900/20 to-transparent border-blue-500/20">
@@ -2650,45 +2599,26 @@ const App: React.FC = () => {
                                          <div><label className="text-xs text-slate-500 uppercase font-bold">Username</label><Input defaultValue={user.displayName || ''} disabled className="opacity-50" /></div>
                                          <div><label className="text-xs text-slate-500 uppercase font-bold">Email</label><Input defaultValue={user.email || ''} disabled className="opacity-50" /></div>
                                      </div>
-                                     <Button variant="secondary">Update Profile</Button>
-                                     
-                                     {/* ACCOUNTS MANAGEMENT */}
+
+                                     {/* TRADING ACCOUNTS MANAGER */}
                                      <div className="mt-8 pt-8 border-t border-white/5">
-                                         <div className="flex items-center justify-between mb-4">
-                                             <div>
-                                                 <h4 className="font-bold text-white text-lg">Trading Accounts</h4>
-                                                 <p className="text-xs text-slate-500">Manage your connected portfolios.</p>
-                                             </div>
-                                             <Button size="sm" variant="secondary" onClick={() => setIsAddAccountOpen(true)}>
-                                                 <Plus size={16} /> Add Account
-                                             </Button>
+                                         <div className="flex justify-between items-center mb-4">
+                                             <h4 className="font-bold text-white">Trading Accounts</h4>
+                                             <Button size="sm" onClick={() => setIsAddAccountOpen(true)}><Plus size={16}/> Add</Button>
                                          </div>
-                                         
-                                         <div className="grid grid-cols-1 gap-4">
+                                         <div className="space-y-3">
                                              {accounts.map(acc => (
-                                                 <div key={acc.id} className="p-4 bg-slate-800/50 rounded-xl border border-white/5 flex items-center justify-between group hover:border-cyan-500/30 transition-all">
-                                                     <div className="flex items-center gap-4">
-                                                         <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-                                                             <Wallet size={20} />
-                                                         </div>
-                                                         <div>
-                                                             <div className="font-bold text-white flex items-center gap-2">
-                                                                 {acc.name}
-                                                                 {acc.id === selectedAccount && <Badge color="green">Active</Badge>}
-                                                             </div>
-                                                             <div className="text-xs text-slate-500">{acc.broker} • {acc.currency}</div>
-                                                         </div>
+                                                 <div key={acc.id} className="p-4 bg-white/5 rounded-xl border border-white/5 flex items-center justify-between">
+                                                     <div>
+                                                         <div className="font-bold text-white">{acc.name}</div>
+                                                         <div className="text-xs text-slate-500">{acc.broker} • {acc.currency}</div>
                                                      </div>
-                                                     <div className="text-right">
-                                                          <div className="font-mono font-bold text-white text-lg">{formatCurrency(acc.balance)}</div>
-                                                          <div className="flex gap-2 justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                             <button onClick={() => deleteAccountFromDb(acc.id)} className="text-xs text-rose-500 hover:text-rose-400 flex items-center gap-1"><Trash2 size={12}/> Remove</button>
-                                                          </div>
-                                                     </div>
+                                                     <div className="font-mono text-emerald-400 font-bold">{formatCurrency(acc.balance)}</div>
                                                  </div>
                                              ))}
                                          </div>
                                      </div>
+                                     <Button variant="secondary" className="mt-4">Update Profile</Button>
                                  </div>
                              )}
                              {profileSettingsTab === 'stats' && (
@@ -2747,7 +2677,7 @@ const App: React.FC = () => {
         <AddTradeModal isOpen={isAddTradeOpen} onClose={() => setIsAddTradeOpen(false)} onSave={handleSaveTrade} accounts={accounts} currentAccountId={selectedAccount === 'all' ? accounts[0]?.id : selectedAccount} initialData={editingTrade} playbookEntries={playbookEntries} />
         <TradeDetailsModal trade={selectedTrade} onClose={() => setSelectedTrade(null)} onDelete={deleteTradeFromDb} onEdit={(t) => { setSelectedTrade(null); setEditingTrade(t); setIsAddTradeOpen(true); }} onAnalyze={handleAnalyzeTrade} />
         <ConnectBrokerModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} />
-        <AddAccountModal isOpen={isAddAccountOpen} onClose={() => setIsAddAccountOpen(false)} onSave={handleAddAccount} />
+        <AddAccountModal isOpen={isAddAccountOpen} onClose={() => setIsAddAccountOpen(false)} onAdd={handleAddAccount} />
         
       </div>
     </ThemeContext.Provider>
