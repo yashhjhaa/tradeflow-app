@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
@@ -819,6 +818,8 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
     const [tagInput, setTagInput] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [selectedStrategyId, setSelectedStrategyId] = useState('');
+    const [checklist, setChecklist] = useState<{id: string, text: string, checked: boolean}[]>([]);
+    const [newChecklistItem, setNewChecklistItem] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
@@ -837,6 +838,19 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
         }); 
         setScreenshotPreview(initialData?.screenshot || ''); 
     }, [initialData, isOpen, currentAccountId]);
+
+    useEffect(() => {
+        if (selectedStrategyId) {
+            const strat = playbookEntries.find(p => p.id === selectedStrategyId);
+            if (strat && strat.checklist) {
+                setChecklist(strat.checklist.map((item, i) => ({ id: `strat-${i}`, text: item, checked: false })));
+            } else {
+                setChecklist([]);
+            }
+        } else {
+            setChecklist([]);
+        }
+    }, [selectedStrategyId, playbookEntries]);
 
     if (!isOpen) return null;
 
@@ -870,6 +884,21 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
             }
             setTagInput('');
         }
+    }
+
+    const toggleCheckItem = (id: string) => {
+        setChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+    };
+
+    const addCustomCheckItem = () => {
+        if (newChecklistItem.trim()) {
+            setChecklist(prev => [...prev, { id: `custom-${Date.now()}`, text: newChecklistItem, checked: false }]);
+            setNewChecklistItem('');
+        }
+    };
+
+    const deleteCheckItem = (id: string) => {
+        setChecklist(prev => prev.filter(i => i.id !== id));
     }
     
     // Voice to Journal
@@ -924,6 +953,12 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
         if (!formData.accountId) {
              alert("Please select an Account.");
              return;
+        }
+
+        const incompleteItems = checklist.filter(i => !i.checked);
+        if (incompleteItems.length > 0) {
+            alert(`Please complete your execution checklist:\n\n${incompleteItems.map(i => "• " + i.text).join('\n')}`);
+            return;
         }
 
         // GHOST VALIDATOR
@@ -1069,14 +1104,46 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                     </Button>
                 </div>
                 {/* Media */}
-                 <div className="p-8 bg-slate-900/50 border-l border-white/5 w-full md:w-[350px] space-y-6">
-                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Evidence</h3>
+                 <div className="p-8 bg-slate-900/50 border-l border-white/5 w-full md:w-[350px] space-y-6 flex flex-col">
+                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Pre-Flight</h3>
+                     
+                     {/* Execution Checklist */}
+                     <div className="bg-slate-800/30 rounded-xl border border-white/5 p-4 flex-1 overflow-y-auto min-h-[200px]">
+                         <h4 className="text-xs font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                             <CheckSquare size={12}/> Execution Checklist
+                         </h4>
+                         <div className="space-y-2">
+                             {checklist.map(item => (
+                                 <label key={item.id} className="flex items-start gap-2 cursor-pointer group">
+                                     <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${item.checked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600 group-hover:border-cyan-500'}`}>
+                                         {item.checked && <Check size={10} className="text-white" />}
+                                     </div>
+                                     <input type="checkbox" checked={item.checked} onChange={() => toggleCheckItem(item.id)} className="hidden" />
+                                     <span className={`text-xs ${item.checked ? 'text-slate-500 line-through' : 'text-slate-300'}`}>{item.text}</span>
+                                     <button onClick={(e) => { e.stopPropagation(); deleteCheckItem(item.id); }} className="ml-auto text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100"><X size={12}/></button>
+                                 </label>
+                             ))}
+                             {checklist.length === 0 && <p className="text-xs text-slate-600 italic">No checklist items.</p>}
+                         </div>
+                         <div className="mt-3 pt-3 border-t border-white/5 flex gap-2">
+                             <input 
+                                className="bg-transparent text-xs text-white border-none outline-none flex-1 placeholder:text-slate-600"
+                                placeholder="+ Add item..."
+                                value={newChecklistItem}
+                                onChange={e => setNewChecklistItem(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && addCustomCheckItem()}
+                             />
+                             <button onClick={addCustomCheckItem} className="text-cyan-500 hover:text-cyan-400"><Plus size={14}/></button>
+                         </div>
+                     </div>
+
+                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mt-4">Evidence</h3>
                      
                      <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                          {screenshotPreview ? (
-                             <img src={screenshotPreview} alt="Chart" className="w-full h-48 object-cover rounded-xl border border-white/10" />
+                             <img src={screenshotPreview} alt="Chart" className="w-full h-32 object-cover rounded-xl border border-white/10" />
                          ) : (
-                             <div className="w-full h-48 bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 gap-2 hover:bg-slate-800 hover:border-cyan-500 transition-colors">
+                             <div className="w-full h-32 bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 gap-2 hover:bg-slate-800 hover:border-cyan-500 transition-colors">
                                  <Camera size={24} />
                                  <span className="text-xs">Upload Screenshot</span>
                              </div>
@@ -1090,11 +1157,6 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                              {isAnalyzing ? <><Sparkles className="animate-spin" size={14}/> Scanning...</> : <><Eye size={14}/> AI Scan Chart</>}
                          </Button>
                      )}
-                     
-                     <div className="bg-indigo-900/10 p-4 rounded-xl border border-indigo-500/10">
-                         <h4 className="text-xs font-bold text-indigo-400 mb-2 flex items-center gap-2"><Lightbulb size={12}/> Pro Tip</h4>
-                         <p className="text-xs text-slate-400">Select a Strategy to enable the Ghost Validator to check your compliance before saving.</p>
-                     </div>
                 </div>
             </div>
         </div>
