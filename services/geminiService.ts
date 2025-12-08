@@ -244,6 +244,45 @@ export const generateTradingStrategy = async (concept: string): Promise<string> 
     }
 };
 
+export const suggestStrategyFromPerformance = async (winningTrades: Trade[]): Promise<string> => {
+    if (!ai) return "Focus on trend following.";
+    if (winningTrades.length < 3) return "Log more winning trades to unlock AI suggestions.";
+
+    try {
+        // Prepare trade summary
+        const tradeSummary = winningTrades.slice(0, 10).map(t => 
+            `Pair: ${t.pair}, Session: ${t.session}, Setup Tag: ${t.setup}, Notes: ${t.notes}`
+        ).join('\n---\n');
+
+        const prompt = `
+            You are a Strategy Architect. I will provide a list of my WINNING trades.
+            Analyze the common patterns in these trades (time of day, pairs, specific setups mentioned in notes).
+            
+            Synthesize these patterns into a single, cohesive "Strategy Concept" that I can use to build a playbook entry.
+            
+            Winning Trades Data:
+            ${tradeSummary}
+            
+            Output a concise 1-2 sentence description of the strategy I should formalize (e.g. "Focus on NY Session breakouts on EURUSD...").
+            Do not write the full strategy, just the concept description.
+        `;
+
+        const response = await generateWithFallback(
+            'gemini-3-pro-preview',
+            {
+                contents: prompt,
+                config: {
+                    thinkingConfig: { thinkingBudget: 8192 }
+                }
+            }
+        );
+
+        return response.text || "Focus on your best performing setups.";
+    } catch (e) {
+        return "Could not analyze performance.";
+    }
+};
+
 export const generateStrategyChecklist = async (strategyText: string): Promise<string[]> => {
     if (!ai) return ["Ensure Trend Alignment", "Check Risk/Reward", "Confirm Entry Signal"];
     try {
@@ -605,5 +644,28 @@ export const generateChallengeMotivation = async (day: number, challengeTitle: s
         return response.text || "Keep pushing.";
     } catch(e) {
         return "Discipline equals freedom.";
+    }
+};
+
+export const reframeNegativeThought = async (thought: string): Promise<string> => {
+    if (!ai) return "Focus on what you can control: your process, not the outcome.";
+    try {
+        const prompt = `
+            You are a Cognitive Behavioral Therapist specializing in trading psychology.
+            The trader has a negative/limiting thought: "${thought}".
+            
+            Provide a "Cognitive Reframe" - a more productive, logical, and stoic way to view this situation.
+            Keep it short (max 2 sentences), punchy, and empowering.
+        `;
+        const response = await generateWithFallback(
+            'gemini-3-pro-preview',
+            {
+                contents: prompt,
+                config: { thinkingConfig: { thinkingBudget: 4096 } }
+            }
+        );
+        return response.text || "Focus on the process.";
+    } catch(e) {
+        return "Focus on the process.";
     }
 };
