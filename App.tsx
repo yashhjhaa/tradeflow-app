@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save, TrendingDown, Sigma, Grip, Crosshair, HelpCircle } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation, reframeNegativeThought } from './services/geminiService';
@@ -14,7 +14,7 @@ import {
     subscribeToStrategies, addStrategyToDb, deleteStrategyFromDb
 } from './services/dataService';
 import { User } from 'firebase/auth';
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ComposedChart, Line } from 'recharts';
 
 export const ThemeContext = React.createContext({
   theme: 'dark',
@@ -210,12 +210,67 @@ const PositionSizeCalculator = () => {
     );
 };
 
+const MonteCarloSimulator: React.FC<{ winRate: number, avgWin: number, avgLoss: number, startingBalance: number }> = ({ winRate, avgWin, avgLoss, startingBalance }) => {
+    // Simple Monte Carlo
+    const [simPaths, setSimPaths] = useState<any[]>([]);
+    
+    useEffect(() => {
+        if (!startingBalance) return;
+        
+        const paths = [];
+        for(let i=0; i<10; i++) {
+            let balance = startingBalance;
+            const path = [{ i: 0, balance }];
+            for(let t=1; t<=20; t++) {
+                const isWin = Math.random() * 100 < winRate;
+                const pnl = isWin ? avgWin : -Math.abs(avgLoss);
+                balance += pnl;
+                path.push({ i: t, balance });
+            }
+            paths.push(path);
+        }
+        setSimPaths(paths);
+    }, [winRate, avgWin, avgLoss, startingBalance]);
+
+    return (
+        <Card className="bg-gradient-to-br from-indigo-900/10 to-[#0B0F19] border-indigo-500/10">
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 uppercase tracking-wider">
+                <Sigma size={16} className="text-indigo-400"/> Monte Carlo Projection
+            </h3>
+            <div className="h-40 w-full relative">
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart>
+                        {simPaths.map((path, idx) => (
+                            <Line 
+                                key={idx} 
+                                data={path} 
+                                type="monotone" 
+                                dataKey="balance" 
+                                stroke={idx === 0 ? '#818cf8' : '#4f46e5'} 
+                                strokeWidth={idx === 0 ? 2 : 1} 
+                                strokeOpacity={0.4} 
+                                dot={false} 
+                            />
+                        ))}
+                        <XAxis dataKey="i" hide />
+                        <YAxis hide domain={['auto', 'auto']} />
+                    </ComposedChart>
+                </ResponsiveContainer>
+                <div className="absolute top-2 right-2 text-[10px] text-slate-500">20 Trade Sim (10 Iterations)</div>
+            </div>
+            <div className="mt-2 text-xs text-slate-400">
+                Projected stability based on {winRate}% WR and {avgWin.toFixed(0)}/{Math.abs(avgLoss).toFixed(0)} RR.
+            </div>
+        </Card>
+    );
+}
+
 const Navigation: React.FC<{ activeTab: string; setActiveTab: (t: string) => void; onLogout: () => void }> = ({ activeTab, setActiveTab, onLogout }) => {
   const navItems = [
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: PieChart },
     { id: 'playbook', label: 'Playbook', icon: BookMarked },
-    { id: 'challenges', label: 'Protocol', icon: Swords }, // NEW TAB
+    { id: 'challenges', label: 'Protocol', icon: Swords }, 
     { id: 'community', label: 'The Pit', icon: Users },
     { id: 'discipline', label: 'Mindset', icon: Zap },
     { id: 'news', label: 'Red Folder', icon: Flame },
@@ -276,9 +331,9 @@ const Navigation: React.FC<{ activeTab: string; setActiveTab: (t: string) => voi
 const MobileBottomNav: React.FC<{ activeTab: string; setActiveTab: (t: string) => void }> = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'journal', icon: Home },
-    { id: 'challenges', icon: Swords }, // Added Challenges here
+    { id: 'analytics', icon: PieChart },
     { id: 'playbook', icon: BookMarked },
-    { id: 'profile', icon: UserIcon },
+    { id: 'challenges', icon: Swords }, 
     { id: 'discipline', icon: Zap },
   ];
 
@@ -621,7 +676,6 @@ const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (
     );
 };
 
-// ... (BreathingExercise, CooldownModal, WelcomeToast, LoginScreen code remains same) ...
 const BreathingExercise: React.FC = () => {
     const [phase, setPhase] = useState<'Inhale' | 'Hold' | 'Exhale' | 'Hold '>('Inhale');
     const [active, setActive] = useState(false);
@@ -763,20 +817,16 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
     
     return (
         <div className="relative h-screen w-full flex items-center justify-center bg-[#030305] overflow-hidden font-sans selection:bg-cyan-500/30">
-            {/* --- IMMERSIVE BACKGROUND (Kept the cool visuals) --- */}
             <div className="absolute inset-0 z-0">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-purple-600/10 rounded-full blur-[120px] animate-blob mix-blend-screen pointer-events-none"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] bg-cyan-600/10 rounded-full blur-[120px] animate-blob animation-delay-2000 mix-blend-screen pointer-events-none"></div>
-                {/* Cyber Grid */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
             </div>
             
-            {/* --- CLEAN PROFESSIONAL CARD --- */}
             <div className="relative z-10 w-full max-w-[400px] p-6">
                 <div className="bg-[#05070A]/80 backdrop-blur-2xl rounded-3xl border border-white/5 shadow-2xl p-8 flex flex-col items-center relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50 pointer-events-none"></div>
                     
-                    {/* Logo Area */}
                     <div className="mb-8 flex flex-col items-center z-10">
                          <AppLogo className="w-20 h-20 mb-6" />
                          <h1 className="text-3xl font-display font-bold text-white tracking-tight">
@@ -788,7 +838,6 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                          </div>
                     </div>
 
-                    {/* Form - Clean Labels */}
                     <div className="w-full space-y-4 z-10">
                         {isRegister && (
                             <div className="space-y-1">
@@ -826,7 +875,6 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                         </Button>
                     </div>
 
-                    {/* Footer */}
                     <div className="mt-8 flex items-center justify-between w-full text-xs text-slate-500 z-10">
                         <button onClick={() => setIsRegister(!isRegister)} className="hover:text-cyan-400 transition-colors">
                             {isRegister ? 'Return to Login' : 'Request Access'}
@@ -837,7 +885,6 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                     </div>
                 </div>
                 
-                {/* Stoic Quote */}
                 <div className="mt-8 text-center animate-fade-in px-4">
                     <p className="text-xs font-mono text-slate-500 italic">"{quote}"</p>
                 </div>
@@ -863,7 +910,6 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
-    // Ensure accountId is set
     useEffect(() => {
         if (!formData.accountId && accounts.length > 0) {
             setFormData(prev => ({ ...prev, accountId: accounts[0].id }));
@@ -900,7 +946,6 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const rawBase64 = reader.result as string;
-                // Compress immediately upon selection for preview and storage
                 const compressed = await compressImage(rawBase64);
                 setScreenshotPreview(compressed);
             };
@@ -941,7 +986,6 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
         setChecklist(prev => prev.filter(i => i.id !== id));
     }
     
-    // Voice to Journal
     const toggleRecording = async () => {
         if (isRecording) {
             mediaRecorderRef.current?.stop();
@@ -958,7 +1002,6 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
 
                 mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    // Convert to base64
                     const reader = new FileReader();
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = async () => {
@@ -1001,7 +1044,6 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
             return;
         }
 
-        // GHOST VALIDATOR
         setIsSaving(true);
         if (selectedStrategyId) {
             const strategy = playbookEntries.find(p => p.id === selectedStrategyId);
@@ -1017,7 +1059,6 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
             }
         }
 
-        // Optimistic Save - Don't wait for response to close, but set saving state briefly
         await onSave({ ...formData, screenshot: screenshotPreview, accountId: formData.accountId });
         setIsSaving(false);
     }
@@ -1025,14 +1066,12 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
     return (
         <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#0B0F19] border border-white/10 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col md:flex-row animate-slide-up">
-                {/* Inputs */}
                 <div className="p-8 flex-1 space-y-6">
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-display font-bold text-white">Log Trade</h2>
                         <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24}/></button>
                     </div>
                     
-                    {/* Account Selector */}
                     <div>
                         <label className="text-xs text-slate-400 mb-1 block">Account</label>
                         <Select value={formData.accountId} onChange={e => setFormData({...formData, accountId: e.target.value})} className="bg-slate-900 border-white/10">
@@ -1144,11 +1183,9 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                         {isSaving ? <><Loader2 className="animate-spin" size={18}/> Validating & Saving...</> : 'Save to Journal'}
                     </Button>
                 </div>
-                {/* Media */}
                  <div className="p-8 bg-slate-900/50 border-l border-white/5 w-full md:w-[350px] space-y-6 flex flex-col">
                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Pre-Flight</h3>
                      
-                     {/* Execution Checklist */}
                      <div className="bg-slate-800/30 rounded-xl border border-white/5 p-4 flex-1 overflow-y-auto min-h-[200px]">
                          <h4 className="text-xs font-bold text-emerald-400 mb-3 flex items-center gap-2">
                              <CheckSquare size={12}/> Execution Checklist
@@ -1251,15 +1288,11 @@ const ConnectBrokerModal: React.FC<{ isOpen: boolean; onClose: () => void }> = (
     return <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"><Card className="w-full max-w-md bg-[#0B0F19] text-center"><div className="flex justify-center mb-4 text-cyan-500"><CloudLightning size={48} /></div><h2 className="text-2xl font-bold text-white mb-2">Connect Broker</h2><p className="text-slate-400 mb-6 text-sm">Select your platform to sync trades via MetaApi.</p><Button variant="ghost" onClick={onClose} className="w-full">Cancel</Button></Card></div>;
 };
 
-// --- NEW STRATEGY DETAILS MODAL ---
 const StrategyDetailsModal: React.FC<{ strategy: PlaybookEntry | null; onClose: () => void; onDelete: (id: string) => void }> = ({ strategy, onClose, onDelete }) => {
     if (!strategy) return null;
-    
     return (
         <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-[#0B0F19] w-full max-w-4xl h-[85vh] rounded-3xl border border-white/10 flex flex-col shadow-2xl relative animate-fade-in">
-                
-                {/* Header */}
                 <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
                     <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${strategy.type === 'ai' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-indigo-500/20 text-indigo-400'}`}>
@@ -1275,8 +1308,6 @@ const StrategyDetailsModal: React.FC<{ strategy: PlaybookEntry | null; onClose: 
                     </div>
                     <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                 </div>
-
-                {/* Content */}
                 <div className="flex-1 overflow-y-auto p-8 space-y-8">
                      {strategy.image && (
                          <div className="w-full h-64 rounded-2xl overflow-hidden border border-white/10 relative group">
@@ -1285,7 +1316,6 @@ const StrategyDetailsModal: React.FC<{ strategy: PlaybookEntry | null; onClose: 
                              <div className="absolute bottom-4 left-4 text-white font-bold">Strategy Reference Chart</div>
                          </div>
                      )}
-
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                          <div className="md:col-span-2 space-y-6">
                              <div>
@@ -1294,7 +1324,6 @@ const StrategyDetailsModal: React.FC<{ strategy: PlaybookEntry | null; onClose: 
                                      <pre className="whitespace-pre-wrap font-sans bg-transparent border-0 p-0 text-slate-300">{strategy.content}</pre>
                                  </div>
                              </div>
-                             
                              {strategy.dangerZones && (
                                  <div>
                                      <h3 className="text-lg font-bold text-rose-400 mb-3 flex items-center gap-2"><AlertTriangle size={18}/> Danger Zones</h3>
@@ -1304,7 +1333,6 @@ const StrategyDetailsModal: React.FC<{ strategy: PlaybookEntry | null; onClose: 
                                  </div>
                              )}
                          </div>
-                         
                          <div className="space-y-6">
                              {strategy.checklist && (
                                  <div className="bg-emerald-900/10 p-6 rounded-2xl border border-emerald-500/20">
@@ -1319,7 +1347,6 @@ const StrategyDetailsModal: React.FC<{ strategy: PlaybookEntry | null; onClose: 
                                      </ul>
                                  </div>
                              )}
-                             
                              <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5 text-center">
                                  <p className="text-xs text-slate-500 mb-4">Want to modify this strategy?</p>
                                  <Button variant="danger" className="w-full" onClick={() => { onDelete(strategy.id); onClose(); }}>
@@ -1636,13 +1663,9 @@ const App: React.FC = () => {
       }
       const accountId = tradeData.accountId || accounts[0]?.id || 'demo';
       
-      // OPTIMISTIC UPDATE / FAST SAVE
       setIsSavingTrade(true);
       
       try {
-          // 1. Prepare Payload
-          // We include the screenshot (base64) initially for instant UI feedback.
-          // The background process will later replace this base64 with a Storage URL to optimize DB size.
           const tradePayload: any = {
               ...tradeData, // Includes screenshot (base64)
               date: tradeData.date || new Date().toISOString(),
@@ -1658,33 +1681,25 @@ const App: React.FC = () => {
 
           let savedId = tradeData.id;
 
-          // 2. Save Core Data to DB (Blocking but fast - text only)
           if (tradePayload.id) {
               await updateTradeInDb(tradePayload as Trade);
           } else {
               savedId = await addTradeToDb(tradePayload, user.uid);
-              // Update Balance
                if (tradePayload.pnl) { 
                   const acc = accounts.find(a => a.id === accountId); 
                   if (acc) await updateAccountBalance(accountId, acc.balance + tradePayload.pnl); 
               }
           }
 
-          // 3. Close UI Immediately
           setIsAddTradeOpen(false);
           setEditingTrade(undefined);
           setIsSavingTrade(false);
 
-          // 4. Background Processes (Uploads & AI)
-          // We use the 'savedId' and the 'screenshot' from original tradeData
           (async () => {
-              // A. Image Upload
-              // Only process if it's a new base64 image string, not an existing URL
               if (tradeData.screenshot && tradeData.screenshot.startsWith('data:image')) {
                   try {
                       const url = await uploadScreenshotToStorage(tradeData.screenshot, user.uid);
                       if (url && savedId && url !== tradeData.screenshot) {
-                          // Update the trade with the URL, replacing the base64 blob
                           await updateTradeInDb({ id: savedId, screenshot: url } as any);
                       }
                   } catch (e) {
@@ -1692,7 +1707,6 @@ const App: React.FC = () => {
                   }
               }
 
-              // B. AI Analysis
               if (tradePayload.notes && !tradePayload.aiAnalysis && savedId) {
                   try {
                       const analysis = await analyzeTradePsychology({ ...tradePayload, id: savedId });
@@ -1740,7 +1754,7 @@ const App: React.FC = () => {
         const dangerZones = await analyzeStrategyEdgeCases(stratContent);
         
         await addStrategyToDb({
-            id: '', // Firestore will assign
+            id: '', 
             userId: user.uid,
             title: strategyInput,
             content: stratContent,
@@ -1826,7 +1840,6 @@ const App: React.FC = () => {
   const handleStartChallenge = async (type: 'monk' | 'iron' | 'savage') => {
       if (!user) return;
       
-      // Verification types mapped to templates
       const templates = {
           monk: { 
               title: "Monk Mode Protocol", days: 7, desc: "A 7-day reset. Focus on meditation and selective trading.", 
@@ -1926,14 +1939,12 @@ const App: React.FC = () => {
       if (!activeChallenge) return;
       
       setSavingChallenge(true);
-      // DEEP COPY to ensure React state updates properly
       const newDays = activeChallenge.days.map((d, i) => {
           if (i !== dayIdx) return d;
           return {
               ...d,
               tasks: d.tasks.map(t => {
                   if (t.id !== taskId) return t;
-                  // Don't allow manual toggle of failed/system tasks
                   if (t.status === 'failed') return t;
                   
                   const isNowCompleted = !t.completed;
@@ -1946,7 +1957,6 @@ const App: React.FC = () => {
           };
       });
 
-      // Recalculate Day Status
       const finalDays = newDays.map(d => {
            if (d.tasks.every(t => t.completed)) return { ...d, status: 'completed' as const };
            if (d.tasks.some(t => t.status === 'failed')) return { ...d, status: 'failed' as const };
@@ -1954,8 +1964,8 @@ const App: React.FC = () => {
       });
       
       const updatedChallenge = { ...activeChallenge, days: finalDays };
-      setActiveChallenge(updatedChallenge); // Instant UI feedback
-      await updateChallenge(updatedChallenge); // DB Persist
+      setActiveChallenge(updatedChallenge); 
+      await updateChallenge(updatedChallenge); 
       setSavingChallenge(false);
   };
   
@@ -1963,7 +1973,6 @@ const App: React.FC = () => {
        if (!activeChallenge || !user) return;
        if (confirm("Resetting Challenge to Day 1. Are you sure?")) {
            await updateChallenge({ ...activeChallenge, status: 'failed' });
-           // Re-start same challenge logic could be applied here
            alert("Challenge Failed. Restart when you are ready.");
            setActiveChallenge(null);
        }
@@ -1977,9 +1986,6 @@ const App: React.FC = () => {
       }
   };
 
-
-  // ... (handleCoachUpload, handleCoachSend, handleExportCSV, handleLogout)
-  // Re-including for completeness of file
   const handleCoachUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) { const reader = new FileReader(); reader.onloadend = async () => { const raw = reader.result as string; const compressed = await compressImage(raw); setCoachImage(compressed); }; reader.readAsDataURL(file); }
@@ -2006,13 +2012,72 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => { await logoutUser(); setTrades([]); setAccounts([]); };
+  
+  // ==========================================
+  // FIX: MOVED HOOKS AND DEPENDENCIES ABOVE CONDITIONAL RETURN
+  // ==========================================
+  
+  const filteredTrades = selectedAccount === 'all' ? trades : trades.filter(t => t.accountId === selectedAccount);
+  const totalPnL = filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+
+  // --- ANALYTICS ADVANCED METRICS (HOOKS) ---
+  // Golden Hour Matrix
+  const goldenHourData = React.useMemo(() => {
+    const matrix: Record<string, number> = {};
+    filteredTrades.forEach(t => {
+        const d = new Date(t.date);
+        const day = d.getDay(); // 0-6
+        const hour = d.getHours(); // 0-23
+        const key = `${day}-${hour}`;
+        if (!matrix[key]) matrix[key] = 0;
+        matrix[key] += t.pnl || 0;
+    });
+    return matrix;
+  }, [filteredTrades]);
+
+  // What-If
+  const whatIfPnL = React.useMemo(() => {
+    const losses = filteredTrades.filter(t => (t.pnl || 0) < 0).sort((a,b) => (a.pnl||0) - (b.pnl||0));
+    const top3Losses = losses.slice(0, 3).reduce((acc, t) => acc + (t.pnl || 0), 0);
+    return totalPnL - top3Losses;
+  }, [filteredTrades, totalPnL]);
+
+  // Tag Performance
+  const tagStats = React.useMemo(() => {
+    const stats: Record<string, { pnl: number, count: number }> = {};
+    filteredTrades.forEach(t => {
+        (t.tags || []).forEach(tag => {
+            if (!stats[tag]) stats[tag] = { pnl: 0, count: 0 };
+            stats[tag].pnl += t.pnl || 0;
+            stats[tag].count++;
+        });
+    });
+    return Object.entries(stats).sort((a,b) => b[1].pnl - a[1].pnl);
+  }, [filteredTrades]);
+
+  // Drawdown
+  const maxDrawdown = React.useMemo(() => {
+      let peak = 0;
+      let maxDD = 0;
+      let equity = 0;
+      [...filteredTrades].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(t => {
+          equity += t.pnl || 0;
+          if (equity > peak) peak = equity;
+          const dd = peak - equity;
+          if (dd > maxDD) maxDD = dd;
+      });
+      return maxDD;
+  }, [filteredTrades]);
+
+  // ==========================================
+  // AUTH CHECK (CONDITIONAL RETURN)
+  // ==========================================
   if (!user) return <LoginScreen onLogin={() => {}} />;
 
-  const filteredTrades = selectedAccount === 'all' ? trades : trades.filter(t => t.accountId === selectedAccount);
   const tradesByDate: Record<string, Trade[]> = {};
   filteredTrades.forEach(t => { const dateStr = t.date.split('T')[0]; if (!tradesByDate[dateStr]) tradesByDate[dateStr] = []; tradesByDate[dateStr].push(t); });
   const sortedDates = Object.keys(tradesByDate).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  const totalPnL = filteredTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+  
   const totalTrades = filteredTrades.length;
   const wins = filteredTrades.filter(t => t.outcome === TradeOutcome.WIN).length;
   const losses = filteredTrades.filter(t => t.outcome === TradeOutcome.LOSS).length;
@@ -2022,7 +2087,6 @@ const App: React.FC = () => {
   const avgRR = (avgWin / (avgLoss || 1)).toFixed(2);
   const communityPosts = [ { id: 1, user: 'CryptoKing', time: 'Just now', pair: 'BTCUSD', direction: 'LONG', roi: '+12.5%', image: 'https://images.unsplash.com/photo-1611974765270-ca12586343bb?auto=format&fit=crop&q=80&w=600', likes: 24, comments: 5 }, { id: 2, user: 'ForexSniper', time: '2m ago', pair: 'EURUSD', direction: 'SHORT', roi: '+4.2%', image: 'https://images.unsplash.com/photo-1535320903710-d9cf113d2054?auto=format&fit=crop&q=80&w=600', likes: 11, comments: 2 }, { id: 3, user: 'GoldBug', time: '12m ago', pair: 'XAUUSD', direction: 'LONG', roi: '-1.2%', image: 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&q=80&w=600', likes: 5, comments: 8 } ];
 
-  // --- PROFILE LOGIC ---
   const getRank = (pnl: number) => {
     if (pnl < 0) return { title: 'ROOKIE', color: 'gray' };
     if (pnl < 5000) return { title: 'TRADER', color: 'cyan' };
@@ -2035,7 +2099,6 @@ const App: React.FC = () => {
   const bestTrade = filteredTrades.length > 0 ? Math.max(...filteredTrades.map(t => t.pnl || 0)) : 0;
   const worstTrade = filteredTrades.length > 0 ? Math.min(...filteredTrades.map(t => t.pnl || 0)) : 0;
   
-  // --- STRATEGY FILTERING ---
   const filteredStrategies = playbookEntries.filter(p => {
       const matchesType = stratFilter === 'all' || p.type === stratFilter;
       const matchesSearch = p.title.toLowerCase().includes(stratSearch.toLowerCase()) || p.content.toLowerCase().includes(stratSearch.toLowerCase());
@@ -2056,7 +2119,6 @@ const App: React.FC = () => {
 
         <main className="flex-1 md:ml-20 pb-24 md:pb-8 relative z-10 transition-all duration-300">
           
-          {/* Header */}
           <header className="sticky top-0 z-40 px-6 py-4 bg-[#05070A]/80 backdrop-blur-xl border-b border-white/5 flex justify-between items-center">
              <div className="flex items-center gap-4">
                  <h2 className="text-xl font-display font-bold text-white capitalize">{activeTab.replace('-', ' ')}</h2>
@@ -2076,7 +2138,6 @@ const App: React.FC = () => {
                  )}
              </div>
              <div className="flex items-center gap-4">
-                 {/* DAILY PNL DISPLAY */}
                  <div className={`hidden md:flex flex-col items-end px-3 py-1 rounded-lg border border-white/5 ${dailyPnL >= 0 ? 'bg-emerald-500/5' : 'bg-rose-500/5'}`}>
                      <span className="text-xs uppercase font-bold text-slate-500">Daily PnL</span>
                      <span className={`font-mono text-sm font-bold ${dailyPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrency(dailyPnL)}</span>
@@ -2098,7 +2159,6 @@ const App: React.FC = () => {
           </header>
 
           <div className="p-6 max-w-7xl mx-auto">
-            {/* ... (Existing Journal View) ... */}
             {activeTab === 'journal' && (
                 <div className="space-y-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -2127,7 +2187,6 @@ const App: React.FC = () => {
                         </Card>
                     </div>
 
-                    {/* NEW JOURNAL REVAMP: DAILY GROUPS */}
                     <div className="space-y-6">
                         {sortedDates.length > 0 ? sortedDates.map(date => {
                             const dayTrades = tradesByDate[date];
@@ -2160,7 +2219,6 @@ const App: React.FC = () => {
                                                     <tr key={trade.id} onClick={() => setSelectedTrade(trade)} className="hover:bg-white/5 transition-colors cursor-pointer group">
                                                         <td className="p-3">
                                                             <div className="flex items-center gap-3">
-                                                                {/* NEW IMAGE BLOCK */}
                                                                  <div className="w-16 h-10 rounded-lg bg-slate-800 border border-white/10 overflow-hidden shrink-0 group-hover:border-cyan-500/50 transition-colors relative shadow-sm">
                                                                     {trade.screenshot ? (
                                                                         <img src={trade.screenshot} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" alt="Trade Setup" />
@@ -2207,7 +2265,6 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- CHALLENGES (REVAMPED) --- */}
             {activeTab === 'challenges' && (
                 <div className="h-full overflow-y-auto pb-24">
                     {!activeChallenge ? (
@@ -2263,7 +2320,6 @@ const App: React.FC = () => {
                                     </div>
                                 </Card>
                                 
-                                {/* CUSTOM CHALLENGE CARD */}
                                 <Card className="relative overflow-hidden group hover:border-amber-500/50 transition-all cursor-pointer flex flex-col items-center justify-center border-dashed border-2 border-white/10" onClick={() => setIsCreateChallengeOpen(true)}>
                                     <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4 group-hover:scale-110 transition-transform"><Wand2 size={32}/></div>
                                     <h3 className="text-lg font-bold text-white mb-2">Create Custom</h3>
@@ -2273,7 +2329,6 @@ const App: React.FC = () => {
                         </div>
                     ) : (
                         <div className="space-y-6 animate-fade-in relative max-w-7xl mx-auto">
-                            {/* --- COMMAND CENTER HEADER --- */}
                             <div className="bg-[#0B0F19] rounded-3xl border border-white/10 p-8 relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8">
                                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
                                 <div className="relative z-10 flex-1">
@@ -2311,10 +2366,7 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                             
-                            {/* --- MAIN DASHBOARD GRID --- */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                
-                                {/* COL 1: DAILY MISSION CONTROL (Interactive) */}
                                 <div className="md:col-span-2 space-y-6">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-xl font-bold text-white flex items-center gap-2"><TargetIcon className="text-cyan-500"/> Today's Missions</h3>
@@ -2333,7 +2385,6 @@ const App: React.FC = () => {
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-6">
-                                                    {/* Big Checkbox */}
                                                     <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all ${
                                                         task.completed ? 'bg-emerald-500 border-emerald-500 text-white scale-110' :
                                                         task.status === 'failed' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
@@ -2353,7 +2404,6 @@ const App: React.FC = () => {
                                                         </div>
                                                     </div>
 
-                                                    {/* Visual Flair */}
                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500">
                                                         {task.completed ? <span className="text-emerald-500 font-bold">DONE</span> : <span className="text-xs uppercase tracking-widest">Mark Complete</span>}
                                                     </div>
@@ -2362,7 +2412,6 @@ const App: React.FC = () => {
                                         ))}
                                     </div>
                                     
-                                    {/* Motivation Quote Block */}
                                     <div className="bg-gradient-to-r from-blue-900/10 to-transparent p-6 rounded-2xl border border-blue-500/10 flex items-start gap-4">
                                         <Bot className="text-blue-400 shrink-0 mt-1"/>
                                         <div>
@@ -2372,7 +2421,6 @@ const App: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* COL 2: THE MAP & HISTORY */}
                                 <div className="space-y-6">
                                      <div className="flex items-center justify-between">
                                         <h3 className="text-xl font-bold text-white flex items-center gap-2"><Map className="text-purple-500"/> The Journey</h3>
@@ -2389,7 +2437,6 @@ const App: React.FC = () => {
                                                 const isPast = d.dayNumber < activeChallenge.currentDay;
                                                 const isToday = d.dayNumber === activeChallenge.currentDay;
                                                 
-                                                // Check daily PnL for this specific day
                                                 const dayStr = d.date.split('T')[0];
                                                 const dayTrades = trades.filter(t => t.date.startsWith(dayStr));
                                                 const dayPnL = dayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
@@ -2408,12 +2455,9 @@ const App: React.FC = () => {
                                                     <div key={d.dayNumber} className={`aspect-square rounded-md flex flex-col items-center justify-center relative transition-all ${bg}`} title={`Day ${d.dayNumber} - ${dayDate.toLocaleDateString()}`}>
                                                         <span className={`text-[10px] font-bold ${text}`}>{dayDate.getDate()}</span>
                                                         <span className="text-[8px] opacity-70 uppercase">{dayDate.toLocaleString('default', { month: 'short' })}</span>
-                                                        
-                                                        {/* Status Dot based on PnL */}
                                                         {hasTrades && (
                                                             <div className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${isWinDay ? 'bg-emerald-300' : 'bg-rose-300'}`}></div>
                                                         )}
-                                                        {/* Missed Day Indicator */}
                                                         {isPast && d.status === 'pending' && (
                                                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                                                                 <X size={12} className="text-slate-500 opacity-50"/>
@@ -2425,7 +2469,6 @@ const App: React.FC = () => {
                                         </div>
                                     </Card>
 
-                                    {/* Quick Journal for Challenge */}
                                     <Card>
                                         <div className="flex items-center gap-2 mb-3">
                                             <BookOpen size={16} className="text-slate-400"/>
@@ -2444,77 +2487,192 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* ... (Existing Analytics, Playbook, etc. Tabs) ... */}
-            {/* ... [Analytics, Playbook, Community, Mindset, Red Folder, AI Coach, Profile views remain unchanged] ... */}
             {activeTab === 'analytics' && (
                 <div className="space-y-6 flex flex-col">
-                    <Card className="flex items-center justify-between bg-gradient-to-r from-blue-900/20 to-transparent border-blue-500/20">
-                         <div className="flex items-center gap-4">
-                             <div className="p-3 bg-blue-500/10 rounded-full text-blue-400"><TargetIcon size={24}/></div>
+                    {/* KEY METRICS TOP BAR */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Card className="flex items-center justify-between bg-gradient-to-r from-blue-900/20 to-transparent border-blue-500/20">
                              <div>
-                                 <h3 className="text-lg font-bold text-white">Consistency Score</h3>
-                                 <p className="text-xs text-slate-400">Based on PnL variance</p>
+                                 <h3 className="text-xs font-bold text-blue-400 uppercase">Consistency</h3>
+                                 <div className="text-2xl font-mono font-bold text-white">88<span className="text-sm text-slate-500">/100</span></div>
                              </div>
-                         </div>
-                         <div className="text-3xl font-mono font-bold text-blue-400">88<span className="text-sm text-slate-500">/100</span></div>
-                    </Card>
+                             <TargetIcon className="text-blue-500 opacity-50" size={24}/>
+                        </Card>
+                         <Card className="flex items-center justify-between bg-gradient-to-r from-rose-900/20 to-transparent border-rose-500/20">
+                             <div>
+                                 <h3 className="text-xs font-bold text-rose-400 uppercase">Max Drawdown</h3>
+                                 <div className="text-2xl font-mono font-bold text-white">-${maxDrawdown.toFixed(0)}</div>
+                             </div>
+                             <TrendingDown className="text-rose-500 opacity-50" size={24}/>
+                        </Card>
+                        <Card className="flex items-center justify-between bg-gradient-to-r from-emerald-900/20 to-transparent border-emerald-500/20">
+                             <div>
+                                 <h3 className="text-xs font-bold text-emerald-400 uppercase">Expectancy</h3>
+                                 <div className="text-2xl font-mono font-bold text-white">
+                                    {((parseInt(winRate) / 100 * avgWin) - ((100 - parseInt(winRate)) / 100 * avgLoss)).toFixed(2)}
+                                 </div>
+                             </div>
+                             <Crosshair className="text-emerald-500 opacity-50" size={24}/>
+                        </Card>
+                         <Card className="flex items-center justify-between bg-gradient-to-r from-purple-900/20 to-transparent border-purple-500/20">
+                             <div>
+                                 <h3 className="text-xs font-bold text-purple-400 uppercase">Factor</h3>
+                                 <div className="text-2xl font-mono font-bold text-white">
+                                     {(Math.abs(avgWin)/Math.abs(avgLoss || 1)).toFixed(2)}
+                                 </div>
+                             </div>
+                             <Scale className="text-purple-500 opacity-50" size={24}/>
+                        </Card>
+                    </div>
 
-                    {/* New Position Size Calculator */}
-                    <PositionSizeCalculator />
-                    
-                    {/* PSYCHO LAB */}
-                    <Card className="bg-gradient-to-br from-indigo-900/20 to-transparent border-indigo-500/10">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><BrainCircuit className="text-indigo-400"/> Trade Psychology Lab</h3>
-                        <p className="text-sm text-slate-400 mb-4">Select a specific trade to perform a deep behavioral analysis using your journal notes.</p>
-                        
-                        <div className="flex gap-4 mb-4">
-                            <Select value={selectedPsychoTradeId} onChange={e => setSelectedPsychoTradeId(e.target.value)} className="bg-black/40">
-                                <option value="">Select a trade to analyze...</option>
-                                {filteredTrades.filter(t => t.notes).map(t => (
-                                    <option key={t.id} value={t.id}>{t.pair} ({t.outcome}) - {new Date(t.date).toLocaleDateString()}</option>
-                                ))}
-                            </Select>
-                            <Button variant="neon" onClick={handlePsychoAnalysis} disabled={!selectedPsychoTradeId || isAnalyzingPsycho}>
-                                {isAnalyzingPsycho ? <Sparkles className="animate-spin"/> : 'Analyze Mindset'}
-                            </Button>
-                        </div>
-                        
-                        {psychoAnalysisResult && (
-                            <div className="mt-4 p-4 bg-indigo-900/10 rounded-xl border border-indigo-500/20 animate-fade-in">
-                                <h4 className="text-xs font-bold text-indigo-400 uppercase mb-2">Behavioral Profile</h4>
-                                <div className="prose prose-invert prose-sm max-w-none text-slate-300">
-                                    <pre className="whitespace-pre-wrap font-sans bg-transparent border-0 p-0">{psychoAnalysisResult}</pre>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* LEFT: SIMULATION & TOOLS */}
+                        <div className="lg:col-span-1 space-y-6">
+                            <PositionSizeCalculator />
+                            <MonteCarloSimulator 
+                                winRate={parseFloat(winRate)} 
+                                avgWin={avgWin} 
+                                avgLoss={avgLoss} 
+                                startingBalance={accounts[0]?.balance || 10000} 
+                            />
+                            
+                            {/* WHAT-IF SCENARIO */}
+                            <Card className="bg-gradient-to-br from-amber-900/10 to-[#0B0F19] border-amber-500/10">
+                                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 uppercase tracking-wider">
+                                    <HelpCircle size={16} className="text-amber-400"/> "What If" Simulator
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                                        <div className="text-xs text-amber-400 mb-1">Impact of deleting top 3 losses:</div>
+                                        <div className="flex justify-between items-end">
+                                            <div>
+                                                <div className="text-xs text-slate-500">Current PnL</div>
+                                                <div className="font-mono text-slate-300">{formatCurrency(totalPnL)}</div>
+                                            </div>
+                                            <ArrowRight size={16} className="text-amber-500 mb-1"/>
+                                            <div className="text-right">
+                                                <div className="text-xs text-emerald-400 font-bold">Adjusted PnL</div>
+                                                <div className="text-xl font-mono font-bold text-white">{formatCurrency(whatIfPnL)}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 leading-tight">
+                                        This calculates your profitability if you eliminated your worst 3 "fat finger" or "tilt" trades. 
+                                        Gap: <span className="text-white font-bold">{formatCurrency(whatIfPnL - totalPnL)}</span> left on the table.
+                                    </p>
                                 </div>
-                            </div>
-                        )}
-                    </Card>
+                            </Card>
+                        </div>
 
-                    <Card className="h-[400px]">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><TrendingUp className="text-cyan-500"/> Equity Curve</h3>
-                        <EquityCurve trades={filteredTrades} />
-                    </Card>
-                    <Card className="h-[400px]">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><CalendarIcon className="text-emerald-500"/> PnL Calendar</h3>
-                        <TradeCalendar trades={filteredTrades} />
-                    </Card>
-                    {/* Charts Stack */}
-                    <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Win Rate Distribution</h3><WinLossChart trades={filteredTrades} /></Card>
-                    <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Pair Performance</h3><PairPerformanceChart trades={filteredTrades} /></Card>
-                    <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Strategy Edge</h3><StrategyChart trades={filteredTrades} /></Card>
-                    <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Hourly Edge</h3><HourlyPerformanceChart trades={filteredTrades} /></Card>
+                        {/* CENTER: MAIN VISUALS */}
+                        <div className="lg:col-span-2 space-y-6">
+                            <Card className="bg-gradient-to-br from-indigo-900/20 to-transparent border-indigo-500/10">
+                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><BrainCircuit className="text-indigo-400"/> Trade Psychology Lab</h3>
+                                <div className="flex gap-4 mb-4">
+                                    <Select value={selectedPsychoTradeId} onChange={e => setSelectedPsychoTradeId(e.target.value)} className="bg-black/40">
+                                        <option value="">Select a trade to analyze...</option>
+                                        {filteredTrades.filter(t => t.notes).map(t => (
+                                            <option key={t.id} value={t.id}>{t.pair} ({t.outcome}) - {new Date(t.date).toLocaleDateString()}</option>
+                                        ))}
+                                    </Select>
+                                    <Button variant="neon" onClick={handlePsychoAnalysis} disabled={!selectedPsychoTradeId || isAnalyzingPsycho}>
+                                        {isAnalyzingPsycho ? <Sparkles className="animate-spin"/> : 'Analyze Mindset'}
+                                    </Button>
+                                </div>
+                                {psychoAnalysisResult && (
+                                    <div className="mt-4 p-4 bg-indigo-900/10 rounded-xl border border-indigo-500/20 animate-fade-in">
+                                        <div className="prose prose-invert prose-sm max-w-none text-slate-300">
+                                            <pre className="whitespace-pre-wrap font-sans bg-transparent border-0 p-0">{psychoAnalysisResult}</pre>
+                                        </div>
+                                    </div>
+                                )}
+                            </Card>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <Card className="h-[300px] flex flex-col">
+                                    <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase flex items-center gap-2"><Clock size={16}/> The Golden Hour Matrix</h3>
+                                    {/* HEATMAP VISUALIZATION */}
+                                    <div className="flex-1 grid grid-cols-24 gap-[1px] bg-slate-800 border border-slate-700">
+                                        {/* Simplified representation due to space. Day (Rows) x Hour (Cols) */}
+                                        {Array.from({length: 5}).map((_, d) => (
+                                             <div key={d} className="contents">
+                                                 {Array.from({length: 12}).map((_, h) => { // 2-hour blocks for fit
+                                                     const hourKey = `${d + 1}-${h*2}`; // approx
+                                                     const val = goldenHourData[hourKey] || 0;
+                                                     let bg = 'bg-[#0B0F19]';
+                                                     if (val > 0) bg = 'bg-emerald-500';
+                                                     if (val < 0) bg = 'bg-rose-500';
+                                                     const opacity = Math.min(Math.abs(val) / 500, 1);
+                                                     
+                                                     return (
+                                                         <div 
+                                                            key={`${d}-${h}`} 
+                                                            className="col-span-2 h-full w-full relative group"
+                                                            style={{ backgroundColor: val !== 0 ? (val > 0 ? '#10b981' : '#f43f5e') : '#1e293b', opacity: val !== 0 ? 0.2 + (opacity * 0.8) : 1 }}
+                                                         >
+                                                             <div className="opacity-0 group-hover:opacity-100 absolute bottom-full left-1/2 -translate-x-1/2 bg-black text-white text-[9px] p-1 rounded z-10 pointer-events-none whitespace-nowrap">
+                                                                 {['Mon','Tue','Wed','Thu','Fri'][d]} {(h*2)}:00 • {formatCurrency(val)}
+                                                             </div>
+                                                         </div>
+                                                     )
+                                                 })}
+                                             </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between mt-2 text-[10px] text-slate-500 uppercase">
+                                        <span>00:00</span>
+                                        <span>12:00</span>
+                                        <span>23:59</span>
+                                    </div>
+                                    <div className="flex justify-between mt-1 text-[10px] text-slate-500 uppercase">
+                                         <div className="flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500"></div> Profit</div>
+                                         <div className="flex items-center gap-1"><div className="w-2 h-2 bg-rose-500"></div> Loss</div>
+                                    </div>
+                                </Card>
+
+                                <Card className="h-[300px] flex flex-col">
+                                     <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase flex items-center gap-2"><Target size={16}/> Tag Intelligence</h3>
+                                     <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                                         {tagStats.map(([tag, stat]) => (
+                                             <div key={tag} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 text-xs">
+                                                 <Badge color="gray">{tag}</Badge>
+                                                 <div className="flex items-center gap-4">
+                                                     <span className="text-slate-500">{stat.count} trades</span>
+                                                     <span className={`font-mono font-bold ${stat.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                         {formatCurrency(stat.pnl)}
+                                                     </span>
+                                                 </div>
+                                             </div>
+                                         ))}
+                                     </div>
+                                </Card>
+                            </div>
+
+                            <Card className="h-[300px]">
+                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><TrendingUp className="text-cyan-500"/> Equity Curve</h3>
+                                <EquityCurve trades={filteredTrades} />
+                            </Card>
+                        </div>
+                    </div>
+                    
+                    {/* BOTTOM ROW CHARTS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Win Rate Distribution</h3><WinLossChart trades={filteredTrades} /></Card>
+                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Pair Performance</h3><PairPerformanceChart trades={filteredTrades} /></Card>
+                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Strategy Edge</h3><StrategyChart trades={filteredTrades} /></Card>
+                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Hourly Edge</h3><HourlyPerformanceChart trades={filteredTrades} /></Card>
+                    </div>
                 </div>
             )}
             
             {activeTab === 'playbook' && (
                 <div className="space-y-6">
-                    {/* Header Controls */}
                     <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
                         <div>
                             <h2 className="text-3xl font-display font-bold text-white">Strategy Playbook</h2>
                             <p className="text-sm text-slate-400 mt-1">Develop, backtest, and refine your edge.</p>
                         </div>
                         <div className="flex gap-2">
-                             {/* Filter Chips */}
                              <div className="bg-slate-900 p-1 rounded-xl flex gap-1 border border-white/10 mr-4">
                                 {['all', 'ai', 'manual'].map((f) => (
                                     <button 
@@ -2534,7 +2692,6 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Builder Area */}
                     <Card className="border-t-4 border-cyan-500">
                         {strategyMode === 'ai' ? (
                             <div className="space-y-4">
@@ -2566,7 +2723,6 @@ const App: React.FC = () => {
                         )}
                     </Card>
 
-                    {/* Strategy Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {filteredStrategies.map(entry => (
                             <Card key={entry.id} onClick={() => setSelectedStrategy(entry)} className="group hover:border-cyan-500/50 transition-all flex flex-col h-full relative overflow-hidden cursor-pointer">
@@ -2632,9 +2788,7 @@ const App: React.FC = () => {
 
             {activeTab === 'discipline' && (
                 <div className="grid grid-cols-12 gap-6 h-full overflow-y-auto pr-2 pb-24">
-                    {/* LEFT COL: Vitals & State (4 cols) */}
                     <div className="col-span-12 lg:col-span-4 space-y-6">
-                        {/* TILT THERMOMETER */}
                         <Card className="bg-[#0B0F19] relative overflow-hidden">
                              <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-white flex items-center gap-2"><ThermometerSnowflake size={18} className="text-rose-500"/> Tilt Thermometer</h3>
@@ -2647,7 +2801,6 @@ const App: React.FC = () => {
                                     className={`w-full transition-all duration-300 ${tiltLevel > 75 ? 'bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.5)]' : tiltLevel > 40 ? 'bg-orange-500' : 'bg-emerald-500'}`} 
                                     style={{ height: `${tiltLevel}%` }}
                                 ></div>
-                                {/* Scale markings */}
                                 <div className="absolute inset-0 flex flex-col justify-between py-2 pointer-events-none">
                                     {[100, 75, 50, 25, 0].map(m => <div key={m} className="w-full border-t border-white/20 h-px"></div>)}
                                 </div>
@@ -2662,7 +2815,6 @@ const App: React.FC = () => {
                              <p className="text-center text-xs text-slate-500 mt-2">Adjust to match your current frustration level.</p>
                         </Card>
 
-                        {/* EMOTIONAL WEATHER */}
                         <Card>
                             <h3 className="font-bold text-white flex items-center gap-2 mb-4"><Wind size={18} className="text-cyan-400"/> Emotional Weather</h3>
                             <div className="grid grid-cols-3 gap-2">
@@ -2685,15 +2837,12 @@ const App: React.FC = () => {
                             </div>
                         </Card>
 
-                        {/* BREATHING WIDGET */}
                         <Card className="bg-gradient-to-b from-cyan-900/10 to-[#0B0F19]">
                              <BreathingExercise />
                         </Card>
                     </div>
 
-                    {/* MID COL: Journaling & AI Tools (5 cols) */}
                     <div className="col-span-12 lg:col-span-5 space-y-6">
-                         {/* REFLECTIVE JOURNAL */}
                          <Card className="min-h-[400px] flex flex-col bg-[#0B0F19]">
                              <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-4">
                                  {['pre', 'mid', 'post'].map(t => (
@@ -2716,7 +2865,6 @@ const App: React.FC = () => {
                              <Button variant="secondary" className="mt-4 w-full">Save Entry to Database</Button>
                          </Card>
 
-                         {/* COGNITIVE REFRAMING TOOL */}
                          <Card className="border border-purple-500/20 bg-gradient-to-br from-purple-900/10 to-transparent">
                              <h3 className="font-bold text-white flex items-center gap-2 mb-2"><Brain size={18} className="text-purple-400"/> Cognitive Reframing</h3>
                              <p className="text-xs text-slate-400 mb-4">Input a negative thought. The AI will reframe it into a stoic, productive belief.</p>
@@ -2742,9 +2890,7 @@ const App: React.FC = () => {
                          </Card>
                     </div>
 
-                    {/* RIGHT COL: Protocol & Audio (3 cols) */}
                     <div className="col-span-12 lg:col-span-3 space-y-6">
-                         {/* PRE-SESSION CHECKLIST */}
                          <Card>
                             <h3 className="font-bold text-white flex items-center gap-2 mb-4"><CheckCircle size={18} className="text-emerald-500"/> Readiness Protocol</h3>
                             <div className="space-y-3">
@@ -2766,7 +2912,6 @@ const App: React.FC = () => {
                             </div>
                          </Card>
 
-                         {/* AUDIO LIBRARY */}
                          <Card>
                             <h3 className="font-bold text-white flex items-center gap-2 mb-4"><Volume2 size={18} className="text-cyan-400"/> Focus Deck</h3>
                             <div className="space-y-2">
@@ -2787,7 +2932,6 @@ const App: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="w-4 h-4">
-                                            {/* Equalizer Animation Placeholder */}
                                             <div className="flex gap-0.5 h-full items-end opacity-0 group-hover:opacity-100">
                                                 <div className="w-0.5 bg-cyan-500 h-[60%] animate-pulse"></div>
                                                 <div className="w-0.5 bg-cyan-500 h-[100%] animate-pulse delay-75"></div>
@@ -2802,10 +2946,8 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* ... [Rest of tabs remain same] ... */}
              {activeTab === 'news' && (
                 <div className="space-y-6">
-                    {/* Market Clocks */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[
                             { city: 'London', zone: 'Europe/London' },
@@ -2826,7 +2968,6 @@ const App: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Radar & Summary */}
                         <Card className="lg:col-span-1 bg-gradient-to-br from-rose-900/10 to-[#0B0F19] border-rose-500/20">
                             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Radio className="text-rose-500 animate-pulse"/> Volatility Radar</h3>
                             <div className="aspect-square relative flex items-center justify-center mb-6">
@@ -2844,7 +2985,6 @@ const App: React.FC = () => {
                             </div>
                         </Card>
 
-                        {/* Flight Board */}
                         <Card className="lg:col-span-2">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2"><Flame className="text-rose-500"/> Impact Events</h3>
@@ -2884,7 +3024,6 @@ const App: React.FC = () => {
             {activeTab === 'ai-coach' && (
                 <div className="h-[calc(100vh-140px)] flex flex-col max-w-4xl mx-auto">
                      <Card className="flex-1 flex flex-col overflow-hidden bg-[#0B0F19] border-white/10 relative">
-                         {/* Header */}
                          <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-white/5">
                              <div className="w-10 h-10 rounded-full bg-cyan-600/20 flex items-center justify-center text-cyan-400"><Bot size={24}/></div>
                              <div>
@@ -2893,7 +3032,6 @@ const App: React.FC = () => {
                              </div>
                          </div>
                          
-                         {/* Chat Area */}
                          <div className="flex-1 overflow-y-auto p-6 space-y-6">
                              {coachMessages.length === 0 && (
                                  <div className="text-center text-slate-500 mt-20 space-y-4">
@@ -2922,7 +3060,6 @@ const App: React.FC = () => {
                              <div ref={chatEndRef} />
                          </div>
 
-                         {/* Input Area */}
                          <div className="p-4 bg-black/40 border-t border-white/5">
                              {coachImage && (
                                  <div className="mb-2 inline-block relative group">
@@ -2949,7 +3086,6 @@ const App: React.FC = () => {
             
             {activeTab === 'profile' && user && (
                  <div className="max-w-4xl mx-auto space-y-8">
-                     {/* Identity Card */}
                      <Card className="relative overflow-hidden p-8 flex flex-col md:flex-row items-center gap-8 bg-gradient-to-r from-slate-900 to-[#0B0F19] border-white/10">
                          <div className="absolute top-0 right-0 p-32 bg-cyan-500/10 rounded-full blur-[100px]"></div>
                          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 p-1 relative">
@@ -2980,7 +3116,6 @@ const App: React.FC = () => {
                      </Card>
 
                      <div className="flex flex-col md:flex-row gap-8">
-                         {/* Settings Sidebar */}
                          <div className="w-full md:w-64 space-y-2">
                              {['account', 'stats', 'data', 'security'].map(t => (
                                  <button 
@@ -2993,7 +3128,6 @@ const App: React.FC = () => {
                              ))}
                          </div>
                          
-                         {/* Settings Content */}
                          <Card className="flex-1 min-h-[400px]">
                              {profileSettingsTab === 'account' && (
                                  <div className="space-y-6">
@@ -3003,7 +3137,6 @@ const App: React.FC = () => {
                                          <div><label className="text-xs text-slate-500 uppercase font-bold">Email</label><Input defaultValue={user.email || ''} disabled className="opacity-50" /></div>
                                      </div>
 
-                                     {/* TRADING ACCOUNTS MANAGER */}
                                      <div className="mt-8 pt-8 border-t border-white/5">
                                          <div className="flex justify-between items-center mb-4">
                                              <h4 className="font-bold text-white">Trading Accounts</h4>
@@ -3066,13 +3199,11 @@ const App: React.FC = () => {
                                      </div>
                                  </div>
                              )}
-                             {/* ... other tabs ... */}
                          </Card>
                      </div>
                  </div>
             )}
             
-            {/* ... */}
           </div>
         </main>
         
