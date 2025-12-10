@@ -2088,7 +2088,7 @@ const App: React.FC = () => {
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr className="border-b border-white/5 text-[10px] text-slate-500 uppercase font-mono tracking-wider bg-white/5">
-                                                    <th className="p-3 font-normal">Pair</th>
+                                                    <th className="p-3 font-normal">Asset</th>
                                                     <th className="p-3 font-normal">Session</th>
                                                     <th className="p-3 font-normal">Setup</th>
                                                     <th className="p-3 font-normal">Tags</th>
@@ -2102,8 +2102,20 @@ const App: React.FC = () => {
                                                     <tr key={trade.id} onClick={() => setSelectedTrade(trade)} className="hover:bg-white/5 transition-colors cursor-pointer group">
                                                         <td className="p-3">
                                                             <div className="flex items-center gap-3">
-                                                                <Badge color={trade.direction === TradeDirection.BUY ? 'green' : 'red'}>{trade.direction}</Badge>
-                                                                <span className="font-bold text-white text-sm">{trade.pair}</span>
+                                                                {/* NEW IMAGE BLOCK */}
+                                                                 <div className="w-12 h-8 rounded bg-slate-800 border border-white/10 overflow-hidden shrink-0 group-hover:border-cyan-500/30 transition-colors relative">
+                                                                    {trade.screenshot ? (
+                                                                        <img src={trade.screenshot} className="w-full h-full object-cover" loading="lazy" />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-slate-700">
+                                                                            <Activity size={12} />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-white text-sm">{trade.pair}</div>
+                                                                    <div className={`text-[10px] font-bold ${trade.direction === TradeDirection.BUY ? 'text-emerald-500' : 'text-rose-500'}`}>{trade.direction}</div>
+                                                                </div>
                                                             </div>
                                                         </td>
                                                         <td className="p-3 text-sm text-slate-400">{trade.session}</td>
