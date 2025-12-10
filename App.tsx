@@ -1431,6 +1431,32 @@ const App: React.FC = () => {
         return () => { unsubTrades(); unsubAccounts(); unsubDisc(); unsubChallenge(); unsubStrats(); };
     }
   }, [user]);
+  
+  // --- REAL-TIME CHALLENGE SYNC ---
+  useEffect(() => {
+      if (activeChallenge && activeChallenge.status === 'active') {
+          // Calculate true current day based on start date vs now
+          const startDate = new Date(activeChallenge.startDate);
+          const now = new Date();
+          
+          // Reset hours to compare calendar days properly
+          const startMidnight = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          
+          const diffTime = nowMidnight.getTime() - startMidnight.getTime();
+          const dayIndex = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // 0-based index
+          const calculatedDay = dayIndex + 1;
+          
+          if (calculatedDay > activeChallenge.totalDays) {
+               // Challenge Complete Logic could go here
+          } else if (calculatedDay > 0 && calculatedDay !== activeChallenge.currentDay) {
+              // Auto-advance day
+              const updated = { ...activeChallenge, currentDay: calculatedDay };
+              setActiveChallenge(updated);
+              updateChallenge(updated);
+          }
+      }
+  }, [activeChallenge?.id, activeChallenge?.status]); // Re-run when ID changes or status changes
 
   // Sync selectedTrade with real-time updates to ensure screenshots appear
   useEffect(() => {
@@ -1500,6 +1526,7 @@ const App: React.FC = () => {
 
               if (task.verificationType === 'max_loss') {
                   const limit = task.threshold || 0;
+                  // Use 'todayStr' which is already computed
                   if (dailyPnL <= -limit) {
                       updatedNeeded = true;
                       return { ...task, completed: false, status: 'failed' };
@@ -1558,6 +1585,31 @@ const App: React.FC = () => {
   const currentXP = calculateXP();
   const currentLevel = Math.floor(currentXP / 1000) + 1;
   const xpProgress = (currentXP % 1000) / 10; // 0-100%
+  
+  // Calculate Challenge Specific Stats
+  const challengeStats = activeChallenge ? (() => {
+      const completedDays = activeChallenge.days.filter(d => d.status === 'completed').length;
+      const completionRate = Math.round((completedDays / Math.max(activeChallenge.currentDay - 1, 1)) * 100);
+      const streak = activeChallenge.days.reduce((acc, d) => {
+          // Count consecutive completed days ending at yesterday/today
+           if (d.status === 'completed') return acc + 1;
+           // If we hit a failed day before today, reset? Simplified: just count total completed for now or complex streak logic
+           // Let's do simple consecutive from start for "Current Streak" logic requires traversing backwards
+           return acc; 
+      }, 0); 
+      // Better Streak Logic:
+      let currentStreak = 0;
+      for (let i = activeChallenge.currentDay - 2; i >= 0; i--) {
+          if (activeChallenge.days[i].status === 'completed') currentStreak++;
+          else break;
+      }
+      
+      // Calculate Protocol PnL
+      const startDate = new Date(activeChallenge.startDate);
+      const protocolPnL = trades.filter(t => new Date(t.date) >= startDate).reduce((acc, t) => acc + (t.pnl || 0), 0);
+
+      return { completionRate, currentStreak, protocolPnL };
+  })() : { completionRate: 0, currentStreak: 0, protocolPnL: 0 };
 
   // Milestones
   useEffect(() => {
@@ -2232,7 +2284,7 @@ const App: React.FC = () => {
                                          <span className="text-slate-500 text-xs font-mono uppercase">Level {currentLevel}</span>
                                      </div>
                                      <h1 className="text-5xl font-display font-bold text-white mb-2">{activeChallenge.title}</h1>
-                                     <p className="text-slate-400 text-lg">Day {activeChallenge.currentDay} of {activeChallenge.totalDays}</p>
+                                     <p className="text-slate-400 text-lg">Day {activeChallenge.currentDay} of {activeChallenge.totalDays} • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric'})}</p>
                                      <div className="mt-6 flex items-center gap-4">
                                          <div className="flex-1 max-w-md h-3 bg-slate-800 rounded-full overflow-hidden relative">
                                              <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-1000" style={{ width: `${(activeChallenge.currentDay / activeChallenge.totalDays) * 100}%` }}></div>
@@ -2242,9 +2294,15 @@ const App: React.FC = () => {
                                 </div>
                                 
                                 <div className="relative z-10 flex flex-col gap-3">
-                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 text-center w-48">
-                                        <div className="text-xs text-slate-400 uppercase font-bold mb-1">Current XP</div>
-                                        <div className="text-3xl font-mono font-bold text-white">{currentXP}</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center min-w-[100px]">
+                                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Streak</div>
+                                            <div className="text-xl font-mono font-bold text-amber-400 flex items-center justify-center gap-1"><FlameIcon size={14}/> {challengeStats.currentStreak}</div>
+                                        </div>
+                                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center min-w-[100px]">
+                                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Net PnL</div>
+                                            <div className={`text-xl font-mono font-bold ${challengeStats.protocolPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{challengeStats.protocolPnL >= 0 ? '+' : ''}${challengeStats.protocolPnL.toFixed(0)}</div>
+                                        </div>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button variant="secondary" size="sm" className="flex-1" onClick={() => setShowShareCard(!showShareCard)}><Share2 size={16}/> Share</Button>
@@ -2259,7 +2317,7 @@ const App: React.FC = () => {
                                 {/* COL 1: DAILY MISSION CONTROL (Interactive) */}
                                 <div className="md:col-span-2 space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><TargetIcon className="text-cyan-500"/> Daily Missions</h3>
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><TargetIcon className="text-cyan-500"/> Today's Missions</h3>
                                         {savingChallenge && <span className="text-xs text-slate-500 flex items-center gap-1"><Loader2 className="animate-spin" size={12}/> Saving...</span>}
                                     </div>
                                     
@@ -2325,19 +2383,42 @@ const App: React.FC = () => {
                                             <span className="text-xs font-bold text-slate-400 uppercase">Calendar Map</span>
                                             <span className="text-xs text-slate-500">{activeChallenge.days.filter(d => d.status === 'completed').length} Days Won</span>
                                         </div>
-                                        <div className="p-4 grid grid-cols-7 gap-2">
-                                            {activeChallenge.days.map(d => {
+                                        <div className="p-4 grid grid-cols-7 gap-2 max-h-[400px] overflow-y-auto">
+                                            {activeChallenge.days.map((d, i) => {
+                                                const dayDate = new Date(d.date);
                                                 const isPast = d.dayNumber < activeChallenge.currentDay;
                                                 const isToday = d.dayNumber === activeChallenge.currentDay;
+                                                
+                                                // Check daily PnL for this specific day
+                                                const dayStr = d.date.split('T')[0];
+                                                const dayTrades = trades.filter(t => t.date.startsWith(dayStr));
+                                                const dayPnL = dayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+                                                const hasTrades = dayTrades.length > 0;
+                                                const isWinDay = hasTrades && dayPnL >= 0;
+
                                                 let bg = 'bg-slate-800/50';
-                                                if (d.status === 'completed') bg = 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]';
-                                                else if (d.status === 'failed') bg = 'bg-rose-500/20 text-rose-500 border border-rose-500';
-                                                else if (isToday) bg = 'bg-cyan-500 text-white animate-pulse';
-                                                else if (isPast) bg = 'bg-slate-800 text-slate-600';
+                                                let text = 'text-slate-500';
+                                                
+                                                if (d.status === 'completed') { bg = 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]'; text = 'text-white'; }
+                                                else if (d.status === 'failed') { bg = 'bg-rose-500/20 border border-rose-500'; text = 'text-rose-500'; }
+                                                else if (isToday) { bg = 'bg-cyan-500 text-white animate-pulse'; text = 'text-white'; }
+                                                else if (isPast) { bg = 'bg-slate-900 border border-slate-700'; text = 'text-slate-600'; }
 
                                                 return (
-                                                    <div key={d.dayNumber} className={`aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all ${bg}`} title={`Day ${d.dayNumber}`}>
-                                                        {d.dayNumber}
+                                                    <div key={d.dayNumber} className={`aspect-square rounded-md flex flex-col items-center justify-center relative transition-all ${bg}`} title={`Day ${d.dayNumber} - ${dayDate.toLocaleDateString()}`}>
+                                                        <span className={`text-[10px] font-bold ${text}`}>{dayDate.getDate()}</span>
+                                                        <span className="text-[8px] opacity-70 uppercase">{dayDate.toLocaleString('default', { month: 'short' })}</span>
+                                                        
+                                                        {/* Status Dot based on PnL */}
+                                                        {hasTrades && (
+                                                            <div className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${isWinDay ? 'bg-emerald-300' : 'bg-rose-300'}`}></div>
+                                                        )}
+                                                        {/* Missed Day Indicator */}
+                                                        {isPast && d.status === 'pending' && (
+                                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                                <X size={12} className="text-slate-500 opacity-50"/>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )
                                             })}
