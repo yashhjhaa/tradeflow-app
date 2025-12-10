@@ -1,3 +1,4 @@
+
 import { 
     collection, 
     query, 
@@ -23,7 +24,7 @@ import {
 } from "firebase/auth";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { auth, db, storage, isFirebaseReady } from "./firebase";
-import { Trade, Account, DisciplineLog, Challenge } from "../types";
+import { Trade, Account, DisciplineLog, Challenge, PlaybookEntry } from "../types";
 
 // Helper for permission errors
 const handleFirestoreError = (error: any) => {
@@ -311,6 +312,49 @@ export const initializeTodayLog = async (userId: string) => {
         });
     }
 }
+
+// --- STRATEGIES (PLAYBOOK) ---
+export const subscribeToStrategies = (userId: string, callback: (strategies: PlaybookEntry[]) => void) => {
+    if (!isFirebaseReady || !db) {
+        const local = localStorage.getItem('strategies');
+        callback(local ? JSON.parse(local) : []);
+        
+        const handleLocalChange = () => {
+             const updated = localStorage.getItem('strategies');
+             if (updated) callback(JSON.parse(updated));
+        };
+        window.addEventListener('localDataUpdate', handleLocalChange);
+        return () => window.removeEventListener('localDataUpdate', handleLocalChange);
+    }
+    const q = query(collection(db, "strategies"), where("userId", "==", userId));
+    return onSnapshot(q, (snapshot) => {
+        const strategies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlaybookEntry));
+        callback(strategies);
+    }, handleFirestoreError);
+};
+
+export const addStrategyToDb = async (strategy: PlaybookEntry, userId: string) => {
+    if (!isFirebaseReady || !db) {
+        const local = JSON.parse(localStorage.getItem('strategies') || '[]');
+        const newStrat = { ...strategy, id: Date.now().toString(), userId };
+        localStorage.setItem('strategies', JSON.stringify([...local, newStrat]));
+        window.dispatchEvent(new Event('localDataUpdate'));
+        return;
+    }
+    const { id, ...data } = strategy;
+    const cleanData = cleanUndefined(data);
+    await addDoc(collection(db, "strategies"), { ...cleanData, userId, createdAt: new Date().toISOString() });
+};
+
+export const deleteStrategyFromDb = async (id: string) => {
+    if (!isFirebaseReady || !db) {
+         const local = JSON.parse(localStorage.getItem('strategies') || '[]');
+         localStorage.setItem('strategies', JSON.stringify(local.filter((s: any) => s.id !== id)));
+         window.dispatchEvent(new Event('localDataUpdate'));
+         return;
+    }
+    await deleteDoc(doc(db, "strategies", id));
+};
 
 // --- STORAGE ---
 export const uploadScreenshotToStorage = async (base64: string, userId: string): Promise<string | null> => {
