@@ -1,3 +1,4 @@
+
 export enum TradeDirection {
   BUY = 'BUY',
   SELL = 'SELL',
@@ -94,6 +95,21 @@ export interface TradeFilter {
 }
 
 export type DateRange = '7d' | '30d' | '90d' | 'all';
+
+// --- PLAYBOOK STRATEGY TYPE ---
+export interface PlaybookEntry {
+    id: string;
+    userId?: string;
+    title: string;
+    content: string; // The rules/markdown
+    type: 'ai' | 'manual';
+    rating?: string; // AI Critique score
+    image?: string; // Base64 or URL
+    checklist?: string[];
+    dangerZones?: string;
+    tags?: string[];
+    createdAt?: string;
+}
 
 // --- CHALLENGE TYPES ---
 export type VerificationType = 'manual' | 'max_loss' | 'max_trades' | 'journal_all';
