@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation, reframeNegativeThought } from './services/geminiService';
@@ -1006,22 +1006,22 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
         }
 
         // GHOST VALIDATOR
+        setIsSaving(true);
         if (selectedStrategyId) {
             const strategy = playbookEntries.find(p => p.id === selectedStrategyId);
             if (strategy) {
-                setIsSaving(true);
                 const validation = await validateTradeAgainstStrategy(formData, strategy.content);
-                setIsSaving(false);
                 if (!validation.valid) {
+                    setIsSaving(false);
                     if (!confirm(`GHOST WARNING: This trade violates your strategy "${strategy.title}".\n\nReason: ${validation.reason}\n\nAre you sure you want to proceed?`)) {
                         return;
                     }
+                    setIsSaving(true);
                 }
             }
         }
 
         // Optimistic Save - Don't wait for response to close, but set saving state briefly
-        setIsSaving(true);
         await onSave({ ...formData, screenshot: screenshotPreview, accountId: formData.accountId });
         setIsSaving(false);
     }
@@ -1145,7 +1145,7 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
                     </div>
 
                     <Button variant="neon" className="w-full" onClick={handleSaveClick} disabled={isSaving}>
-                        {isSaving ? <><Loader2 className="animate-spin" size={18}/> Saving...</> : 'Save to Journal'}
+                        {isSaving ? <><Loader2 className="animate-spin" size={18}/> Validating & Saving...</> : 'Save to Journal'}
                     </Button>
                 </div>
                 {/* Media */}
@@ -1381,6 +1381,7 @@ const App: React.FC = () => {
   // Challenge State
   const [challengeMotivation, setChallengeMotivation] = useState('');
   const [showSergeant, setShowSergeant] = useState(false); // AI Sergeant Modal
+  const [savingChallenge, setSavingChallenge] = useState(false);
 
   // Mindset State
   const [journalTab, setJournalTab] = useState<'pre' | 'mid' | 'post'>('pre');
@@ -1532,10 +1533,10 @@ const App: React.FC = () => {
           }
       };
 
-      const timer = setInterval(checkTribunal, 5000); // Check every 5s
-      checkTribunal(); // Initial check
-      return () => clearInterval(timer);
-  }, [trades, activeChallenge?.id, dailyPnL]); // Depend on ID to avoid loop, but need trades/pnl
+      // RUN CHECK ONLY WHEN TRADES/PNL CHANGE
+      checkTribunal();
+      
+  }, [trades, activeChallenge?.id, dailyPnL]); // REMOVED activeChallenge object dependency to prevent loops, rely on ID reset
 
   // --- XP & GAMIFICATION ---
   const calculateXP = () => {
@@ -1866,6 +1867,7 @@ const App: React.FC = () => {
   const handleChallengeTaskToggle = async (dayIdx: number, taskId: string) => {
       if (!activeChallenge) return;
       
+      setSavingChallenge(true);
       // DEEP COPY to ensure React state updates properly
       const newDays = activeChallenge.days.map((d, i) => {
           if (i !== dayIdx) return d;
@@ -1896,6 +1898,7 @@ const App: React.FC = () => {
       const updatedChallenge = { ...activeChallenge, days: finalDays };
       setActiveChallenge(updatedChallenge); // Instant UI feedback
       await updateChallenge(updatedChallenge); // DB Persist
+      setSavingChallenge(false);
   };
   
   const handleChallengeFail = async () => {
@@ -2134,7 +2137,7 @@ const App: React.FC = () => {
                 </div>
             )}
             
-            {/* --- CHALLENGES --- */}
+            {/* --- CHALLENGES (REVAMPED) --- */}
             {activeTab === 'challenges' && (
                 <div className="h-full overflow-y-auto pb-24">
                     {!activeChallenge ? (
@@ -2199,264 +2202,142 @@ const App: React.FC = () => {
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-6 animate-fade-in relative max-w-6xl mx-auto">
-                            {/* --- HERO HEADER --- */}
-                            <div className="flex flex-col md:flex-row items-end justify-between mb-8 border-b border-white/5 pb-6 gap-4">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <Badge color="cyan">Level {currentLevel}</Badge>
-                                        <span className="text-xs text-slate-500 font-mono uppercase tracking-widest">Protocol Active</span>
-                                    </div>
-                                    <h2 className="text-4xl font-display font-bold text-white tracking-tight flex items-center gap-3">
-                                        {activeChallenge.title}
-                                    </h2>
-                                    <div className="flex items-center gap-4 mt-3">
-                                        <div className="w-64 h-2 bg-slate-800 rounded-full overflow-hidden relative">
-                                            <div className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-1000" style={{ width: `${xpProgress}%` }}></div>
-                                        </div>
-                                        <span className="text-xs font-bold text-cyan-400">{currentXP} XP</span>
-                                        <span className="text-xs text-slate-500">Next Level: {(currentLevel * 1000)}</span>
-                                    </div>
+                        <div className="space-y-6 animate-fade-in relative max-w-7xl mx-auto">
+                            {/* --- COMMAND CENTER HEADER --- */}
+                            <div className="bg-[#0B0F19] rounded-3xl border border-white/10 p-8 relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8">
+                                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+                                <div className="relative z-10 flex-1">
+                                     <div className="flex items-center gap-3 mb-2">
+                                         <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20 flex items-center gap-2 animate-pulse">
+                                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span> ACTIVE PROTOCOL
+                                         </span>
+                                         <span className="text-slate-500 text-xs font-mono uppercase">Level {currentLevel}</span>
+                                     </div>
+                                     <h1 className="text-5xl font-display font-bold text-white mb-2">{activeChallenge.title}</h1>
+                                     <p className="text-slate-400 text-lg">Day {activeChallenge.currentDay} of {activeChallenge.totalDays}</p>
+                                     <div className="mt-6 flex items-center gap-4">
+                                         <div className="flex-1 max-w-md h-3 bg-slate-800 rounded-full overflow-hidden relative">
+                                             <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-1000" style={{ width: `${(activeChallenge.currentDay / activeChallenge.totalDays) * 100}%` }}></div>
+                                         </div>
+                                         <span className="text-xs font-bold text-cyan-400">{((activeChallenge.currentDay / activeChallenge.totalDays) * 100).toFixed(0)}% Complete</span>
+                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button variant="secondary" size="sm" onClick={() => setShowShareCard(!showShareCard)}>
-                                        <Share2 size={16} className="mr-2"/> Share
-                                    </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        className="text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20" 
-                                        size="sm"
-                                        onClick={handleResetChallenge}
-                                    >
-                                        <RefreshCw size={14} className="mr-2"/> Abort
-                                    </Button>
+                                
+                                <div className="relative z-10 flex flex-col gap-3">
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 text-center w-48">
+                                        <div className="text-xs text-slate-400 uppercase font-bold mb-1">Current XP</div>
+                                        <div className="text-3xl font-mono font-bold text-white">{currentXP}</div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button variant="secondary" size="sm" className="flex-1" onClick={() => setShowShareCard(!showShareCard)}><Share2 size={16}/> Share</Button>
+                                        <Button variant="danger" size="sm" onClick={handleResetChallenge}><LogOut size={16}/></Button>
+                                    </div>
                                 </div>
                             </div>
                             
-                            {/* SHARE CARD MODAL */}
-                            {showShareCard && (
-                                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4" onClick={() => setShowShareCard(false)}>
-                                    <div className="space-y-4" onClick={e => e.stopPropagation()}>
-                                        <ShareableChallengeCard challenge={activeChallenge} user={user?.displayName || 'Trader'} winRate={winRate} pnl={totalPnL} />
-                                        <div className="text-center">
-                                            <p className="text-xs text-slate-500 mb-2">Screenshot this card to share.</p>
-                                            <Button variant="neon" size="sm" onClick={() => setShowShareCard(false)}>Close</Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* MAIN GRID DASHBOARD */}
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                            {/* --- MAIN DASHBOARD GRID --- */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 
-                                {/* LEFT COLUMN: VITALS (4 cols) */}
-                                <div className="md:col-span-4 space-y-6">
-                                    <Card className="bg-[#0B0F19] flex flex-col items-center justify-center relative overflow-hidden group min-h-[250px] border-cyan-500/20">
-                                         <div className="absolute inset-0 bg-gradient-to-t from-orange-500/5 to-transparent opacity-50"></div>
-                                         <FlameStreak streak={activeChallenge.currentDay} />
-                                         <div className="relative z-10 text-center mt-6">
-                                             <div className="text-5xl font-display font-bold text-white mb-1">Day {activeChallenge.currentDay}</div>
-                                             <div className="text-xs text-slate-400 uppercase tracking-[0.2em] font-bold">of {activeChallenge.totalDays}</div>
-                                         </div>
-                                         
-                                         {/* AI Motivation Widget */}
-                                         <div className="mt-6 w-full px-4 relative z-20">
-                                             <div className="bg-white/5 border border-white/5 rounded-xl p-3 text-center relative">
-                                                <Bot size={16} className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0B0F19] text-cyan-400 p-0.5 rounded-full"/>
-                                                <p className="text-xs italic text-slate-300 mt-1">"{challengeMotivation}"</p>
-                                             </div>
-                                         </div>
-                                    </Card>
-
-                                    {/* LIVE TRIBUNAL GAUGES */}
-                                    <Card className="space-y-4">
-                                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                            <Activity size={14}/> Live Vitals
-                                        </h3>
-                                        
-                                        {activeChallenge.days[activeChallenge.currentDay-1]?.tasks.map(task => {
-                                            if (task.verificationType === 'max_loss') {
-                                                const limit = task.threshold || 500;
-                                                const currentLoss = Math.abs(Math.min(0, dailyPnL));
-                                                const percent = Math.min(100, (currentLoss / limit) * 100);
-                                                
-                                                return (
-                                                    <div key={task.id} className="space-y-1">
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-slate-400">Daily Loss Limit</span>
-                                                            <span className={percent > 80 ? 'text-rose-500 font-bold' : 'text-slate-300'}>${currentLoss.toFixed(0)} / ${limit}</span>
-                                                        </div>
-                                                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                            <div className={`h-full transition-all duration-500 ${percent > 90 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} style={{ width: `${percent}%` }}></div>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            }
-                                            if (task.verificationType === 'max_trades') {
-                                                const limit = task.threshold || 5;
-                                                const tradesToday = trades.filter(t => t.date.startsWith(todayStr)).length;
-                                                const percent = Math.min(100, (tradesToday / limit) * 100);
-                                                
-                                                return (
-                                                    <div key={task.id} className="space-y-1">
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-slate-400">Trade Count</span>
-                                                            <span className={percent >= 100 ? 'text-rose-500 font-bold' : 'text-slate-300'}>{tradesToday} / {limit}</span>
-                                                        </div>
-                                                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                            <div className={`h-full transition-all duration-500 ${percent >= 100 ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            }
-                                            return null;
-                                        })}
-                                        
-                                        <div className="pt-2">
-                                            <div className="flex justify-between text-xs mb-1">
-                                                <span className="text-slate-400">Challenge Win Rate</span>
-                                                <span className="text-white font-mono">{winRate}%</span>
-                                            </div>
-                                            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-                                                 <div className="h-full bg-cyan-500" style={{ width: `${parseFloat(winRate)}%` }}></div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                </div>
-
-                                {/* CENTER COLUMN: THE TRIBUNAL (5 cols) */}
-                                <div className="md:col-span-5 space-y-6">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><Gavel size={18} className="text-emerald-500"/> The Tribunal</h3>
-                                        <span className="text-[10px] text-slate-500 uppercase font-mono bg-white/5 px-2 py-1 rounded">
-                                            {new Date().toLocaleDateString()}
-                                        </span>
+                                {/* COL 1: DAILY MISSION CONTROL (Interactive) */}
+                                <div className="md:col-span-2 space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><TargetIcon className="text-cyan-500"/> Daily Missions</h3>
+                                        {savingChallenge && <span className="text-xs text-slate-500 flex items-center gap-1"><Loader2 className="animate-spin" size={12}/> Saving...</span>}
                                     </div>
                                     
-                                    <div className="space-y-3">
-                                         {activeChallenge.days[activeChallenge.currentDay - 1]?.tasks.map((task) => (
-                                             <div key={task.id} 
-                                                className={`p-4 rounded-xl border flex items-center justify-between transition-all relative overflow-hidden group ${
-                                                    task.status === 'failed' ? 'bg-rose-950/30 border-rose-500/50' :
-                                                    task.completed ? 'bg-emerald-950/30 border-emerald-500/30' : 
-                                                    'bg-[#0B0F19] border-white/10 hover:border-cyan-500/30'
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {activeChallenge.days[activeChallenge.currentDay - 1]?.tasks.map((task) => (
+                                            <div 
+                                                key={task.id}
+                                                onClick={() => !(task.verificationType !== 'manual' && task.status === 'failed') && handleChallengeTaskToggle(activeChallenge.currentDay - 1, task.id)}
+                                                className={`group relative overflow-hidden p-6 rounded-2xl border transition-all duration-300 cursor-pointer ${
+                                                    task.status === 'failed' ? 'bg-rose-950/20 border-rose-500/30 opacity-75' :
+                                                    task.completed ? 'bg-gradient-to-r from-emerald-900/20 to-[#0B0F19] border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.1)]' :
+                                                    'bg-[#0B0F19] border-white/10 hover:border-cyan-500/40 hover:bg-white/5'
                                                 }`}
-                                             >
-                                                 {/* Status Bar */}
-                                                 <div className={`absolute left-0 top-0 bottom-0 w-1 transition-colors ${
-                                                     task.status === 'failed' ? 'bg-rose-500' : 
-                                                     task.status === 'passing' ? 'bg-yellow-500' :
-                                                     task.completed ? 'bg-emerald-500' : 'bg-slate-700'
-                                                 }`}></div>
-
-                                                 <div className="flex items-center gap-4 pl-4 flex-1">
-                                                     <button 
-                                                        onClick={() => handleChallengeTaskToggle(activeChallenge.currentDay - 1, task.id)}
-                                                        disabled={task.verificationType !== 'manual' && task.status === 'failed'}
-                                                        className={`w-6 h-6 rounded-md flex items-center justify-center border transition-all shrink-0 ${
-                                                            task.completed ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 
-                                                            task.status === 'failed' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
-                                                            'border-slate-600 bg-transparent hover:border-cyan-400 text-transparent'
-                                                        }`}
-                                                     >
-                                                         {task.completed && <Check size={14} strokeWidth={3} />}
-                                                         {task.status === 'failed' && <X size={14} strokeWidth={3} />}
-                                                     </button>
-                                                     
-                                                     <div className="flex-1">
-                                                         <div className={`font-medium ${task.completed ? 'text-emerald-400 line-through decoration-emerald-500/50' : task.status === 'failed' ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>
-                                                            {task.label}
-                                                         </div>
-                                                         
-                                                         {/* Context Subtext */}
-                                                         {task.verificationType !== 'manual' && (
-                                                             <div className="flex items-center gap-2 mt-1">
-                                                                 <Badge color={task.status === 'failed' ? 'red' : task.status === 'passing' ? 'yellow' : 'gray'}>
-                                                                     {task.status === 'passing' ? 'MONITORING' : task.status === 'failed' ? 'FAILED' : 'AUTO'}
-                                                                 </Badge>
-                                                             </div>
-                                                         )}
-                                                     </div>
-                                                 </div>
-                                             </div>
-                                         ))}
-                                    </div>
-
-                                    {/* Action Button */}
-                                    <Card className="bg-gradient-to-r from-indigo-900/20 to-transparent border-indigo-500/20">
-                                        <h4 className="font-bold text-white mb-2">End of Day Protocol</h4>
-                                        <p className="text-xs text-slate-400 mb-4">Journal your progress to lock in today's XP.</p>
-                                        <Button className="w-full" onClick={() => setActiveTab('journal')}>
-                                            <BookOpen size={16} className="mr-2"/> Open Journal
-                                        </Button>
-                                    </Card>
-                                </div>
-
-                                {/* RIGHT COLUMN: THE MAP (3 cols) */}
-                                <div className="md:col-span-3">
-                                    <div className="bg-[#0B0F19] rounded-2xl border border-white/5 h-[600px] flex flex-col relative overflow-hidden">
-                                        <div className="p-4 border-b border-white/5 bg-white/5 font-bold text-white flex items-center gap-2">
-                                            <Map size={16}/> The Path
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
-                                            {/* Render timeline in reverse (future top) or normal (past top) - Normal usually better for scrolling down */}
-                                            {activeChallenge.days.map((day) => {
-                                                const isPast = day.dayNumber < activeChallenge.currentDay;
-                                                const isToday = day.dayNumber === activeChallenge.currentDay;
-                                                const isFuture = day.dayNumber > activeChallenge.currentDay;
-                                                const allDone = day.tasks.every(t => t.completed);
-                                                const hasFailed = day.tasks.some(t => t.status === 'failed');
-
-                                                return (
-                                                    <div key={day.dayNumber} className={`flex items-center gap-3 p-2 rounded-lg transition-all ${isToday ? 'bg-white/5 border border-white/10' : 'opacity-60'}`}>
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${
-                                                            isToday ? 'bg-cyan-500 text-white border-cyan-400 shadow-[0_0_10px_cyan]' :
-                                                            hasFailed ? 'bg-rose-500/20 text-rose-500 border-rose-500' :
-                                                            allDone && isPast ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500' :
-                                                            'bg-slate-800 text-slate-500 border-slate-700'
-                                                        }`}>
-                                                            {day.dayNumber}
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <div className={`text-xs font-bold ${isToday ? 'text-white' : 'text-slate-500'}`}>
-                                                                {new Date(day.date).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'})}
-                                                            </div>
-                                                            {isToday && <div className="text-[10px] text-cyan-400">Current Objective</div>}
-                                                        </div>
-                                                        <div>
-                                                            {allDone && isPast && <CheckCircle size={14} className="text-emerald-500"/>}
-                                                            {hasFailed && <XCircle size={14} className="text-rose-500"/>}
-                                                            {isToday && <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>}
-                                                            {isFuture && <Lock size={12} className="text-slate-700"/>}
+                                            >
+                                                <div className="flex items-center gap-6">
+                                                    {/* Big Checkbox */}
+                                                    <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all ${
+                                                        task.completed ? 'bg-emerald-500 border-emerald-500 text-white scale-110' :
+                                                        task.status === 'failed' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
+                                                        'border-slate-600 bg-transparent group-hover:border-cyan-500'
+                                                    }`}>
+                                                        {task.completed && <Check size={24} strokeWidth={3} />}
+                                                        {task.status === 'failed' && <X size={24} strokeWidth={3} />}
+                                                    </div>
+                                                    
+                                                    <div className="flex-1">
+                                                        <h4 className={`text-lg font-bold mb-1 ${task.completed ? 'text-emerald-400 line-through decoration-emerald-500/50' : 'text-white'}`}>{task.label}</h4>
+                                                        <div className="flex items-center gap-2 text-xs">
+                                                            <Badge color={task.verificationType === 'manual' ? 'gray' : 'blue'}>
+                                                                {task.verificationType === 'manual' ? 'MANUAL CHECK' : 'AUTO-VERIFIED'}
+                                                            </Badge>
+                                                            {task.status === 'failed' && <span className="text-rose-500 font-bold uppercase animate-pulse">FAILED</span>}
                                                         </div>
                                                     </div>
-                                                );
-                                            })}
+
+                                                    {/* Visual Flair */}
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500">
+                                                        {task.completed ? <span className="text-emerald-500 font-bold">DONE</span> : <span className="text-xs uppercase tracking-widest">Mark Complete</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* Motivation Quote Block */}
+                                    <div className="bg-gradient-to-r from-blue-900/10 to-transparent p-6 rounded-2xl border border-blue-500/10 flex items-start gap-4">
+                                        <Bot className="text-blue-400 shrink-0 mt-1"/>
+                                        <div>
+                                            <div className="text-xs text-blue-400 uppercase font-bold mb-1">Mentor's Note</div>
+                                            <p className="text-slate-300 italic">"{challengeMotivation}"</p>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            {/* BOTTOM: THE VAULT (Achievements) */}
-                            <div className="mt-8">
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Trophy size={18} className="text-yellow-500"/> The Vault</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                                    {[
-                                        { day: 1, title: 'First Blood', icon: Swords, color: 'text-slate-400' },
-                                        { day: 7, title: 'Iron Will', icon: Shield, color: 'text-blue-400' },
-                                        { day: 14, title: 'Monk Mind', icon: Brain, color: 'text-purple-400' },
-                                        { day: 30, title: 'Savage', icon: Skull, color: 'text-rose-400' },
-                                        { day: 75, title: 'Ascended', icon: Crown, color: 'text-yellow-400' },
-                                    ].map((ach, i) => {
-                                        const unlocked = activeChallenge.currentDay > ach.day;
-                                        return (
-                                            <Card key={i} className={`text-center py-4 border transition-all ${unlocked ? 'bg-white/5 border-white/10 opacity-100' : 'bg-transparent border-white/5 opacity-30 grayscale'}`}>
-                                                <ach.icon size={24} className={`mx-auto mb-2 ${unlocked ? ach.color : 'text-slate-600'}`}/>
-                                                <div className={`text-xs font-bold ${unlocked ? 'text-white' : 'text-slate-600'}`}>{ach.title}</div>
-                                                <div className="text-[10px] text-slate-500 mt-1">Day {ach.day}</div>
-                                            </Card>
-                                        )
-                                    })}
+
+                                {/* COL 2: THE MAP & HISTORY */}
+                                <div className="space-y-6">
+                                     <div className="flex items-center justify-between">
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><Map className="text-purple-500"/> The Journey</h3>
+                                    </div>
+                                    
+                                    <Card className="p-0 overflow-hidden bg-[#0B0F19]">
+                                        <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
+                                            <span className="text-xs font-bold text-slate-400 uppercase">Calendar Map</span>
+                                            <span className="text-xs text-slate-500">{activeChallenge.days.filter(d => d.status === 'completed').length} Days Won</span>
+                                        </div>
+                                        <div className="p-4 grid grid-cols-7 gap-2">
+                                            {activeChallenge.days.map(d => {
+                                                const isPast = d.dayNumber < activeChallenge.currentDay;
+                                                const isToday = d.dayNumber === activeChallenge.currentDay;
+                                                let bg = 'bg-slate-800/50';
+                                                if (d.status === 'completed') bg = 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]';
+                                                else if (d.status === 'failed') bg = 'bg-rose-500/20 text-rose-500 border border-rose-500';
+                                                else if (isToday) bg = 'bg-cyan-500 text-white animate-pulse';
+                                                else if (isPast) bg = 'bg-slate-800 text-slate-600';
+
+                                                return (
+                                                    <div key={d.dayNumber} className={`aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all ${bg}`} title={`Day ${d.dayNumber}`}>
+                                                        {d.dayNumber}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </Card>
+
+                                    {/* Quick Journal for Challenge */}
+                                    <Card>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <BookOpen size={16} className="text-slate-400"/>
+                                            <span className="text-sm font-bold text-white">Protocol Journal</span>
+                                        </div>
+                                        <textarea 
+                                            className="w-full h-24 bg-black/30 border border-white/10 rounded-xl p-3 text-xs text-slate-300 resize-none focus:ring-1 focus:ring-cyan-500/50 outline-none" 
+                                            placeholder="Log your daily discipline notes here..." 
+                                        />
+                                        <Button size="sm" variant="secondary" className="w-full mt-2">Save Entry</Button>
+                                    </Card>
                                 </div>
                             </div>
                         </div>
