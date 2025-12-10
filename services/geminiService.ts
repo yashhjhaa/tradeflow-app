@@ -411,6 +411,7 @@ export const transcribeAudioNote = async (base64Audio: string): Promise<{ text: 
 export const validateTradeAgainstStrategy = async (trade: any, strategyRules: string): Promise<{ valid: boolean; reason: string }> => {
   if (!ai) return { valid: true, reason: "AI Unavailable" };
   
+  // SWITCHED TO FLASH FOR SPEED AS PER USER REQUEST
   const prompt = `
     You are a Risk Manager. Validate this trade against the user's Strategy Rules.
     
@@ -429,20 +430,13 @@ export const validateTradeAgainstStrategy = async (trade: any, strategyRules: st
       "valid": boolean,
       "reason": "Short explanation if invalid, otherwise 'Looks good'"
     }
-    
-    IMPORTANT: Ensure no unescaped double quotes are used inside the 'reason' string. Use single quotes if needed.
   `;
 
   try {
-    const response = await generateWithFallback(
-        'gemini-3-pro-preview',
-        {
-            contents: prompt,
-            config: {
-                thinkingConfig: { thinkingBudget: 4096 }
-            }
-        }
-    );
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+    });
 
     const jsonText = response.text || "{}";
     const cleanJson = jsonText.match(/\{[\s\S]*\}/)?.[0] || "{}";
