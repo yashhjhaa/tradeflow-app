@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
@@ -166,7 +164,7 @@ const PositionSizeCalculator = () => {
     const [pairType, setPairType] = useState('USD'); // USD or JPY
     
     // Formula: RiskAmt / (SL * PipValue)
-    // Approx Pip Value: Standard Lot ($10 for USD pairs), ~$7 for JPY pairs (simplified)
+    // Approx PipValue: Standard Lot ($10 for USD pairs), ~$7 for JPY pairs (simplified)
     const riskAmount = (balance * riskPercent) / 100;
     const pipValue = pairType === 'USD' ? 10 : 7; 
     const lots = riskAmount / (stopLoss * pipValue);
@@ -848,9 +846,7 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
     );
 };
 
-// ... (AddTradeModal, TradeDetailsModal, ConnectBrokerModal remain same) ...
 const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t: Partial<Trade>) => void; accounts: Account[]; currentAccountId: string; initialData?: Partial<Trade>; playbookEntries: PlaybookEntry[] }> = ({ isOpen, onClose, onSave, accounts, currentAccountId, initialData, playbookEntries }) => {
-    // ... [Original code] ...
      const [formData, setFormData] = useState<Partial<Trade>>({
         pair: '', direction: TradeDirection.BUY, outcome: TradeOutcome.PENDING, 
         pnl: 0, notes: '', session: TradingSession.NY, setup: '', riskPercentage: 1, 
@@ -1215,7 +1211,7 @@ const TradeDetailsModal: React.FC<{ trade: Trade | null; onClose: () => void; on
              <div className="bg-[#0B0F19] w-full max-w-5xl h-[85vh] rounded-3xl border border-white/10 flex overflow-hidden shadow-2xl relative animate-fade-in">
                  <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-black/50 p-2 rounded-full hover:bg-white/10 text-white"><X size={20}/></button>
                  <div className="w-2/3 bg-black/50 relative flex items-center justify-center bg-grid-pattern">
-                     {trade.screenshot ? <img src={trade.screenshot} className="w-full h-full object-contain" /> : <div className="text-slate-600 flex flex-col items-center gap-4"><ImageIcon size={48} opacity={0.5}/><span>No Screenshot Evidence</span></div>}
+                     {trade.screenshot ? <img src={trade.screenshot} className="w-full h-full object-contain animate-fade-in" /> : <div className="text-slate-600 flex flex-col items-center gap-4"><ImageIcon size={48} opacity={0.5}/><span>No Screenshot Evidence</span></div>}
                      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black to-transparent">
                          <h2 className="text-3xl font-display font-bold text-white">{trade.pair}</h2>
                          <div className={`text-5xl font-mono font-bold mt-2 ${isWin ? 'text-emerald-500' : 'text-rose-500'}`}>{trade.pnl ? formatCurrency(trade.pnl) : '$0.00'}</div>
@@ -1436,6 +1432,17 @@ const App: React.FC = () => {
     }
   }, [user]);
 
+  // Sync selectedTrade with real-time updates to ensure screenshots appear
+  useEffect(() => {
+    if (selectedTrade) {
+      const liveTrade = trades.find(t => t.id === selectedTrade.id);
+      // Only update if there are changes to avoid loops, specifically checking screenshot update
+      if (liveTrade && (liveTrade !== selectedTrade)) {
+          setSelectedTrade(liveTrade);
+      }
+    }
+  }, [trades, selectedTrade]);
+
   useEffect(() => {
       if (activeChallenge) {
           generateChallengeMotivation(activeChallenge.currentDay, activeChallenge.title).then(setChallengeMotivation);
@@ -1581,23 +1588,21 @@ const App: React.FC = () => {
       setIsSavingTrade(true);
       
       try {
-          // 1. Prepare Core Data (Lightweight)
-          // We STRIP the screenshot base64 to avoid saving it to Firestore directly (slow/large).
-          const { screenshot, ...coreData } = tradeData;
-          
-          let outcome = coreData.outcome || TradeOutcome.PENDING;
-          if (coreData.pnl) { 
-              outcome = coreData.pnl > 0 ? TradeOutcome.WIN : coreData.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; 
-          }
-
+          // 1. Prepare Payload
+          // We include the screenshot (base64) initially for instant UI feedback.
+          // The background process will later replace this base64 with a Storage URL to optimize DB size.
           const tradePayload: any = {
-              ...coreData,
-              date: coreData.date || new Date().toISOString(),
+              ...tradeData, // Includes screenshot (base64)
+              date: tradeData.date || new Date().toISOString(),
               userId: user.uid,
               accountId,
-              outcome,
-              tags: coreData.tags || []
+              outcome: tradeData.outcome || TradeOutcome.PENDING,
+              tags: tradeData.tags || []
           };
+          
+          if (tradePayload.pnl) { 
+               tradePayload.outcome = tradePayload.pnl > 0 ? TradeOutcome.WIN : tradePayload.pnl < 0 ? TradeOutcome.LOSS : TradeOutcome.BREAKEVEN; 
+          }
 
           let savedId = tradeData.id;
 
@@ -1619,14 +1624,15 @@ const App: React.FC = () => {
           setIsSavingTrade(false);
 
           // 4. Background Processes (Uploads & AI)
-          // We use the 'savedId' and the 'screenshot' extracted earlier
+          // We use the 'savedId' and the 'screenshot' from original tradeData
           (async () => {
               // A. Image Upload
-              if (screenshot && screenshot.startsWith('data:image')) {
+              // Only process if it's a new base64 image string, not an existing URL
+              if (tradeData.screenshot && tradeData.screenshot.startsWith('data:image')) {
                   try {
-                      const url = await uploadScreenshotToStorage(screenshot, user.uid);
-                      if (url && savedId) {
-                          // Update the trade with the URL
+                      const url = await uploadScreenshotToStorage(tradeData.screenshot, user.uid);
+                      if (url && savedId && url !== tradeData.screenshot) {
+                          // Update the trade with the URL, replacing the base64 blob
                           await updateTradeInDb({ id: savedId, screenshot: url } as any);
                       }
                   } catch (e) {
@@ -2103,12 +2109,12 @@ const App: React.FC = () => {
                                                         <td className="p-3">
                                                             <div className="flex items-center gap-3">
                                                                 {/* NEW IMAGE BLOCK */}
-                                                                 <div className="w-12 h-8 rounded bg-slate-800 border border-white/10 overflow-hidden shrink-0 group-hover:border-cyan-500/30 transition-colors relative">
+                                                                 <div className="w-16 h-10 rounded-lg bg-slate-800 border border-white/10 overflow-hidden shrink-0 group-hover:border-cyan-500/50 transition-colors relative shadow-sm">
                                                                     {trade.screenshot ? (
-                                                                        <img src={trade.screenshot} className="w-full h-full object-cover" loading="lazy" />
+                                                                        <img src={trade.screenshot} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" alt="Trade Setup" />
                                                                     ) : (
-                                                                        <div className="w-full h-full flex items-center justify-center text-slate-700">
-                                                                            <Activity size={12} />
+                                                                        <div className="w-full h-full flex items-center justify-center text-slate-700 bg-slate-900/50">
+                                                                            <Activity size={16} />
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -2696,7 +2702,7 @@ const App: React.FC = () => {
                                             </div>
                                             <div>
                                                 <div className="text-sm font-medium text-slate-200">{track.title}</div>
-                                                <div className="text-[10px] text-slate-500">{track.duration}</div>
+                                                <div className="text-xs text-slate-500">{track.duration}</div>
                                             </div>
                                         </div>
                                         <div className="w-4 h-4">
