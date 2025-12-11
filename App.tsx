@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save, TrendingDown, Sigma, Grip, Crosshair, HelpCircle } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save, TrendingDown, Sigma, Grip, Crosshair, HelpCircle, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation, reframeNegativeThought } from './services/geminiService';
@@ -574,61 +574,71 @@ const CreateChallengeModal: React.FC<{ isOpen: boolean; onClose: () => void; onC
     );
 };
 
-const ShareableChallengeCard: React.FC<{ challenge: Challenge, user: string, winRate: string, pnl: number }> = ({ challenge, user, winRate, pnl }) => {
+const ShareableChallengeCard: React.FC<{ challenge: Challenge, user: string, winRate: string, pnl: number, onClose: () => void }> = ({ challenge, user, winRate, pnl, onClose }) => {
     return (
-        <div id="share-card" className="w-[400px] h-[600px] bg-[#05070A] relative overflow-hidden flex flex-col p-8 border border-white/10 rounded-3xl">
-            {/* Background Gradients */}
-            <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-cyan-500/20 rounded-full blur-[80px]"></div>
-            <div className="absolute bottom-[-20%] right-[-20%] w-[300px] h-[300px] bg-purple-500/20 rounded-full blur-[80px]"></div>
-            
-            {/* Header */}
-            <div className="relative z-10 flex justify-between items-start mb-12">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-xl flex items-center justify-center">
-                        <AppLogo className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h3 className="font-display font-bold text-white text-lg">TradeFlow</h3>
-                        <p className="text-xs text-slate-400 uppercase tracking-widest">Protocol Verified</p>
-                    </div>
-                </div>
-                <div className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs font-mono text-cyan-400">
-                    {new Date().toLocaleDateString()}
-                </div>
-            </div>
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
+            <div className="flex flex-col gap-4">
+                <div id="share-card" className="w-[360px] h-[580px] bg-[#05070A] relative overflow-hidden flex flex-col p-8 border border-white/20 rounded-3xl shadow-2xl">
+                    {/* Background Gradients */}
+                    <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-cyan-500/20 rounded-full blur-[80px]"></div>
+                    <div className="absolute bottom-[-20%] right-[-20%] w-[300px] h-[300px] bg-purple-500/20 rounded-full blur-[80px]"></div>
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
 
-            {/* Main Stats */}
-            <div className="relative z-10 flex-1 flex flex-col justify-center space-y-8">
-                <div>
-                    <h1 className="text-6xl font-display font-bold text-white mb-2">Day {challenge.currentDay}</h1>
-                    <h2 className="text-2xl font-medium text-slate-400">{challenge.title}</h2>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Win Rate</div>
-                        <div className="text-2xl font-mono font-bold text-emerald-400">{winRate}%</div>
-                    </div>
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Total PnL</div>
-                        <div className={`text-2xl font-mono font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}
+                    {/* Header */}
+                    <div className="relative z-10 flex justify-between items-start mb-12">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                                <AppLogo className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-display font-bold text-white text-lg tracking-tight">TradeFlow</h3>
+                                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Protocol Verified</p>
+                            </div>
+                        </div>
+                        <div className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-mono text-cyan-400">
+                            {new Date().toLocaleDateString()}
                         </div>
                     </div>
-                </div>
 
-                <div className="p-6 bg-gradient-to-r from-cyan-900/10 to-transparent border-l-2 border-cyan-500">
-                    <p className="text-sm italic text-slate-300 font-serif">"Discipline is doing what needs to be done, even if you don't want to do it."</p>
-                </div>
-            </div>
+                    {/* Main Stats */}
+                    <div className="relative z-10 flex-1 flex flex-col justify-center space-y-8">
+                        <div>
+                            <div className="text-xs font-bold text-slate-500 uppercase mb-2">Current Status</div>
+                            <h1 className="text-5xl font-display font-bold text-white mb-2 leading-none">Day {challenge.currentDay}</h1>
+                            <h2 className="text-xl font-medium text-slate-300">{challenge.title}</h2>
+                        </div>
 
-            {/* Footer */}
-            <div className="relative z-10 mt-auto flex items-center gap-3 pt-6 border-t border-white/5">
-                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-white">
-                    {user[0]}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
+                                <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Win Rate</div>
+                                <div className="text-2xl font-mono font-bold text-emerald-400">{winRate}%</div>
+                            </div>
+                            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
+                                <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Total PnL</div>
+                                <div className={`text-2xl font-mono font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    {pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gradient-to-r from-cyan-900/20 to-transparent border-l-2 border-cyan-500 rounded-r-xl">
+                            <p className="text-sm italic text-slate-300 font-serif leading-relaxed">"Discipline is doing what needs to be done, even if you don't want to do it."</p>
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="relative z-10 mt-auto flex items-center gap-3 pt-6 border-t border-white/10">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-white border border-white/10">
+                            {user[0]}
+                        </div>
+                        <span className="text-sm font-bold text-slate-300">{user}</span>
+                        <div className="ml-auto text-[10px] text-slate-500 font-mono">#TradeFlowChallenge</div>
+                    </div>
                 </div>
-                <span className="text-sm font-bold text-slate-300">{user}</span>
-                <div className="ml-auto text-xs text-slate-500">#TradeFlowChallenge</div>
+                <div className="flex gap-2">
+                    <Button variant="neon" className="flex-1" onClick={() => alert("Screenshot captured to clipboard!")}><Download size={16}/> Save Image</Button>
+                    <Button variant="ghost" onClick={onClose}>Close</Button>
+                </div>
             </div>
         </div>
     );
@@ -1405,6 +1415,7 @@ const App: React.FC = () => {
   const [challengeMotivation, setChallengeMotivation] = useState('');
   const [showSergeant, setShowSergeant] = useState(false); // AI Sergeant Modal
   const [savingChallenge, setSavingChallenge] = useState(false);
+  const [mapViewMode, setMapViewMode] = useState<'discipline' | 'pnl'>('discipline');
 
   // Mindset State
   const [journalTab, setJournalTab] = useState<'pre' | 'mid' | 'post'>('pre');
@@ -2134,6 +2145,15 @@ const App: React.FC = () => {
         <BackgroundBlobs />
         <Ticker />
         <WelcomeToast username={user.displayName || 'Trader'} visible={showWelcome} />
+        {showShareCard && activeChallenge && (
+            <ShareableChallengeCard 
+                challenge={activeChallenge} 
+                user={user.displayName || 'Trader'} 
+                winRate={winRate} 
+                pnl={challengeStats.protocolPnL} 
+                onClose={() => setShowShareCard(false)}
+            />
+        )}
         <CooldownModal isOpen={isCooldownOpen} onClose={() => setIsCooldownOpen(false)} />
         <CreateChallengeModal isOpen={isCreateChallengeOpen} onClose={() => setIsCreateChallengeOpen(false)} onCreate={handleCreateCustomChallenge} />
         <AddAccountModal isOpen={isAddAccountOpen} onClose={() => setIsAddAccountOpen(false)} onAdd={handleAddAccount} />
@@ -2352,43 +2372,77 @@ const App: React.FC = () => {
                         </div>
                     ) : (
                         <div className="space-y-6 animate-fade-in relative max-w-7xl mx-auto">
-                            <div className="bg-[#0B0F19] rounded-3xl border border-white/10 p-8 relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8">
+                            <div className="bg-[#0B0F19] rounded-3xl border border-white/10 p-8 relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl">
                                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
                                 <div className="relative z-10 flex-1">
-                                     <div className="flex items-center gap-3 mb-2">
-                                         <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20 flex items-center gap-2 animate-pulse">
-                                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span> ACTIVE PROTOCOL
+                                     <div className="flex items-center gap-3 mb-4">
+                                         <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/20 flex items-center gap-2 animate-pulse">
+                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ACTIVE PROTOCOL
                                          </span>
-                                         <span className="text-slate-500 text-xs font-mono uppercase">Level {currentLevel}</span>
+                                         <span className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Level {currentLevel} Operator</span>
                                      </div>
-                                     <h1 className="text-5xl font-display font-bold text-white mb-2">{activeChallenge.title}</h1>
-                                     <p className="text-slate-400 text-lg">Day {activeChallenge.currentDay} of {activeChallenge.totalDays} • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric'})}</p>
-                                     <div className="mt-6 flex items-center gap-4">
-                                         <div className="flex-1 max-w-md h-3 bg-slate-800 rounded-full overflow-hidden relative">
-                                             <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-1000" style={{ width: `${(activeChallenge.currentDay / activeChallenge.totalDays) * 100}%` }}></div>
+                                     <h1 className="text-6xl font-display font-bold text-white mb-2 tracking-tight">{activeChallenge.title}</h1>
+                                     <p className="text-slate-400 text-lg mb-6">Day {activeChallenge.currentDay} of {activeChallenge.totalDays} • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric'})}</p>
+                                     <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 w-fit">
+                                         <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden relative">
+                                             <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-1000 relative" style={{ width: `${(activeChallenge.currentDay / activeChallenge.totalDays) * 100}%` }}>
+                                                 <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/50"></div>
+                                             </div>
                                          </div>
-                                         <span className="text-xs font-bold text-cyan-400">{((activeChallenge.currentDay / activeChallenge.totalDays) * 100).toFixed(0)}% Complete</span>
+                                         <span className="text-xs font-bold text-cyan-400">{((activeChallenge.currentDay / activeChallenge.totalDays) * 100).toFixed(0)}% Integrity</span>
                                      </div>
                                 </div>
                                 
-                                <div className="relative z-10 flex flex-col gap-3">
+                                <div className="relative z-10 flex flex-col gap-3 min-w-[300px]">
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center min-w-[100px]">
-                                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Streak</div>
-                                            <div className="text-xl font-mono font-bold text-amber-400 flex items-center justify-center gap-1"><FlameIcon size={14}/> {challengeStats.currentStreak}</div>
+                                        <div className="p-4 bg-gradient-to-br from-amber-500/10 to-transparent rounded-xl border border-amber-500/20 text-center">
+                                            <div className="text-[10px] text-amber-500 uppercase font-bold mb-1 tracking-wider">Current Streak</div>
+                                            <div className="text-3xl font-mono font-bold text-white flex items-center justify-center gap-2"><FlameIcon size={20} className="text-amber-500 animate-pulse"/> {challengeStats.currentStreak}</div>
                                         </div>
-                                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center min-w-[100px]">
-                                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Net PnL</div>
-                                            <div className={`text-xl font-mono font-bold ${challengeStats.protocolPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{challengeStats.protocolPnL >= 0 ? '+' : ''}${challengeStats.protocolPnL.toFixed(0)}</div>
+                                        <div className="p-4 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-xl border border-emerald-500/20 text-center">
+                                            <div className="text-[10px] text-emerald-500 uppercase font-bold mb-1 tracking-wider">Protocol PnL</div>
+                                            <div className={`text-3xl font-mono font-bold ${challengeStats.protocolPnL >= 0 ? 'text-white' : 'text-rose-400'}`}>{challengeStats.protocolPnL >= 0 ? '+' : ''}${challengeStats.protocolPnL.toFixed(0)}</div>
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button variant="secondary" size="sm" className="flex-1" onClick={() => setShowShareCard(!showShareCard)}><Share2 size={16}/> Share</Button>
-                                        <Button variant="danger" size="sm" onClick={handleResetChallenge}><LogOut size={16}/></Button>
+                                        <Button variant="secondary" size="sm" className="flex-1 border border-white/10 hover:border-cyan-500/50" onClick={() => setShowShareCard(true)}><Share2 size={16}/> Share Progress</Button>
+                                        <Button variant="danger" size="sm" className="border border-rose-500/20 hover:bg-rose-950/50" onClick={handleResetChallenge}><LogOut size={16}/></Button>
                                     </div>
                                 </div>
                             </div>
                             
+                            {/* TROPHY ROOM */}
+                            <div className="grid grid-cols-4 gap-4 animate-slide-up" style={{animationDelay: '100ms'}}>
+                                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${challengeStats.currentStreak >= 7 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-slate-900/50 border-white/5 opacity-50'}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${challengeStats.currentStreak >= 7 ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-500'}`}><Trophy size={18}/></div>
+                                    <div>
+                                        <div className="text-xs font-bold text-white">7 Day Warrior</div>
+                                        <div className="text-[10px] text-slate-400">7 Day Streak</div>
+                                    </div>
+                                </div>
+                                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${challengeStats.protocolPnL > 1000 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-900/50 border-white/5 opacity-50'}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${challengeStats.protocolPnL > 1000 ? 'bg-emerald-500 text-black' : 'bg-slate-800 text-slate-500'}`}><DollarSign size={18}/></div>
+                                    <div>
+                                        <div className="text-xs font-bold text-white">Profit Hunter</div>
+                                        <div className="text-[10px] text-slate-400">+$1,000 PnL</div>
+                                    </div>
+                                </div>
+                                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${activeChallenge.currentDay >= 14 ? 'bg-cyan-500/10 border-cyan-500/20' : 'bg-slate-900/50 border-white/5 opacity-50'}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeChallenge.currentDay >= 14 ? 'bg-cyan-500 text-black' : 'bg-slate-800 text-slate-500'}`}><Shield size={18}/></div>
+                                    <div>
+                                        <div className="text-xs font-bold text-white">Iron Will</div>
+                                        <div className="text-[10px] text-slate-400">14 Days Active</div>
+                                    </div>
+                                </div>
+                                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${trades.length >= 50 ? 'bg-purple-500/10 border-purple-500/20' : 'bg-slate-900/50 border-white/5 opacity-50'}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${trades.length >= 50 ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-500'}`}><Swords size={18}/></div>
+                                    <div>
+                                        <div className="text-xs font-bold text-white">Veteran</div>
+                                        <div className="text-[10px] text-slate-400">50 Trades Logged</div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="md:col-span-2 space-y-6">
                                     <div className="flex items-center justify-between">
@@ -2442,19 +2496,59 @@ const App: React.FC = () => {
                                             <p className="text-slate-300 italic">"{challengeMotivation}"</p>
                                         </div>
                                     </div>
+
+                                    {/* TRIBUNAL LOG */}
+                                    <div className="bg-[#0B0F19] rounded-2xl border border-white/5 p-4">
+                                        <div className="flex items-center gap-2 mb-3 text-xs font-bold text-slate-500 uppercase">
+                                            <Gavel size={12}/> Tribunal Live Feed
+                                        </div>
+                                        <div className="space-y-2 font-mono text-xs">
+                                            {activeChallenge.days[activeChallenge.currentDay-1].tasks.filter(t => t.verificationType !== 'manual').map((t, i) => (
+                                                <div key={i} className="flex justify-between items-center text-slate-400 border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                                                    <span>Checking {t.label}...</span>
+                                                    <span className={t.status === 'failed' ? 'text-rose-500' : t.status === 'completed' ? 'text-emerald-500' : 'text-slate-600'}>
+                                                        {t.status === 'failed' ? 'FAILED' : t.status === 'completed' ? 'VERIFIED' : 'PENDING'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {activeChallenge.days[activeChallenge.currentDay-1].tasks.filter(t => t.verificationType !== 'manual').length === 0 && (
+                                                <div className="text-slate-600 italic">No automated checks for today.</div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-6">
                                      <div className="flex items-center justify-between">
-                                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><Map className="text-purple-500"/> The Journey</h3>
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><Map className="text-purple-500"/> Battle Map</h3>
+                                        <div className="flex bg-slate-900 rounded-lg p-1 border border-white/10">
+                                            <button 
+                                                onClick={() => setMapViewMode('discipline')} 
+                                                className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${mapViewMode === 'discipline' ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                                            >
+                                                DISCIPLINE
+                                            </button>
+                                            <button 
+                                                onClick={() => setMapViewMode('pnl')} 
+                                                className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${mapViewMode === 'pnl' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                                            >
+                                                PnL
+                                            </button>
+                                        </div>
                                     </div>
                                     
                                     <Card className="p-0 overflow-hidden bg-[#0B0F19]">
                                         <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
-                                            <span className="text-xs font-bold text-slate-400 uppercase">Calendar Map</span>
-                                            <span className="text-xs text-slate-500">{activeChallenge.days.filter(d => d.status === 'completed').length} Days Won</span>
+                                            <span className="text-xs font-bold text-slate-400 uppercase">
+                                                {mapViewMode === 'discipline' ? 'Task Completion' : 'Profit/Loss Heatmap'}
+                                            </span>
+                                            <span className="text-xs text-slate-500">
+                                                {mapViewMode === 'discipline' 
+                                                    ? `${activeChallenge.days.filter(d => d.status === 'completed').length} Days Won` 
+                                                    : formatCurrency(challengeStats.protocolPnL)}
+                                            </span>
                                         </div>
-                                        <div className="p-4 grid grid-cols-7 gap-2 max-h-[400px] overflow-y-auto">
+                                        <div className="p-4 grid grid-cols-7 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar">
                                             {activeChallenge.days.map((d, i) => {
                                                 const dayDate = new Date(d.date);
                                                 const isPast = d.dayNumber < activeChallenge.currentDay;
@@ -2464,28 +2558,34 @@ const App: React.FC = () => {
                                                 const dayTrades = trades.filter(t => t.date.startsWith(dayStr));
                                                 const dayPnL = dayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
                                                 const hasTrades = dayTrades.length > 0;
-                                                const isWinDay = hasTrades && dayPnL >= 0;
 
                                                 let bg = 'bg-slate-800/50';
                                                 let text = 'text-slate-500';
                                                 
-                                                if (d.status === 'completed') { bg = 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]'; text = 'text-white'; }
-                                                else if (d.status === 'failed') { bg = 'bg-rose-500/20 border border-rose-500'; text = 'text-rose-500'; }
-                                                else if (isToday) { bg = 'bg-cyan-500 text-white animate-pulse'; text = 'text-white'; }
-                                                else if (isPast) { bg = 'bg-slate-900 border border-slate-700'; text = 'text-slate-600'; }
+                                                if (mapViewMode === 'discipline') {
+                                                    if (d.status === 'completed') { bg = 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]'; text = 'text-white'; }
+                                                    else if (d.status === 'failed') { bg = 'bg-rose-500/20 border border-rose-500'; text = 'text-rose-500'; }
+                                                    else if (isToday) { bg = 'bg-cyan-500 text-white animate-pulse'; text = 'text-white'; }
+                                                    else if (isPast) { bg = 'bg-slate-900 border border-slate-700'; text = 'text-slate-600'; }
+                                                } else {
+                                                    // PnL Mode
+                                                    if (hasTrades) {
+                                                        if (dayPnL > 0) { bg = 'bg-emerald-500/20 border border-emerald-500 text-emerald-400'; }
+                                                        else if (dayPnL < 0) { bg = 'bg-rose-500/20 border border-rose-500 text-rose-400'; }
+                                                        else { bg = 'bg-slate-700 text-white'; }
+                                                    } else if (isPast) {
+                                                        bg = 'bg-slate-900/50 border border-white/5 text-slate-700';
+                                                    }
+                                                }
 
                                                 return (
                                                     <div key={d.dayNumber} className={`aspect-square rounded-md flex flex-col items-center justify-center relative transition-all ${bg}`} title={`Day ${d.dayNumber} - ${dayDate.toLocaleDateString()}`}>
                                                         <span className={`text-[10px] font-bold ${text}`}>{dayDate.getDate()}</span>
                                                         <span className="text-[8px] opacity-70 uppercase">{dayDate.toLocaleString('default', { month: 'short' })}</span>
-                                                        {hasTrades && (
-                                                            <div className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${isWinDay ? 'bg-emerald-300' : 'bg-rose-300'}`}></div>
+                                                        {mapViewMode === 'pnl' && hasTrades && (
+                                                            <span className="text-[6px] font-mono mt-0.5">{dayPnL > 0 ? '+' : ''}{dayPnL >= 1000 || dayPnL <= -1000 ? (dayPnL/1000).toFixed(1)+'k' : dayPnL.toFixed(0)}</span>
                                                         )}
-                                                        {isPast && d.status === 'pending' && (
-                                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                                                <X size={12} className="text-slate-500 opacity-50"/>
-                                                            </div>
-                                                        )}
+                                                        {isToday && mapViewMode === 'discipline' && <div className="absolute inset-0 border-2 border-white rounded-md animate-ping opacity-20"></div>}
                                                     </div>
                                                 )
                                             })}
