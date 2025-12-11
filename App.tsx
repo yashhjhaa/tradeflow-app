@@ -2069,6 +2069,29 @@ const App: React.FC = () => {
       return maxDD;
   }, [filteredTrades]);
 
+  // Streaks
+  const streaks = React.useMemo(() => {
+    let currentWin = 0;
+    let currentLoss = 0;
+    let maxWin = 0;
+    let maxLoss = 0;
+    const sorted = [...filteredTrades].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    sorted.forEach(t => {
+        if (t.outcome === TradeOutcome.WIN) {
+            currentWin++;
+            currentLoss = 0;
+            if (currentWin > maxWin) maxWin = currentWin;
+        } else if (t.outcome === TradeOutcome.LOSS) {
+            currentLoss++;
+            currentWin = 0;
+            if (currentLoss > maxLoss) maxLoss = currentLoss;
+        }
+    });
+    
+    return { currentWin, currentLoss, maxWin, maxLoss };
+  }, [filteredTrades]);
+
   // ==========================================
   // AUTH CHECK (CONDITIONAL RETURN)
   // ==========================================
@@ -2525,19 +2548,77 @@ const App: React.FC = () => {
                         </Card>
                     </div>
 
+                    {/* MAIN PERFORMANCE VISUALS */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* LEFT: SIMULATION & TOOLS */}
-                        <div className="lg:col-span-1 space-y-6">
+                        <Card className="lg:col-span-2 h-[420px] bg-slate-900/20 border-cyan-500/10">
+                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><TrendingUp className="text-cyan-500"/> Equity Curve</h3>
+                            <EquityCurve trades={filteredTrades} />
+                        </Card>
+                        <Card className="lg:col-span-1 h-[420px] bg-slate-900/20 border-white/5">
+                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><CalendarIcon className="text-slate-400"/> Monthly Heatmap</h3>
+                            <div className="h-[340px] overflow-hidden">
+                                <TradeCalendar trades={filteredTrades} />
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* SIMULATION & RISK ENGINE */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="space-y-6">
                             <PositionSizeCalculator />
+                            <Card className="bg-gradient-to-br from-indigo-900/10 to-[#0B0F19] border-indigo-500/10">
+                                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 uppercase tracking-wider">
+                                    <Shield size={16} className="text-indigo-400"/> Risk of Ruin
+                                </h3>
+                                <div className="space-y-4">
+                                     <div className="flex justify-between items-center text-xs">
+                                         <span className="text-slate-400">Win Rate</span>
+                                         <span className="text-white font-bold">{winRate}%</span>
+                                     </div>
+                                     <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                         {/* Simple theoretical calc: Risk of ruin drops as win rate > 50% */}
+                                         <div className={`h-full ${parseFloat(winRate) > 50 ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${Math.max(0, 100 - parseFloat(winRate))}%` }}></div>
+                                     </div>
+                                     <p className="text-[10px] text-slate-500">
+                                         Estimated probability of blowing account based on fixed risk. {parseFloat(winRate) > 40 ? 'Stable' : 'High Risk'}.
+                                     </p>
+                                </div>
+                            </Card>
+                        </div>
+
+                        <div className="space-y-6">
                             <MonteCarloSimulator 
                                 winRate={parseFloat(winRate)} 
                                 avgWin={avgWin} 
                                 avgLoss={avgLoss} 
                                 startingBalance={accounts[0]?.balance || 10000} 
                             />
-                            
-                            {/* WHAT-IF SCENARIO */}
-                            <Card className="bg-gradient-to-br from-amber-900/10 to-[#0B0F19] border-amber-500/10">
+                             <Card className="bg-gradient-to-br from-orange-900/10 to-[#0B0F19] border-orange-500/10">
+                                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 uppercase tracking-wider">
+                                    <FlameIcon size={16} className="text-orange-400"/> Streak Analysis
+                                </h3>
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    <div className="bg-emerald-500/10 p-2 rounded border border-emerald-500/20 text-center">
+                                        <div className="text-[10px] text-emerald-400 font-bold uppercase">Max Win Streak</div>
+                                        <div className="text-xl font-mono text-white">{streaks.maxWin}</div>
+                                    </div>
+                                    <div className="bg-rose-500/10 p-2 rounded border border-rose-500/20 text-center">
+                                        <div className="text-[10px] text-rose-400 font-bold uppercase">Max Loss Streak</div>
+                                        <div className="text-xl font-mono text-white">{streaks.maxLoss}</div>
+                                    </div>
+                                    <div className="col-span-2 bg-slate-800/50 p-2 rounded border border-white/5 flex justify-between items-center px-4">
+                                        <span className="text-xs text-slate-400">Current Streak</span>
+                                        <span className={`font-bold ${streaks.currentWin > 0 ? 'text-emerald-400' : streaks.currentLoss > 0 ? 'text-rose-400' : 'text-slate-200'}`}>
+                                            {streaks.currentWin > 0 ? `+${streaks.currentWin} Wins` : streaks.currentLoss > 0 ? `-${streaks.currentLoss} Losses` : 'Neutral'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                        
+                        {/* WHAT-IF SCENARIO */}
+                        <div className="space-y-6">
+                             <Card className="bg-gradient-to-br from-amber-900/10 to-[#0B0F19] border-amber-500/10 h-full">
                                 <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 uppercase tracking-wider">
                                     <HelpCircle size={16} className="text-amber-400"/> "What If" Simulator
                                 </h3>
@@ -2563,9 +2644,10 @@ const App: React.FC = () => {
                                 </div>
                             </Card>
                         </div>
+                    </div>
 
-                        {/* CENTER: MAIN VISUALS */}
-                        <div className="lg:col-span-2 space-y-6">
+                    {/* BEHAVIORAL ANALYSIS */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <Card className="bg-gradient-to-br from-indigo-900/20 to-transparent border-indigo-500/10">
                                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><BrainCircuit className="text-indigo-400"/> Trade Psychology Lab</h3>
                                 <div className="flex gap-4 mb-4">
@@ -2588,8 +2670,7 @@ const App: React.FC = () => {
                                 )}
                             </Card>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <Card className="h-[300px] flex flex-col">
+                            <Card className="h-[300px] flex flex-col">
                                     <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase flex items-center gap-2"><Clock size={16}/> The Golden Hour Matrix</h3>
                                     {/* HEATMAP VISUALIZATION */}
                                     <div className="flex-1 grid grid-cols-24 gap-[1px] bg-slate-800 border border-slate-700">
@@ -2629,38 +2710,35 @@ const App: React.FC = () => {
                                          <div className="flex items-center gap-1"><div className="w-2 h-2 bg-rose-500"></div> Loss</div>
                                     </div>
                                 </Card>
-
-                                <Card className="h-[300px] flex flex-col">
-                                     <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase flex items-center gap-2"><Target size={16}/> Tag Intelligence</h3>
-                                     <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                                         {tagStats.map(([tag, stat]) => (
-                                             <div key={tag} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 text-xs">
-                                                 <Badge color="gray">{tag}</Badge>
-                                                 <div className="flex items-center gap-4">
-                                                     <span className="text-slate-500">{stat.count} trades</span>
-                                                     <span className={`font-mono font-bold ${stat.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                         {formatCurrency(stat.pnl)}
-                                                     </span>
-                                                 </div>
-                                             </div>
-                                         ))}
-                                     </div>
-                                </Card>
-                            </div>
-
-                            <Card className="h-[300px]">
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><TrendingUp className="text-cyan-500"/> Equity Curve</h3>
-                                <EquityCurve trades={filteredTrades} />
-                            </Card>
-                        </div>
                     </div>
                     
                     {/* BOTTOM ROW CHARTS */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Win Rate Distribution</h3><WinLossChart trades={filteredTrades} /></Card>
-                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Pair Performance</h3><PairPerformanceChart trades={filteredTrades} /></Card>
-                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Strategy Edge</h3><StrategyChart trades={filteredTrades} /></Card>
-                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Hourly Edge</h3><HourlyPerformanceChart trades={filteredTrades} /></Card>
+                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Win Rate</h3><WinLossChart trades={filteredTrades} /></Card>
+                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Direction Bias</h3><LongShortChart trades={filteredTrades} /></Card>
+                        <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Day of Week</h3><DayOfWeekChart trades={filteredTrades} /></Card>
+                        <Card>
+                             <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase flex items-center gap-2"><Target size={16}/> Tag Intelligence</h3>
+                             <div className="h-64 overflow-y-auto space-y-2 pr-2">
+                                 {tagStats.map(([tag, stat]) => (
+                                     <div key={tag} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 text-xs">
+                                         <Badge color="gray">{tag}</Badge>
+                                         <div className="flex items-center gap-4">
+                                             <span className="text-slate-500">{stat.count}</span>
+                                             <span className={`font-mono font-bold ${stat.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                 {formatCurrency(stat.pnl)}
+                                             </span>
+                                         </div>
+                                     </div>
+                                 ))}
+                             </div>
+                        </Card>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                         <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Pair Performance</h3><PairPerformanceChart trades={filteredTrades} /></Card>
+                         <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Strategy Edge</h3><StrategyChart trades={filteredTrades} /></Card>
+                         <Card><h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Hourly Edge</h3><HourlyPerformanceChart trades={filteredTrades} /></Card>
                     </div>
                 </div>
             )}
