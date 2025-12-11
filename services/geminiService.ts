@@ -71,20 +71,16 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
       Format the output clearly in Markdown. Be direct and concise.
     `;
 
-    const response = await generateWithFallback(
-      'gemini-3-pro-preview',
-      {
-        contents: prompt,
-        config: {
-          thinkingConfig: { thinkingBudget: 16384 } // Reduced budget for stability
-        }
-      }
-    );
+    // Using Flash for speed and stability as primary for this frequent task
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+    });
 
     return response.text || "Could not generate analysis.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
-    return "AI Analysis failed. Please check connection.";
+    return `AI Analysis failed: ${error.message || "Check connection"}`;
   }
 };
 
@@ -113,19 +109,16 @@ export const analyzeDeepPsychology = async (trade: Trade): Promise<string> => {
             Output Format: Markdown. Be direct, professional, and insightful.
         `;
 
-        const response = await generateWithFallback(
-          'gemini-3-pro-preview',
-          {
-            contents: prompt,
-            config: {
-                thinkingConfig: { thinkingBudget: 16384 }
-            }
-          }
-        );
+        // Using Flash for immediate feedback in the Psychology Lab
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt
+        });
 
         return response.text || "Could not generate deep analysis.";
-    } catch (e) {
-        return "Analysis failed. Please check connection.";
+    } catch (error: any) {
+        console.error("Deep Analysis Error:", error);
+        return `Analysis failed: ${error.message || "Check connection"}`;
     }
 };
 
@@ -182,15 +175,11 @@ export const generatePerformanceReview = async (trades: Trade[]): Promise<string
         4. **Rating**: (1-10)
       `;
 
-      const response = await generateWithFallback(
-        'gemini-3-pro-preview',
-        {
-            contents: prompt,
-            config: {
-              thinkingConfig: { thinkingBudget: 16384 }
-            }
-        }
-      );
+      // Use Flash for standard text generation tasks to avoid timeout/preview limits
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+      });
   
       return response.text || "Review unavailable.";
     } catch (error) {
@@ -643,13 +632,11 @@ export const reframeNegativeThought = async (thought: string): Promise<string> =
             Provide a "Cognitive Reframe" - a more productive, logical, and stoic way to view this situation.
             Keep it short (max 2 sentences), punchy, and empowering.
         `;
-        const response = await generateWithFallback(
-            'gemini-3-pro-preview',
-            {
-                contents: prompt,
-                config: { thinkingConfig: { thinkingBudget: 4096 } }
-            }
-        );
+        // Using Flash for speed/availability
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt
+        });
         return response.text || "Focus on the process.";
     } catch(e) {
         return "Focus on the process.";
