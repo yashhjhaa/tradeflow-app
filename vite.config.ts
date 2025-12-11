@@ -15,8 +15,7 @@ export default defineConfig(({ mode }) => {
     define: {
       // Define process.env.API_KEY globally for the client build
       'process.env.API_KEY': JSON.stringify(apiKey),
-      // Polyfill process.env object to prevent "process is not defined" crashes in browser
-      'process.env': {} 
+      // NOTE: Removed empty 'process.env': {} to avoid overwriting the specific API key replacement logic in some bundler versions
     },
     build: {
       outDir: 'dist',
