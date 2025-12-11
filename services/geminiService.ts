@@ -2,17 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { Trade, CalendarEvent, ChatMessage } from "../types";
 
 // --- CONFIGURATION ---
-const getApiKey = () => {
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) {
-    return (import.meta as any).env.VITE_API_KEY;
-  }
-  if (typeof process !== 'undefined' && process.env?.API_KEY) {
-    return process.env.API_KEY;
-  }
-  return null;
-};
-
-const apiKey = getApiKey();
+// STRICT INITIALIZATION: As per rules, API Key must come from process.env.API_KEY
+const apiKey = process.env.API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // --- ROBUST FALLBACK WRAPPER ---
@@ -138,8 +129,7 @@ export const analyzeTradeScreenshot = async (base64Image: string, pair: string):
   try {
     const base64Data = base64Image.replace(/^data:image\/(png|jpg|jpeg|webp);base64,/, "");
 
-    // Vision tasks are best on Flash 2.5 currently or Pro 3 Vision if available. 
-    // Sticking to Flash 2.5 for speed/reliability on images.
+    // Vision tasks are best on Flash 2.5 currently.
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: {
@@ -411,7 +401,6 @@ export const transcribeAudioNote = async (base64Audio: string): Promise<{ text: 
 export const validateTradeAgainstStrategy = async (trade: any, strategyRules: string): Promise<{ valid: boolean; reason: string }> => {
   if (!ai) return { valid: true, reason: "AI Unavailable" };
   
-  // SWITCHED TO FLASH FOR SPEED AS PER USER REQUEST
   const prompt = `
     You are a Risk Manager. Validate this trade against the user's Strategy Rules.
     
@@ -489,7 +478,7 @@ export const parseTradeFromNaturalLanguage = async (text: string): Promise<Parti
 };
 
 export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: string, image?: string): Promise<string> => {
-    if (!ai) return "AI Coach Unavailable. Please set VITE_API_KEY in Vercel.";
+    if (!ai) return "AI Coach Unavailable. Please check API Key configuration.";
   
     try {
       const parts: any[] = [];
@@ -588,9 +577,6 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
       // Enhance cleaning to remove possible markdown
       const cleanText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
       
-      // Fallback: If AI still used single quotes for keys/values, attempt to fix
-      // This regex replaces single quotes with double quotes, but tries to respect internal apostrophes
-      // ideally the prompt fix above handles it, but this is a safety net
       let finalJson = cleanText;
       if (cleanText.startsWith("'") || cleanText.includes("'sentiment'")) {
            finalJson = cleanText.replace(/'/g, '"'); 
