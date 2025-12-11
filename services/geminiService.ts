@@ -3,7 +3,13 @@ import { Trade, CalendarEvent, ChatMessage } from "../types";
 
 // --- CONFIGURATION ---
 // STRICT INITIALIZATION: As per rules, API Key must come from process.env.API_KEY
+// The vite.config.ts ensures this value is populated from env.API_KEY, VITE_API_KEY, etc.
 const apiKey = process.env.API_KEY;
+
+if (!apiKey) {
+  console.warn("Gemini API Key is missing or empty. AI features will be unavailable.");
+}
+
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // --- ROBUST FALLBACK WRAPPER ---
@@ -41,7 +47,7 @@ const generateWithFallback = async (
 };
 
 export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
-  if (!ai) return "AI Analysis Unavailable (API Key Missing)";
+  if (!ai) return "AI Unavailable. (API Key Missing)";
 
   try {
     const prompt = `
@@ -78,12 +84,12 @@ export const analyzeTradePsychology = async (trade: Trade): Promise<string> => {
     return response.text || "Could not generate analysis.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "AI Analysis failed. Please try again.";
+    return "AI Analysis failed. Please check connection.";
   }
 };
 
 export const analyzeDeepPsychology = async (trade: Trade): Promise<string> => {
-    if (!ai) return "AI Unavailable.";
+    if (!ai) return "AI Unavailable. (API Key Missing)";
 
     try {
         const prompt = `
@@ -194,7 +200,7 @@ export const generatePerformanceReview = async (trades: Trade[]): Promise<string
 }
 
 export const generateTradingStrategy = async (concept: string): Promise<string> => {
-    if (!ai) return "AI Unavailable.";
+    if (!ai) return "AI Unavailable. (API Key Missing)";
 
     try {
         const prompt = `
@@ -230,7 +236,7 @@ export const generateTradingStrategy = async (concept: string): Promise<string> 
 
         return response.text || "Could not generate strategy.";
     } catch (e) {
-        return "Strategy generation failed.";
+        return "Strategy generation failed. Check connection.";
     }
 };
 
@@ -325,7 +331,7 @@ export const analyzeStrategyEdgeCases = async (strategyText: string): Promise<st
 };
 
 export const critiqueTradingStrategy = async (strategy: string): Promise<string> => {
-    if (!ai) return "AI Unavailable.";
+    if (!ai) return "AI Unavailable. (API Key Missing)";
 
     try {
         const prompt = `
@@ -356,7 +362,7 @@ export const critiqueTradingStrategy = async (strategy: string): Promise<string>
 
         return response.text || "Could not critique strategy.";
     } catch (e) {
-        return "Critique failed.";
+        return "Critique failed. Check connection.";
     }
 };
 
@@ -523,7 +529,7 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
 export const getLiveMarketNews = async (): Promise<{sentiment: string, events: CalendarEvent[]}> => {
   if (!ai) {
       return { 
-          sentiment: "Demo Mode: API Key missing.", 
+          sentiment: "Demo Mode: AI Key missing.", 
           events: [
               { id: '1', time: '08:30 AM', currency: 'USD', impact: 'High', event: 'CPI m/m', actual: '0.4%', forecast: '0.3%', previous: '0.4%', isBetter: false },
               { id: '2', time: '02:00 PM', currency: 'USD', impact: 'High', event: 'FOMC Statement', actual: '', forecast: '', previous: '', isBetter: false },
