@@ -1,4 +1,3 @@
-
 {
   "name": "tradeflow",
   "private": true,
@@ -13,6 +12,7 @@
   "dependencies": {
     "@google/genai": "latest",
     "firebase": "^10.8.0",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
