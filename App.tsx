@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save, TrendingDown, Sigma, Grip, Crosshair, HelpCircle, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save, TrendingDown, Sigma, Grip, Crosshair, HelpCircle } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
 import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation, reframeNegativeThought } from './services/geminiService';
@@ -15,6 +15,7 @@ import {
 } from './services/dataService';
 import { User } from 'firebase/auth';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ComposedChart, Line } from 'recharts';
+import html2canvas from 'html2canvas';
 
 export const ThemeContext = React.createContext({
   theme: 'dark',
@@ -574,71 +575,61 @@ const CreateChallengeModal: React.FC<{ isOpen: boolean; onClose: () => void; onC
     );
 };
 
-const ShareableChallengeCard: React.FC<{ challenge: Challenge, user: string, winRate: string, pnl: number, onClose: () => void }> = ({ challenge, user, winRate, pnl, onClose }) => {
+const ShareableChallengeCard: React.FC<{ challenge: Challenge, user: string, winRate: string, pnl: number }> = ({ challenge, user, winRate, pnl }) => {
     return (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
-            <div className="flex flex-col gap-4">
-                <div id="share-card" className="w-[360px] h-[580px] bg-[#05070A] relative overflow-hidden flex flex-col p-8 border border-white/20 rounded-3xl shadow-2xl">
-                    {/* Background Gradients */}
-                    <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-cyan-500/20 rounded-full blur-[80px]"></div>
-                    <div className="absolute bottom-[-20%] right-[-20%] w-[300px] h-[300px] bg-purple-500/20 rounded-full blur-[80px]"></div>
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-
-                    {/* Header */}
-                    <div className="relative z-10 flex justify-between items-start mb-12">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                                <AppLogo className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="font-display font-bold text-white text-lg tracking-tight">TradeFlow</h3>
-                                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Protocol Verified</p>
-                            </div>
-                        </div>
-                        <div className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-mono text-cyan-400">
-                            {new Date().toLocaleDateString()}
-                        </div>
+        <div id="share-card" className="w-[400px] h-[600px] bg-[#05070A] relative overflow-hidden flex flex-col p-8 border border-white/10 rounded-3xl">
+            {/* Background Gradients */}
+            <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-cyan-500/20 rounded-full blur-[80px]"></div>
+            <div className="absolute bottom-[-20%] right-[-20%] w-[300px] h-[300px] bg-purple-500/20 rounded-full blur-[80px]"></div>
+            
+            {/* Header */}
+            <div className="relative z-10 flex justify-between items-start mb-12">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <AppLogo className="w-6 h-6 text-white" />
                     </div>
-
-                    {/* Main Stats */}
-                    <div className="relative z-10 flex-1 flex flex-col justify-center space-y-8">
-                        <div>
-                            <div className="text-xs font-bold text-slate-500 uppercase mb-2">Current Status</div>
-                            <h1 className="text-5xl font-display font-bold text-white mb-2 leading-none">Day {challenge.currentDay}</h1>
-                            <h2 className="text-xl font-medium text-slate-300">{challenge.title}</h2>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
-                                <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Win Rate</div>
-                                <div className="text-2xl font-mono font-bold text-emerald-400">{winRate}%</div>
-                            </div>
-                            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
-                                <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Total PnL</div>
-                                <div className={`text-2xl font-mono font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    {pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-6 bg-gradient-to-r from-cyan-900/20 to-transparent border-l-2 border-cyan-500 rounded-r-xl">
-                            <p className="text-sm italic text-slate-300 font-serif leading-relaxed">"Discipline is doing what needs to be done, even if you don't want to do it."</p>
-                        </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="relative z-10 mt-auto flex items-center gap-3 pt-6 border-t border-white/10">
-                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-white border border-white/10">
-                            {user[0]}
-                        </div>
-                        <span className="text-sm font-bold text-slate-300">{user}</span>
-                        <div className="ml-auto text-[10px] text-slate-500 font-mono">#TradeFlowChallenge</div>
+                    <div>
+                        <h3 className="font-display font-bold text-white text-lg">TradeFlow</h3>
+                        <p className="text-xs text-slate-400 uppercase tracking-widest">Protocol Verified</p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="neon" className="flex-1" onClick={() => alert("Screenshot captured to clipboard!")}><Download size={16}/> Save Image</Button>
-                    <Button variant="ghost" onClick={onClose}>Close</Button>
+                <div className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs font-mono text-cyan-400">
+                    {new Date().toLocaleDateString()}
                 </div>
+            </div>
+
+            {/* Main Stats */}
+            <div className="relative z-10 flex-1 flex flex-col justify-center space-y-8">
+                <div>
+                    <h1 className="text-6xl font-display font-bold text-white mb-2">Day {challenge.currentDay}</h1>
+                    <h2 className="text-2xl font-medium text-slate-400">{challenge.title}</h2>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Win Rate</div>
+                        <div className="text-2xl font-mono font-bold text-emerald-400">{winRate}%</div>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Total PnL</div>
+                        <div className={`text-2xl font-mono font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 bg-gradient-to-r from-cyan-900/10 to-transparent border-l-2 border-cyan-500">
+                    <p className="text-sm italic text-slate-300 font-serif">"Discipline is doing what needs to be done, even if you don't want to do it."</p>
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="relative z-10 mt-auto flex items-center gap-3 pt-6 border-t border-white/5">
+                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-white">
+                    {user[0]}
+                </div>
+                <span className="text-sm font-bold text-slate-300">{user}</span>
+                <div className="ml-auto text-xs text-slate-500">#TradeFlowChallenge</div>
             </div>
         </div>
     );
@@ -1250,11 +1241,139 @@ const AddTradeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (t
         </div>
     );
 };
+
+const ShareTradeModal: React.FC<{ trade: Trade; onClose: () => void }> = ({ trade, onClose }) => {
+    const cardRef = useRef<HTMLDivElement>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    const handleDownload = async () => {
+        if (!cardRef.current) return;
+        setIsDownloading(true);
+        try {
+            const canvas = await html2canvas(cardRef.current, {
+                useCORS: true,
+                scale: 2,
+                backgroundColor: '#05070A',
+                logging: false
+            });
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `TradeFlow_${trade.pair}_${trade.date}.png`;
+            a.click();
+        } catch (e) {
+            console.error("Capture failed", e);
+            alert("Failed to generate image.");
+        }
+        setIsDownloading(false);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-4">
+            <div className="mb-4 flex gap-4">
+                <Button variant="secondary" onClick={onClose}><X size={16} className="mr-2"/> Close</Button>
+                <Button variant="neon" onClick={handleDownload} disabled={isDownloading}>
+                    {isDownloading ? <Loader2 className="animate-spin mr-2"/> : <Download size={16} className="mr-2"/>}
+                    {isDownloading ? 'Capturing...' : 'Save Image'}
+                </Button>
+            </div>
+            
+            <div className="overflow-auto max-h-full p-4 rounded-3xl no-scrollbar">
+                <div 
+                    ref={cardRef}
+                    id="trade-share-card"
+                    className="w-[400px] bg-[#05070A] relative overflow-hidden flex flex-col border border-white/10 rounded-3xl"
+                >
+                    <div className="absolute top-[-10%] right-[-10%] w-[250px] h-[250px] bg-cyan-500/20 rounded-full blur-[80px]"></div>
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[250px] h-[250px] bg-purple-500/20 rounded-full blur-[80px]"></div>
+                    
+                    <div className="relative z-10 p-6 border-b border-white/5 flex justify-between items-start">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <AppLogo className="w-5 h-5"/>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">TradeFlow Recap</span>
+                            </div>
+                            <h1 className="text-3xl font-display font-bold text-white">{trade.pair}</h1>
+                        </div>
+                        <div className={`px-3 py-1 rounded-lg border text-xs font-bold uppercase tracking-wider ${trade.outcome === 'WIN' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : trade.outcome === 'LOSS' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' : 'bg-slate-500/10 border-slate-500/20 text-slate-400'}`}>
+                            {trade.direction} • {trade.outcome}
+                        </div>
+                    </div>
+
+                    <div className="relative z-10 w-full h-[250px] bg-black/50 border-y border-white/5 group">
+                        {trade.screenshot ? (
+                            <img src={trade.screenshot} className="w-full h-full object-cover" crossOrigin="anonymous"/>
+                        ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-600">
+                                <Activity size={32} className="mb-2 opacity-50"/>
+                                <span className="text-xs uppercase font-bold">No Chart Data</span>
+                            </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
+                            <div className="flex justify-between items-end">
+                                <div>
+                                    <div className="text-[10px] text-slate-400 uppercase font-bold">Session</div>
+                                    <div className="text-white font-medium">{trade.session}</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-[10px] text-slate-400 uppercase font-bold">Setup</div>
+                                    <div className="text-white font-medium">{trade.setup || 'Price Action'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="relative z-10 p-6 grid grid-cols-2 gap-4">
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                            <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Profit / Loss</div>
+                            <div className={`text-2xl font-mono font-bold ${trade.pnl && trade.pnl > 0 ? 'text-emerald-400' : trade.pnl && trade.pnl < 0 ? 'text-rose-400' : 'text-white'}`}>
+                                {trade.pnl ? formatCurrency(trade.pnl) : '$0.00'}
+                            </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                            <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Risk : Reward</div>
+                            <div className="text-2xl font-mono font-bold text-white">
+                                1 : {trade.rMultiple || '---'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {trade.notes && (
+                        <div className="relative z-10 px-6 pb-6">
+                            <div className="p-4 rounded-xl bg-black/30 border border-white/5 text-xs text-slate-400 italic leading-relaxed relative">
+                                <Quote size={12} className="absolute top-2 left-2 text-white/10" />
+                                "{trade.notes.length > 80 ? trade.notes.substring(0, 80) + '...' : trade.notes}"
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="relative z-10 p-4 border-t border-white/5 bg-white/5 flex justify-between items-center">
+                        <div className="text-[10px] text-slate-500 font-mono">
+                            {new Date(trade.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </div>
+                        <div className="flex gap-1">
+                            {[1,2,3].map(i => <div key={i} className="w-1 h-1 rounded-full bg-slate-700"></div>)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const TradeDetailsModal: React.FC<{ trade: Trade | null; onClose: () => void; onDelete: (id: string) => void; onEdit: (t: Trade) => void; onAnalyze: (t: Trade) => void }> = ({ trade, onClose, onDelete, onEdit, onAnalyze }) => {
+    const [showShare, setShowShare] = useState(false);
+    
+    useEffect(() => {
+        if (!trade) setShowShare(false);
+    }, [trade]);
+
     if (!trade) return null;
     const isWin = trade.outcome === TradeOutcome.WIN;
+    
     return (
          <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+             {showShare && <ShareTradeModal trade={trade} onClose={() => setShowShare(false)} />}
              <div className="bg-[#0B0F19] w-full max-w-5xl h-[85vh] rounded-3xl border border-white/10 flex overflow-hidden shadow-2xl relative animate-fade-in">
                  <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-black/50 p-2 rounded-full hover:bg-white/10 text-white"><X size={20}/></button>
                  <div className="w-2/3 bg-black/50 relative flex items-center justify-center bg-grid-pattern">
@@ -1287,7 +1406,11 @@ const TradeDetailsModal: React.FC<{ trade: Trade | null; onClose: () => void; on
                              </Button>
                          )}
                      </div>
-                     <div className="mt-10 flex gap-3"><Button variant="secondary" className="flex-1" onClick={() => onEdit(trade)}>Edit</Button><Button variant="danger" onClick={() => { onDelete(trade.id); onClose(); }}><Trash2 size={16}/></Button></div>
+                     <div className="mt-10 flex gap-3">
+                        <Button variant="secondary" className="flex-1" onClick={() => setShowShare(true)}><Share2 size={16} className="mr-2"/> Share</Button>
+                        <Button variant="secondary" className="flex-1" onClick={() => onEdit(trade)}>Edit</Button>
+                        <Button variant="danger" onClick={() => { onDelete(trade.id); onClose(); }}><Trash2 size={16}/></Button>
+                     </div>
                  </div>
              </div>
         </div>
@@ -1415,7 +1538,6 @@ const App: React.FC = () => {
   const [challengeMotivation, setChallengeMotivation] = useState('');
   const [showSergeant, setShowSergeant] = useState(false); // AI Sergeant Modal
   const [savingChallenge, setSavingChallenge] = useState(false);
-  const [mapViewMode, setMapViewMode] = useState<'discipline' | 'pnl'>('discipline');
 
   // Mindset State
   const [journalTab, setJournalTab] = useState<'pre' | 'mid' | 'post'>('pre');
@@ -1428,6 +1550,17 @@ const App: React.FC = () => {
     risk: false, plan: false, sleep: false, distraction: false
   });
   
+  // NEW MINDSET STATE FOR FIX
+  const [journalText, setJournalText] = useState('');
+  const [isSavingJournal, setIsSavingJournal] = useState(false);
+  const [randomMindsetQuote] = useState([
+      "The market is a mirror of your mind.",
+      "Discipline is freedom.",
+      "Process over outcome.",
+      "Stay calm, stay collected.",
+      "You are the edge."
+  ][Math.floor(Math.random() * 5)]);
+
   // Analytics State
   const [selectedPsychoTradeId, setSelectedPsychoTradeId] = useState<string>('');
   const [psychoAnalysisResult, setPsychoAnalysisResult] = useState<string | null>(null);
@@ -1847,6 +1980,49 @@ const App: React.FC = () => {
       setIsReframing(false);
   };
 
+  const handleSaveJournal = async () => {
+      if (!user) return;
+      if (!journalText.trim()) {
+          alert("Please write something before saving!");
+          return;
+      }
+      setIsSavingJournal(true);
+      try {
+          const today = new Date().toISOString().split('T')[0];
+          const logId = `${user.uid}_${today}`;
+          const existingLog = disciplineLogs.find(l => l.id === logId);
+          
+          const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const entryHeader = `[${journalTab.toUpperCase()} @ ${timestamp} | Mood: ${currentMood}]`;
+          const newEntry = `${entryHeader}\n${journalText}`;
+          
+          const combinedNotes = existingLog?.notes 
+              ? `${newEntry}\n\n---\n\n${existingLog.notes}`
+              : newEntry;
+
+          const updatedLog: DisciplineLog = {
+              id: logId,
+              userId: user.uid,
+              date: today,
+              followedPlan: preSessionChecks.plan, 
+              noRevenge: existingLog?.noRevenge || true,
+              calmEmotion: tiltLevel < 50,
+              journaled: true,
+              notes: combinedNotes,
+              mood: tiltLevel, 
+              intention: currentMood
+          };
+
+          await updateDisciplineLog(updatedLog, user.uid);
+          setJournalText('');
+          fireConfetti();
+      } catch (e) {
+          console.error("Save failed", e);
+          alert("Failed to save entry. Check console.");
+      }
+      setIsSavingJournal(false);
+  };
+
   // --- CHALLENGE HANDLERS ---
   const handleStartChallenge = async (type: 'monk' | 'iron' | 'savage') => {
       if (!user) return;
@@ -2145,15 +2321,6 @@ const App: React.FC = () => {
         <BackgroundBlobs />
         <Ticker />
         <WelcomeToast username={user.displayName || 'Trader'} visible={showWelcome} />
-        {showShareCard && activeChallenge && (
-            <ShareableChallengeCard 
-                challenge={activeChallenge} 
-                user={user.displayName || 'Trader'} 
-                winRate={winRate} 
-                pnl={challengeStats.protocolPnL} 
-                onClose={() => setShowShareCard(false)}
-            />
-        )}
         <CooldownModal isOpen={isCooldownOpen} onClose={() => setIsCooldownOpen(false)} />
         <CreateChallengeModal isOpen={isCreateChallengeOpen} onClose={() => setIsCreateChallengeOpen(false)} onCreate={handleCreateCustomChallenge} />
         <AddAccountModal isOpen={isAddAccountOpen} onClose={() => setIsAddAccountOpen(false)} onAdd={handleAddAccount} />
@@ -2372,77 +2539,43 @@ const App: React.FC = () => {
                         </div>
                     ) : (
                         <div className="space-y-6 animate-fade-in relative max-w-7xl mx-auto">
-                            <div className="bg-[#0B0F19] rounded-3xl border border-white/10 p-8 relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl">
+                            <div className="bg-[#0B0F19] rounded-3xl border border-white/10 p-8 relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8">
                                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
                                 <div className="relative z-10 flex-1">
-                                     <div className="flex items-center gap-3 mb-4">
-                                         <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/20 flex items-center gap-2 animate-pulse">
-                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ACTIVE PROTOCOL
+                                     <div className="flex items-center gap-3 mb-2">
+                                         <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20 flex items-center gap-2 animate-pulse">
+                                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span> ACTIVE PROTOCOL
                                          </span>
-                                         <span className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Level {currentLevel} Operator</span>
+                                         <span className="text-slate-500 text-xs font-mono uppercase">Level {currentLevel}</span>
                                      </div>
-                                     <h1 className="text-6xl font-display font-bold text-white mb-2 tracking-tight">{activeChallenge.title}</h1>
-                                     <p className="text-slate-400 text-lg mb-6">Day {activeChallenge.currentDay} of {activeChallenge.totalDays} • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric'})}</p>
-                                     <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 w-fit">
-                                         <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden relative">
-                                             <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-1000 relative" style={{ width: `${(activeChallenge.currentDay / activeChallenge.totalDays) * 100}%` }}>
-                                                 <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/50"></div>
-                                             </div>
+                                     <h1 className="text-5xl font-display font-bold text-white mb-2">{activeChallenge.title}</h1>
+                                     <p className="text-slate-400 text-lg">Day {activeChallenge.currentDay} of {activeChallenge.totalDays} • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric'})}</p>
+                                     <div className="mt-6 flex items-center gap-4">
+                                         <div className="flex-1 max-w-md h-3 bg-slate-800 rounded-full overflow-hidden relative">
+                                             <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-1000" style={{ width: `${(activeChallenge.currentDay / activeChallenge.totalDays) * 100}%` }}></div>
                                          </div>
-                                         <span className="text-xs font-bold text-cyan-400">{((activeChallenge.currentDay / activeChallenge.totalDays) * 100).toFixed(0)}% Integrity</span>
+                                         <span className="text-xs font-bold text-cyan-400">{((activeChallenge.currentDay / activeChallenge.totalDays) * 100).toFixed(0)}% Complete</span>
                                      </div>
                                 </div>
                                 
-                                <div className="relative z-10 flex flex-col gap-3 min-w-[300px]">
+                                <div className="relative z-10 flex flex-col gap-3">
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className="p-4 bg-gradient-to-br from-amber-500/10 to-transparent rounded-xl border border-amber-500/20 text-center">
-                                            <div className="text-[10px] text-amber-500 uppercase font-bold mb-1 tracking-wider">Current Streak</div>
-                                            <div className="text-3xl font-mono font-bold text-white flex items-center justify-center gap-2"><FlameIcon size={20} className="text-amber-500 animate-pulse"/> {challengeStats.currentStreak}</div>
+                                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center min-w-[100px]">
+                                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Streak</div>
+                                            <div className="text-xl font-mono font-bold text-amber-400 flex items-center justify-center gap-1"><FlameIcon size={14}/> {challengeStats.currentStreak}</div>
                                         </div>
-                                        <div className="p-4 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-xl border border-emerald-500/20 text-center">
-                                            <div className="text-[10px] text-emerald-500 uppercase font-bold mb-1 tracking-wider">Protocol PnL</div>
-                                            <div className={`text-3xl font-mono font-bold ${challengeStats.protocolPnL >= 0 ? 'text-white' : 'text-rose-400'}`}>{challengeStats.protocolPnL >= 0 ? '+' : ''}${challengeStats.protocolPnL.toFixed(0)}</div>
+                                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center min-w-[100px]">
+                                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Net PnL</div>
+                                            <div className={`text-xl font-mono font-bold ${challengeStats.protocolPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{challengeStats.protocolPnL >= 0 ? '+' : ''}${challengeStats.protocolPnL.toFixed(0)}</div>
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button variant="secondary" size="sm" className="flex-1 border border-white/10 hover:border-cyan-500/50" onClick={() => setShowShareCard(true)}><Share2 size={16}/> Share Progress</Button>
-                                        <Button variant="danger" size="sm" className="border border-rose-500/20 hover:bg-rose-950/50" onClick={handleResetChallenge}><LogOut size={16}/></Button>
+                                        <Button variant="secondary" size="sm" className="flex-1" onClick={() => setShowShareCard(!showShareCard)}><Share2 size={16}/> Share</Button>
+                                        <Button variant="danger" size="sm" onClick={handleResetChallenge}><LogOut size={16}/></Button>
                                     </div>
                                 </div>
                             </div>
                             
-                            {/* TROPHY ROOM */}
-                            <div className="grid grid-cols-4 gap-4 animate-slide-up" style={{animationDelay: '100ms'}}>
-                                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${challengeStats.currentStreak >= 7 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-slate-900/50 border-white/5 opacity-50'}`}>
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${challengeStats.currentStreak >= 7 ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-500'}`}><Trophy size={18}/></div>
-                                    <div>
-                                        <div className="text-xs font-bold text-white">7 Day Warrior</div>
-                                        <div className="text-[10px] text-slate-400">7 Day Streak</div>
-                                    </div>
-                                </div>
-                                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${challengeStats.protocolPnL > 1000 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-900/50 border-white/5 opacity-50'}`}>
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${challengeStats.protocolPnL > 1000 ? 'bg-emerald-500 text-black' : 'bg-slate-800 text-slate-500'}`}><DollarSign size={18}/></div>
-                                    <div>
-                                        <div className="text-xs font-bold text-white">Profit Hunter</div>
-                                        <div className="text-[10px] text-slate-400">+$1,000 PnL</div>
-                                    </div>
-                                </div>
-                                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${activeChallenge.currentDay >= 14 ? 'bg-cyan-500/10 border-cyan-500/20' : 'bg-slate-900/50 border-white/5 opacity-50'}`}>
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeChallenge.currentDay >= 14 ? 'bg-cyan-500 text-black' : 'bg-slate-800 text-slate-500'}`}><Shield size={18}/></div>
-                                    <div>
-                                        <div className="text-xs font-bold text-white">Iron Will</div>
-                                        <div className="text-[10px] text-slate-400">14 Days Active</div>
-                                    </div>
-                                </div>
-                                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${trades.length >= 50 ? 'bg-purple-500/10 border-purple-500/20' : 'bg-slate-900/50 border-white/5 opacity-50'}`}>
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${trades.length >= 50 ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-500'}`}><Swords size={18}/></div>
-                                    <div>
-                                        <div className="text-xs font-bold text-white">Veteran</div>
-                                        <div className="text-[10px] text-slate-400">50 Trades Logged</div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="md:col-span-2 space-y-6">
                                     <div className="flex items-center justify-between">
@@ -2496,59 +2629,19 @@ const App: React.FC = () => {
                                             <p className="text-slate-300 italic">"{challengeMotivation}"</p>
                                         </div>
                                     </div>
-
-                                    {/* TRIBUNAL LOG */}
-                                    <div className="bg-[#0B0F19] rounded-2xl border border-white/5 p-4">
-                                        <div className="flex items-center gap-2 mb-3 text-xs font-bold text-slate-500 uppercase">
-                                            <Gavel size={12}/> Tribunal Live Feed
-                                        </div>
-                                        <div className="space-y-2 font-mono text-xs">
-                                            {activeChallenge.days[activeChallenge.currentDay-1].tasks.filter(t => t.verificationType !== 'manual').map((t, i) => (
-                                                <div key={i} className="flex justify-between items-center text-slate-400 border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                                                    <span>Checking {t.label}...</span>
-                                                    <span className={t.status === 'failed' ? 'text-rose-500' : t.status === 'completed' ? 'text-emerald-500' : 'text-slate-600'}>
-                                                        {t.status === 'failed' ? 'FAILED' : t.status === 'completed' ? 'VERIFIED' : 'PENDING'}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                            {activeChallenge.days[activeChallenge.currentDay-1].tasks.filter(t => t.verificationType !== 'manual').length === 0 && (
-                                                <div className="text-slate-600 italic">No automated checks for today.</div>
-                                            )}
-                                        </div>
-                                    </div>
                                 </div>
 
                                 <div className="space-y-6">
                                      <div className="flex items-center justify-between">
-                                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><Map className="text-purple-500"/> Battle Map</h3>
-                                        <div className="flex bg-slate-900 rounded-lg p-1 border border-white/10">
-                                            <button 
-                                                onClick={() => setMapViewMode('discipline')} 
-                                                className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${mapViewMode === 'discipline' ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-white'}`}
-                                            >
-                                                DISCIPLINE
-                                            </button>
-                                            <button 
-                                                onClick={() => setMapViewMode('pnl')} 
-                                                className={`px-3 py-1 rounded text-[10px] font-bold transition-colors ${mapViewMode === 'pnl' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}
-                                            >
-                                                PnL
-                                            </button>
-                                        </div>
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2"><Map className="text-purple-500"/> The Journey</h3>
                                     </div>
                                     
                                     <Card className="p-0 overflow-hidden bg-[#0B0F19]">
                                         <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
-                                            <span className="text-xs font-bold text-slate-400 uppercase">
-                                                {mapViewMode === 'discipline' ? 'Task Completion' : 'Profit/Loss Heatmap'}
-                                            </span>
-                                            <span className="text-xs text-slate-500">
-                                                {mapViewMode === 'discipline' 
-                                                    ? `${activeChallenge.days.filter(d => d.status === 'completed').length} Days Won` 
-                                                    : formatCurrency(challengeStats.protocolPnL)}
-                                            </span>
+                                            <span className="text-xs font-bold text-slate-400 uppercase">Calendar Map</span>
+                                            <span className="text-xs text-slate-500">{activeChallenge.days.filter(d => d.status === 'completed').length} Days Won</span>
                                         </div>
-                                        <div className="p-4 grid grid-cols-7 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                        <div className="p-4 grid grid-cols-7 gap-2 max-h-[400px] overflow-y-auto">
                                             {activeChallenge.days.map((d, i) => {
                                                 const dayDate = new Date(d.date);
                                                 const isPast = d.dayNumber < activeChallenge.currentDay;
@@ -2558,34 +2651,28 @@ const App: React.FC = () => {
                                                 const dayTrades = trades.filter(t => t.date.startsWith(dayStr));
                                                 const dayPnL = dayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
                                                 const hasTrades = dayTrades.length > 0;
+                                                const isWinDay = hasTrades && dayPnL >= 0;
 
                                                 let bg = 'bg-slate-800/50';
                                                 let text = 'text-slate-500';
                                                 
-                                                if (mapViewMode === 'discipline') {
-                                                    if (d.status === 'completed') { bg = 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]'; text = 'text-white'; }
-                                                    else if (d.status === 'failed') { bg = 'bg-rose-500/20 border border-rose-500'; text = 'text-rose-500'; }
-                                                    else if (isToday) { bg = 'bg-cyan-500 text-white animate-pulse'; text = 'text-white'; }
-                                                    else if (isPast) { bg = 'bg-slate-900 border border-slate-700'; text = 'text-slate-600'; }
-                                                } else {
-                                                    // PnL Mode
-                                                    if (hasTrades) {
-                                                        if (dayPnL > 0) { bg = 'bg-emerald-500/20 border border-emerald-500 text-emerald-400'; }
-                                                        else if (dayPnL < 0) { bg = 'bg-rose-500/20 border border-rose-500 text-rose-400'; }
-                                                        else { bg = 'bg-slate-700 text-white'; }
-                                                    } else if (isPast) {
-                                                        bg = 'bg-slate-900/50 border border-white/5 text-slate-700';
-                                                    }
-                                                }
+                                                if (d.status === 'completed') { bg = 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]'; text = 'text-white'; }
+                                                else if (d.status === 'failed') { bg = 'bg-rose-500/20 border border-rose-500'; text = 'text-rose-500'; }
+                                                else if (isToday) { bg = 'bg-cyan-500 text-white animate-pulse'; text = 'text-white'; }
+                                                else if (isPast) { bg = 'bg-slate-900 border border-slate-700'; text = 'text-slate-600'; }
 
                                                 return (
                                                     <div key={d.dayNumber} className={`aspect-square rounded-md flex flex-col items-center justify-center relative transition-all ${bg}`} title={`Day ${d.dayNumber} - ${dayDate.toLocaleDateString()}`}>
                                                         <span className={`text-[10px] font-bold ${text}`}>{dayDate.getDate()}</span>
                                                         <span className="text-[8px] opacity-70 uppercase">{dayDate.toLocaleString('default', { month: 'short' })}</span>
-                                                        {mapViewMode === 'pnl' && hasTrades && (
-                                                            <span className="text-[6px] font-mono mt-0.5">{dayPnL > 0 ? '+' : ''}{dayPnL >= 1000 || dayPnL <= -1000 ? (dayPnL/1000).toFixed(1)+'k' : dayPnL.toFixed(0)}</span>
+                                                        {hasTrades && (
+                                                            <div className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${isWinDay ? 'bg-emerald-300' : 'bg-rose-300'}`}></div>
                                                         )}
-                                                        {isToday && mapViewMode === 'discipline' && <div className="absolute inset-0 border-2 border-white rounded-md animate-ping opacity-20"></div>}
+                                                        {isPast && d.status === 'pending' && (
+                                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                                <X size={12} className="text-slate-500 opacity-50"/>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )
                                             })}
@@ -2967,16 +3054,17 @@ const App: React.FC = () => {
             {activeTab === 'discipline' && (
                 <div className="grid grid-cols-12 gap-6 h-full overflow-y-auto pr-2 pb-24">
                     <div className="col-span-12 lg:col-span-4 space-y-6">
-                        <Card className="bg-[#0B0F19] relative overflow-hidden">
-                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-white flex items-center gap-2"><ThermometerSnowflake size={18} className="text-rose-500"/> Tilt Thermometer</h3>
-                                <span className={`text-xs font-bold px-2 py-0.5 rounded ${tiltLevel > 75 ? 'bg-rose-500 text-white' : tiltLevel > 40 ? 'bg-orange-500/20 text-orange-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                        <Card className="bg-[#0B0F19] relative overflow-hidden group">
+                             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-rose-500/20 transition-colors"></div>
+                             <div className="flex items-center justify-between mb-4 relative z-10">
+                                <h3 className="font-bold text-white flex items-center gap-2"><ThermometerSnowflake size={18} className="text-rose-500"/> Tilt Meter</h3>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded shadow-lg transition-all ${tiltLevel > 75 ? 'bg-rose-500 text-white shadow-rose-500/20' : tiltLevel > 40 ? 'bg-orange-500/20 text-orange-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                                     {tiltLevel}% {tiltLevel > 75 ? 'CRITICAL' : tiltLevel > 40 ? 'ELEVATED' : 'STABLE'}
                                 </span>
                              </div>
-                             <div className="relative h-64 bg-slate-800/50 rounded-xl w-12 mx-auto flex flex-col justify-end overflow-hidden border border-white/10">
+                             <div className="relative h-64 bg-slate-800/50 rounded-xl w-12 mx-auto flex flex-col justify-end overflow-hidden border border-white/10 shadow-inner">
                                 <div 
-                                    className={`w-full transition-all duration-300 ${tiltLevel > 75 ? 'bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.5)]' : tiltLevel > 40 ? 'bg-orange-500' : 'bg-emerald-500'}`} 
+                                    className={`w-full transition-all duration-500 ease-out ${tiltLevel > 75 ? 'bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.5)]' : tiltLevel > 40 ? 'bg-orange-500' : 'bg-emerald-500'}`} 
                                     style={{ height: `${tiltLevel}%` }}
                                 ></div>
                                 <div className="absolute inset-0 flex flex-col justify-between py-2 pointer-events-none">
@@ -2990,57 +3078,80 @@ const App: React.FC = () => {
                                 onChange={(e) => setTiltLevel(Number(e.target.value))}
                                 className="w-full mt-6 accent-rose-500 bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
                              />
-                             <p className="text-center text-xs text-slate-500 mt-2">Adjust to match your current frustration level.</p>
                         </Card>
 
                         <Card>
-                            <h3 className="font-bold text-white flex items-center gap-2 mb-4"><Wind size={18} className="text-cyan-400"/> Emotional Weather</h3>
+                            <h3 className="font-bold text-white flex items-center gap-2 mb-4"><Wind size={18} className="text-cyan-400"/> Current Mood</h3>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
-                                    { label: 'Flow', color: 'bg-emerald-500' },
-                                    { label: 'Fear', color: 'bg-indigo-500' },
-                                    { label: 'Greed', color: 'bg-amber-500' },
-                                    { label: 'Revenge', color: 'bg-rose-600' },
-                                    { label: 'Boredom', color: 'bg-slate-500' },
-                                    { label: 'Confidence', color: 'bg-cyan-500' },
+                                    { label: 'Flow', color: 'bg-emerald-500', emoji: '🌊' },
+                                    { label: 'Fear', color: 'bg-indigo-500', emoji: '😨' },
+                                    { label: 'Greed', color: 'bg-amber-500', emoji: '🤑' },
+                                    { label: 'Revenge', color: 'bg-rose-600', emoji: '🤬' },
+                                    { label: 'Boredom', color: 'bg-slate-500', emoji: '😐' },
+                                    { label: 'Confidence', color: 'bg-cyan-500', emoji: '🦁' },
                                 ].map((mood) => (
                                     <button 
                                         key={mood.label}
                                         onClick={() => setCurrentMood(mood.label)}
-                                        className={`p-2 rounded-lg text-xs font-bold transition-all border ${currentMood === mood.label ? `${mood.color} text-white border-transparent scale-105 shadow-lg` : 'bg-slate-800/50 text-slate-400 border-white/5 hover:border-white/20'}`}
+                                        className={`p-2 rounded-lg text-xs font-bold transition-all border flex flex-col items-center gap-1 ${currentMood === mood.label ? `${mood.color} text-white border-transparent scale-105 shadow-lg` : 'bg-slate-800/50 text-slate-400 border-white/5 hover:border-white/20 hover:bg-slate-800'}`}
                                     >
+                                        <span className="text-lg">{mood.emoji}</span>
                                         {mood.label}
                                     </button>
                                 ))}
                             </div>
                         </Card>
 
-                        <Card className="bg-gradient-to-b from-cyan-900/10 to-[#0B0F19]">
+                        <Card className="bg-gradient-to-br from-cyan-900/10 to-[#0B0F19] border-cyan-500/10">
+                             <div className="text-center mb-4">
+                                 <h3 className="font-bold text-cyan-400 text-sm uppercase tracking-wider">Daily Wisdom</h3>
+                                 <p className="text-slate-300 italic text-sm mt-2">"{randomMindsetQuote}"</p>
+                             </div>
                              <BreathingExercise />
                         </Card>
                     </div>
 
                     <div className="col-span-12 lg:col-span-5 space-y-6">
-                         <Card className="min-h-[400px] flex flex-col bg-[#0B0F19]">
-                             <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-4">
+                         <Card className="min-h-[500px] flex flex-col bg-gradient-to-br from-emerald-900/10 to-cyan-900/10 border-white/10 shadow-2xl relative">
+                             <div className="absolute top-0 right-0 p-20 bg-emerald-500/5 rounded-full blur-[80px] pointer-events-none"></div>
+                             
+                             <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-4 relative z-10">
+                                 <h3 className="font-display font-bold text-white text-lg flex items-center gap-2"><BookOpen className="text-emerald-400"/> Trader's Log</h3>
+                                 <div className="flex gap-2">
+                                     <Badge color={tiltLevel > 50 ? 'red' : 'green'}>{tiltLevel}% Tilt</Badge>
+                                     <Badge color="blue">{currentMood}</Badge>
+                                 </div>
+                             </div>
+
+                             <div className="flex items-center gap-2 mb-4 relative z-10">
                                  {['pre', 'mid', 'post'].map(t => (
-                                     <button key={t} onClick={() => setJournalTab(t as any)} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${journalTab === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                                     <button key={t} onClick={() => setJournalTab(t as any)} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all border ${journalTab === t ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-black/20 text-slate-500 border-transparent hover:text-slate-300'}`}>
                                          {t}-Session
                                      </button>
                                  ))}
                              </div>
                              
-                             <div className="flex-1 flex flex-col gap-4">
-                                 <div className="flex gap-2 text-xs">
-                                     <Badge color={tiltLevel > 50 ? 'red' : 'green'}>Tilt: {tiltLevel}%</Badge>
-                                     <Badge color="blue">Mood: {currentMood}</Badge>
-                                 </div>
+                             <div className="flex-1 flex flex-col gap-4 relative z-10">
                                  <textarea 
-                                    className="flex-1 bg-black/20 rounded-xl border border-white/5 p-4 text-sm text-slate-300 resize-none focus:ring-1 focus:ring-cyan-500/50 outline-none leading-relaxed" 
-                                    placeholder={`Write your ${journalTab}-session thoughts here. Be honest about your feelings...`} 
+                                    value={journalText}
+                                    onChange={e => setJournalText(e.target.value)}
+                                    className="flex-1 bg-black/20 rounded-xl border border-white/5 p-4 text-sm text-slate-300 resize-none focus:ring-1 focus:ring-cyan-500/50 outline-none leading-relaxed transition-all focus:bg-black/40" 
+                                    placeholder={`Write your ${journalTab}-session thoughts here... What are you grateful for? What is your focus?`} 
                                  />
+                                 
+                                 {/* Quick Preview of Today's Log */}
+                                 <div className="max-h-32 overflow-y-auto text-xs text-slate-400 bg-black/20 p-3 rounded-xl border border-white/5">
+                                     <div className="font-bold text-slate-500 mb-1 uppercase flex items-center gap-2"><Clock size={10}/> Today's Entries</div>
+                                     <div className="whitespace-pre-wrap font-mono opacity-80">
+                                         {disciplineLogs.find(l => l.date === new Date().toISOString().split('T')[0])?.notes || "No entries yet today."}
+                                     </div>
+                                 </div>
                              </div>
-                             <Button variant="secondary" className="mt-4 w-full">Save Entry to Database</Button>
+
+                             <Button variant="neon" className="mt-4 w-full relative z-10" onClick={handleSaveJournal} disabled={isSavingJournal}>
+                                {isSavingJournal ? <Loader2 className="animate-spin" size={18}/> : <><Save size={18}/> Commit Entry</>}
+                             </Button>
                          </Card>
 
                          <Card className="border border-purple-500/20 bg-gradient-to-br from-purple-900/10 to-transparent">
@@ -3060,7 +3171,7 @@ const App: React.FC = () => {
                              </div>
 
                              {reframedThought && (
-                                 <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl animate-fade-in">
+                                 <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl animate-fade-in shadow-[0_0_15px_rgba(168,85,247,0.1)]">
                                      <div className="text-[10px] text-purple-400 uppercase font-bold mb-1">New Perspective</div>
                                      <p className="text-sm text-white italic">"{reframedThought}"</p>
                                  </div>
@@ -3080,11 +3191,13 @@ const App: React.FC = () => {
                                 ].map((item) => (
                                     <div 
                                         key={item.id} 
-                                        className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between ${preSessionChecks[item.id] ? 'bg-emerald-900/20 border-emerald-500/30' : 'bg-slate-800/30 border-white/5 hover:bg-slate-800'}`}
+                                        className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between group ${preSessionChecks[item.id] ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]' : 'bg-slate-800/30 border-white/5 hover:bg-slate-800'}`}
                                         onClick={() => setPreSessionChecks(prev => ({...prev, [item.id]: !prev[item.id]}))}
                                     >
-                                        <span className={`text-sm ${preSessionChecks[item.id] ? 'text-emerald-400' : 'text-slate-400'}`}>{item.label}</span>
-                                        {preSessionChecks[item.id] && <Check size={14} className="text-emerald-500"/>}
+                                        <span className={`text-sm font-medium ${preSessionChecks[item.id] ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'}`}>{item.label}</span>
+                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${preSessionChecks[item.id] ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'}`}>
+                                            {preSessionChecks[item.id] && <Check size={12} className="text-white"/>}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
