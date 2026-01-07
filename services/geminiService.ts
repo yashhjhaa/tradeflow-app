@@ -33,7 +33,7 @@ const generateWithFallback = async (
     // Clean config for fallback (Flash doesn't support thinkingConfig)
     const { config, ...rest } = args;
     const fallbackConfig = { ...config };
-    if (fallbackConfig.thinkingConfig) {
+    if (fallbackConfig && fallbackConfig.thinkingConfig) {
       delete fallbackConfig.thinkingConfig;
     }
 
@@ -214,12 +214,10 @@ export const generateTradingStrategy = async (concept: string): Promise<string> 
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-pro-preview',
+            'gemini-3-flash-preview',
             {
                 contents: prompt,
-                config: {
-                    thinkingConfig: { thinkingBudget: 16384 }
-                }
+                // Thinking config removed to save tokens
             }
         );
 
@@ -253,12 +251,10 @@ export const suggestStrategyFromPerformance = async (winningTrades: Trade[]): Pr
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-pro-preview',
+            'gemini-3-flash-preview',
             {
                 contents: prompt,
-                config: {
-                    thinkingConfig: { thinkingBudget: 8192 }
-                }
+                // Thinking config removed to save tokens
             }
         );
 
@@ -307,10 +303,10 @@ export const analyzeStrategyEdgeCases = async (strategyText: string): Promise<st
             Output a concise bulleted list (Markdown) of 3 specific market conditions to AVOID when using this system.
         `;
         const response = await generateWithFallback(
-            'gemini-3-pro-preview',
+            'gemini-3-flash-preview',
             {
                 contents: prompt,
-                config: { thinkingConfig: { thinkingBudget: 8192 } }
+                // Thinking config removed to save tokens
             }
         );
         return response.text || "Avoid high impact news events.";
@@ -340,12 +336,10 @@ export const critiqueTradingStrategy = async (strategy: string): Promise<string>
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-pro-preview',
+            'gemini-3-flash-preview',
             {
                 contents: prompt,
-                config: {
-                    thinkingConfig: { thinkingBudget: 16384 }
-                }
+                // Thinking config removed to save tokens
             }
         );
 
@@ -499,12 +493,10 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
       parts.push({ text: context });
   
       const response = await generateWithFallback(
-          'gemini-3-pro-preview',
+          'gemini-3-flash-preview',
           {
             contents: { parts },
-            config: {
-                thinkingConfig: { thinkingBudget: 16384 }
-            }
+            // Thinking config removed to save tokens
           }
       );
   
@@ -526,78 +518,83 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
       };
   }
 
+  const promptContent = `
+    Retrieve the upcoming High Impact "Red Folder" economic calendar events for the current week.
+    Focus on major pairs (USD, EUR, GBP, JPY).
+    
+    Provide:
+    1. A short "Weekly Outlook" summary (2 sentences).
+    2. A list of 5-7 HIGH IMPACT events.
+
+    Strictly output valid JSON format:
+    {
+      "sentiment": "string",
+      "events": [
+        {
+           "time": "Day + Time (e.g. Wed 2:00 PM)",
+           "currency": "USD",
+           "impact": "High",
+           "event": "Event Name",
+           "actual": "Value or --",
+           "forecast": "Value or --",
+           "previous": "Value or --",
+           "isBetter": boolean
+        }
+      ]
+    }
+  `;
+
+  // Internal helper to parse the JSON response
+  const parseNewsResponse = (text: string) => {
+      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let finalJson = cleanText;
+      if (cleanText.startsWith("'") || cleanText.includes("'sentiment'")) {
+           finalJson = cleanText.replace(/'/g, '"'); 
+      }
+      const jsonMatch = finalJson.match(/\{[\s\S]*\}/);
+      const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
+      return JSON.parse(cleanJson);
+  };
+
   try {
-      // Flash 2.5 is sufficient and faster for Search
+      // 1. Try with Google Search (Best Quality)
       const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
-          contents: `
-            Retrieve the upcoming High Impact "Red Folder" economic calendar events for the current week.
-            Focus on major pairs (USD, EUR, GBP, JPY).
-            
-            Provide:
-            1. A short "Weekly Outlook" summary (2 sentences).
-            2. A list of 5-7 HIGH IMPACT events.
-
-            Strictly output valid JSON format:
-            {
-              "sentiment": "string",
-              "events": [
-                {
-                   "time": "Day + Time (e.g. Wed 2:00 PM)",
-                   "currency": "USD",
-                   "impact": "High",
-                   "event": "Event Name",
-                   "actual": "Value or --",
-                   "forecast": "Value or --",
-                   "previous": "Value or --",
-                   "isBetter": boolean
-                }
-              ]
-            }
-
-            CRITICAL FORMATTING RULES:
-            1. The response MUST be valid JSON.
-            2. Property names must be in DOUBLE quotes (e.g., "sentiment", "events").
-            3. String values must be in DOUBLE quotes (e.g., "The market is...").
-            4. If you need to use quotes INSIDE a string value, use SINGLE quotes (e.g., "The 'Red Folder' events..."). 
-            5. Do NOT use single quotes for JSON structure.
-            6. Do not include markdown formatting (like \`\`\`json). Just the raw JSON object.
-          `,
+          contents: promptContent,
           config: {
               tools: [{ googleSearch: {} }],
           }
       });
 
-      const jsonText = response.text || "{}";
-      // Enhance cleaning to remove possible markdown
-      const cleanText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
-      
-      let finalJson = cleanText;
-      if (cleanText.startsWith("'") || cleanText.includes("'sentiment'")) {
-           finalJson = cleanText.replace(/'/g, '"'); 
-      }
-
-      const jsonMatch = finalJson.match(/\{[\s\S]*\}/);
-      const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
-      
-      let data;
-      try {
-        data = JSON.parse(cleanJson);
-      } catch (parseError) {
-        console.error("JSON Parse Error", parseError, cleanJson);
-        return { sentiment: "Error parsing live market data.", events: [] };
-      }
-      
+      const data = parseNewsResponse(response.text || "{}");
       return {
           sentiment: data.sentiment || "Market data currently unavailable.",
           events: data.events || []
       };
-  } catch (e) {
-      console.error(e);
-      return { 
-          sentiment: "Data unavailable (Connection Error).", 
-          events: [] 
-      };
+
+  } catch (e: any) {
+      console.warn("Live Search Failed, trying fallback...", e.message);
+
+      try {
+          // 2. Fallback: Try WITHOUT Search (General Knowledge / Simulated)
+          // This prevents "Connection Error" if the Search tool is restricted/failing
+          const fallbackResponse = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: promptContent + " (Note: Generate representative data based on general market knowledge if live search is unavailable.)",
+          });
+
+          const data = parseNewsResponse(fallbackResponse.text || "{}");
+          return {
+              sentiment: (data.sentiment || "Live data unavailable.") + " [Offline Mode]",
+              events: data.events || []
+          };
+      } catch (fallbackError) {
+          console.error("News Fallback Failed", fallbackError);
+          return { 
+              sentiment: "Data unavailable. Please check your network or API Key permissions.", 
+              events: [] 
+          };
+      }
   }
 }
 
@@ -610,10 +607,10 @@ export const generateChallengeMotivation = async (day: number, challengeTitle: s
             Give them a short, punchy (1-2 sentences) motivational directive.
         `;
         const response = await generateWithFallback(
-            'gemini-3-pro-preview',
+            'gemini-3-flash-preview',
             {
                 contents: prompt,
-                config: { thinkingConfig: { thinkingBudget: 4096 } }
+                // Thinking config removed to save tokens
             }
         );
         return response.text || "Keep pushing.";
