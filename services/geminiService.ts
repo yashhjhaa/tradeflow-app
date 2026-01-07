@@ -33,7 +33,7 @@ const generateWithFallback = async (
     // Clean config for fallback (Flash doesn't support thinkingConfig)
     const { config, ...rest } = args;
     const fallbackConfig = { ...config };
-    if (fallbackConfig && fallbackConfig.thinkingConfig) {
+    if (fallbackConfig.thinkingConfig) {
       delete fallbackConfig.thinkingConfig;
     }
 
@@ -214,10 +214,12 @@ export const generateTradingStrategy = async (concept: string): Promise<string> 
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: {
+                    thinkingConfig: { thinkingBudget: 16384 }
+                }
             }
         );
 
@@ -251,10 +253,12 @@ export const suggestStrategyFromPerformance = async (winningTrades: Trade[]): Pr
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: {
+                    thinkingConfig: { thinkingBudget: 8192 }
+                }
             }
         );
 
@@ -303,10 +307,10 @@ export const analyzeStrategyEdgeCases = async (strategyText: string): Promise<st
             Output a concise bulleted list (Markdown) of 3 specific market conditions to AVOID when using this system.
         `;
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: { thinkingConfig: { thinkingBudget: 8192 } }
             }
         );
         return response.text || "Avoid high impact news events.";
@@ -336,10 +340,12 @@ export const critiqueTradingStrategy = async (strategy: string): Promise<string>
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: {
+                    thinkingConfig: { thinkingBudget: 16384 }
+                }
             }
         );
 
@@ -493,10 +499,12 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
       parts.push({ text: context });
   
       const response = await generateWithFallback(
-          'gemini-3-flash-preview',
+          'gemini-3-pro-preview',
           {
             contents: { parts },
-            // Thinking config removed to save tokens
+            config: {
+                thinkingConfig: { thinkingBudget: 16384 }
+            }
           }
       );
   
@@ -602,10 +610,10 @@ export const generateChallengeMotivation = async (day: number, challengeTitle: s
             Give them a short, punchy (1-2 sentences) motivational directive.
         `;
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: { thinkingConfig: { thinkingBudget: 4096 } }
             }
         );
         return response.text || "Keep pushing.";
