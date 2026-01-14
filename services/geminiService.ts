@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { Trade, CalendarEvent, ChatMessage } from "../types";
+import { Trade, CalendarEvent, ChatMessage, DisciplineLog } from "../types";
 
 // --- CONFIGURATION ---
 // STRICT INITIALIZATION: As per rules, API Key must come from process.env.API_KEY
@@ -33,7 +33,7 @@ const generateWithFallback = async (
     // Clean config for fallback (Flash doesn't support thinkingConfig)
     const { config, ...rest } = args;
     const fallbackConfig = { ...config };
-    if (fallbackConfig && fallbackConfig.thinkingConfig) {
+    if (fallbackConfig.thinkingConfig) {
       delete fallbackConfig.thinkingConfig;
     }
 
@@ -214,10 +214,12 @@ export const generateTradingStrategy = async (concept: string): Promise<string> 
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: {
+                    thinkingConfig: { thinkingBudget: 16384 }
+                }
             }
         );
 
@@ -251,10 +253,12 @@ export const suggestStrategyFromPerformance = async (winningTrades: Trade[]): Pr
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: {
+                    thinkingConfig: { thinkingBudget: 8192 }
+                }
             }
         );
 
@@ -303,10 +307,10 @@ export const analyzeStrategyEdgeCases = async (strategyText: string): Promise<st
             Output a concise bulleted list (Markdown) of 3 specific market conditions to AVOID when using this system.
         `;
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: { thinkingConfig: { thinkingBudget: 8192 } }
             }
         );
         return response.text || "Avoid high impact news events.";
@@ -336,10 +340,12 @@ export const critiqueTradingStrategy = async (strategy: string): Promise<string>
         `;
 
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: {
+                    thinkingConfig: { thinkingBudget: 16384 }
+                }
             }
         );
 
@@ -493,10 +499,12 @@ export const chatWithTradeCoach = async (history: ChatMessage[], newMessage: str
       parts.push({ text: context });
   
       const response = await generateWithFallback(
-          'gemini-3-flash-preview',
+          'gemini-3-pro-preview',
           {
             contents: { parts },
-            // Thinking config removed to save tokens
+            config: {
+                thinkingConfig: { thinkingBudget: 16384 }
+            }
           }
       );
   
@@ -518,83 +526,78 @@ export const getLiveMarketNews = async (): Promise<{sentiment: string, events: C
       };
   }
 
-  const promptContent = `
-    Retrieve the upcoming High Impact "Red Folder" economic calendar events for the current week.
-    Focus on major pairs (USD, EUR, GBP, JPY).
-    
-    Provide:
-    1. A short "Weekly Outlook" summary (2 sentences).
-    2. A list of 5-7 HIGH IMPACT events.
-
-    Strictly output valid JSON format:
-    {
-      "sentiment": "string",
-      "events": [
-        {
-           "time": "Day + Time (e.g. Wed 2:00 PM)",
-           "currency": "USD",
-           "impact": "High",
-           "event": "Event Name",
-           "actual": "Value or --",
-           "forecast": "Value or --",
-           "previous": "Value or --",
-           "isBetter": boolean
-        }
-      ]
-    }
-  `;
-
-  // Internal helper to parse the JSON response
-  const parseNewsResponse = (text: string) => {
-      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      let finalJson = cleanText;
-      if (cleanText.startsWith("'") || cleanText.includes("'sentiment'")) {
-           finalJson = cleanText.replace(/'/g, '"'); 
-      }
-      const jsonMatch = finalJson.match(/\{[\s\S]*\}/);
-      const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
-      return JSON.parse(cleanJson);
-  };
-
   try {
-      // 1. Try with Google Search (Best Quality)
+      // Flash 2.5 is sufficient and faster for Search
       const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
-          contents: promptContent,
+          contents: `
+            Retrieve the upcoming High Impact "Red Folder" economic calendar events for the current week.
+            Focus on major pairs (USD, EUR, GBP, JPY).
+            
+            Provide:
+            1. A short "Weekly Outlook" summary (2 sentences).
+            2. A list of 5-7 HIGH IMPACT events.
+
+            Strictly output valid JSON format:
+            {
+              "sentiment": "string",
+              "events": [
+                {
+                   "time": "Day + Time (e.g. Wed 2:00 PM)",
+                   "currency": "USD",
+                   "impact": "High",
+                   "event": "Event Name",
+                   "actual": "Value or --",
+                   "forecast": "Value or --",
+                   "previous": "Value or --",
+                   "isBetter": boolean
+                }
+              ]
+            }
+
+            CRITICAL FORMATTING RULES:
+            1. The response MUST be valid JSON.
+            2. Property names must be in DOUBLE quotes (e.g., "sentiment", "events").
+            3. String values must be in DOUBLE quotes (e.g., "The market is...").
+            4. If you need to use quotes INSIDE a string value, use SINGLE quotes (e.g., "The 'Red Folder' events..."). 
+            5. Do NOT use single quotes for JSON structure.
+            6. Do not include markdown formatting (like \`\`\`json). Just the raw JSON object.
+          `,
           config: {
               tools: [{ googleSearch: {} }],
           }
       });
 
-      const data = parseNewsResponse(response.text || "{}");
+      const jsonText = response.text || "{}";
+      // Enhance cleaning to remove possible markdown
+      const cleanText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      let finalJson = cleanText;
+      if (cleanText.startsWith("'") || cleanText.includes("'sentiment'")) {
+           finalJson = cleanText.replace(/'/g, '"'); 
+      }
+
+      const jsonMatch = finalJson.match(/\{[\s\S]*\}/);
+      const cleanJson = jsonMatch ? jsonMatch[0] : "{}";
+      
+      let data;
+      try {
+        data = JSON.parse(cleanJson);
+      } catch (parseError) {
+        console.error("JSON Parse Error", parseError, cleanJson);
+        return { sentiment: "Error parsing live market data.", events: [] };
+      }
+      
       return {
           sentiment: data.sentiment || "Market data currently unavailable.",
           events: data.events || []
       };
-
-  } catch (e: any) {
-      console.warn("Live Search Failed, trying fallback...", e.message);
-
-      try {
-          // 2. Fallback: Try WITHOUT Search (General Knowledge / Simulated)
-          // This prevents "Connection Error" if the Search tool is restricted/failing
-          const fallbackResponse = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: promptContent + " (Note: Generate representative data based on general market knowledge if live search is unavailable.)",
-          });
-
-          const data = parseNewsResponse(fallbackResponse.text || "{}");
-          return {
-              sentiment: (data.sentiment || "Live data unavailable.") + " [Offline Mode]",
-              events: data.events || []
-          };
-      } catch (fallbackError) {
-          console.error("News Fallback Failed", fallbackError);
-          return { 
-              sentiment: "Data unavailable. Please check your network or API Key permissions.", 
-              events: [] 
-          };
-      }
+  } catch (e) {
+      console.error(e);
+      return { 
+          sentiment: "Data unavailable (Connection Error).", 
+          events: [] 
+      };
   }
 }
 
@@ -607,10 +610,10 @@ export const generateChallengeMotivation = async (day: number, challengeTitle: s
             Give them a short, punchy (1-2 sentences) motivational directive.
         `;
         const response = await generateWithFallback(
-            'gemini-3-flash-preview',
+            'gemini-3-pro-preview',
             {
                 contents: prompt,
-                // Thinking config removed to save tokens
+                config: { thinkingConfig: { thinkingBudget: 4096 } }
             }
         );
         return response.text || "Keep pushing.";
@@ -637,5 +640,108 @@ export const reframeNegativeThought = async (thought: string): Promise<string> =
         return response.text || "Focus on the process.";
     } catch(e) {
         return "Focus on the process.";
+    }
+};
+
+export const generateWeeklyReportInsight = async (trades: Trade[], discipline: DisciplineLog[], startOfWeek: Date): Promise<string> => {
+    if (!ai) return "AI Analyst Unavailable (API Key Missing).";
+
+    try {
+        const weekEnd = new Date(startOfWeek);
+        weekEnd.setDate(startOfWeek.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+
+        // Filter provided arrays again just to be safe, though caller should handle
+        const weeklyTrades = trades.filter(t => {
+            const d = new Date(t.date);
+            return d >= startOfWeek && d <= weekEnd;
+        });
+
+        const weeklyDiscipline = discipline.filter(d => {
+            const dDate = new Date(d.date);
+            return dDate >= startOfWeek && dDate <= weekEnd;
+        });
+
+        if (weeklyTrades.length === 0) return "No trades recorded for this week. No analysis possible.";
+
+        // Construct a DETAILED daily summary
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        let dailySummary = "";
+        
+        for (let i = 0; i < 7; i++) {
+            const currentDay = new Date(startOfWeek);
+            currentDay.setDate(startOfWeek.getDate() + i);
+            const dateStr = currentDay.toISOString().split('T')[0];
+            const dayName = days[currentDay.getDay()];
+            
+            const dayTrades = weeklyTrades.filter(t => t.date.startsWith(dateStr));
+            const dayLog = weeklyDiscipline.find(d => d.date === dateStr);
+            
+            if (dayTrades.length > 0 || dayLog) {
+                dailySummary += `\n### ${dayName} (${dateStr})\n`;
+                if (dayLog) {
+                    dailySummary += `  - Mood: ${dayLog.mood}/100\n`;
+                    dailySummary += `  - Followed Plan: ${dayLog.followedPlan ? 'YES' : 'NO'}\n`;
+                    dailySummary += `  - Notes: "${dayLog.notes || 'None'}"\n`;
+                } else {
+                    dailySummary += `  - No journal entry.\n`;
+                }
+                
+                if (dayTrades.length > 0) {
+                    dayTrades.forEach(t => {
+                        dailySummary += `  - Trade: ${t.direction} ${t.pair} | Result: ${t.outcome} (${t.pnl}) | Setup: ${t.setup || 'None'} | Notes: "${t.notes}"\n`;
+                    });
+                } else {
+                    dailySummary += `  - No trades taken.\n`;
+                }
+            }
+        }
+
+        const prompt = `
+            You are a Chief Investment Officer (CIO) and Performance Psychologist conducting a deep-dive Weekly Board Meeting review.
+            
+            Review Data:
+            ${dailySummary}
+            
+            Your Task:
+            Write a detailed, day-by-day analysis of the week.
+            
+            Structure the response strictly as follows (Markdown):
+            
+            ## 1. Executive Summary
+            (A brief high-level overview of profitability, win rate, and mental state for the week.)
+
+            ## 2. Daily Breakdown
+            (For EACH day provided in the data that had trades or significant journal entries, write a dedicated bullet point or short paragraph. Analyze specifically what was done well and what was a mistake that day.)
+            *   **Monday:** ...
+            *   **Tuesday:** ...
+            (etc...)
+
+            ## 3. Key Strengths (What to Keep)
+            (Bullet points of what the trader is doing right.)
+
+            ## 4. Critical Weaknesses (What to Fix)
+            (Bullet points of specific errors found in the daily data.)
+
+            ## 5. Strategic Directive
+            (One final command for next week.)
+            
+            Tone: Professional, stern, extremely specific to the trade details provided. Do not be generic.
+        `;
+
+        const response = await generateWithFallback(
+            'gemini-3-pro-preview',
+            {
+                contents: prompt,
+                config: {
+                    thinkingConfig: { thinkingBudget: 16384 } // High budget for deep analysis
+                }
+            }
+        );
+
+        return response.text || "Report generation failed.";
+    } catch (error: any) {
+        console.error("Weekly Report Error:", error);
+        return "Failed to generate weekly report.";
     }
 };
