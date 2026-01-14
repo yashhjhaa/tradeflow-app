@@ -335,11 +335,10 @@ export const LongShortChart: React.FC<{ trades: Trade[] }> = ({ trades }) => {
     );
 };
 
-export const TradeCalendar: React.FC<{ trades: Trade[] }> = ({ trades }) => {
+export const TradeCalendar: React.FC<{ trades: Trade[]; currentDate?: Date }> = ({ trades, currentDate = new Date() }) => {
     // Generate simple calendar for current month
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
 
@@ -357,14 +356,8 @@ export const TradeCalendar: React.FC<{ trades: Trade[] }> = ({ trades }) => {
         return acc;
     }, {} as Record<number, { pnl: number; count: number; wins: number; losses: number }>);
 
-    const monthName = today.toLocaleString('default', { month: 'long' });
-
     return (
         <div className="w-full h-full flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-                <h4 className="font-bold text-slate-700 dark:text-slate-200">{monthName} {currentYear}</h4>
-                <div className="text-xs text-slate-500">PnL Heatmap</div>
-            </div>
             <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500 mb-1">
                 <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
             </div>
