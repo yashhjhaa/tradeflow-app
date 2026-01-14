@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save, TrendingDown, Sigma, Grip, Crosshair, HelpCircle } from 'lucide-react';
+import { Plus, BarChart2, BookOpen, Zap, LayoutGrid, Settings, Trash2, CheckCircle, XCircle, Menu, X, BrainCircuit, TrendingUp, LogOut, Newspaper, Layers, PieChart, ChevronUp, User as UserIcon, Camera, Upload, CheckSquare, ArrowRight, Image as ImageIcon, Calendar as CalendarIcon, Target, Activity, ChevronLeft, ChevronRight, Search, Shield, Bell, CreditCard, Sun, Moon, Maximize2, Globe, AlertTriangle, Send, Bot, Wand2, Sparkles, Battery, Flame, Edit2, Quote, Smile, Frown, Meh, Clock, Play, Pause, RotateCcw, Sliders, Lock, Mail, UserCheck, Wallet, Percent, DollarSign, Download, ChevronDown, Target as TargetIcon, Home, Check, Terminal, Copy, Monitor, Wifi, CloudLightning, Laptop, Hourglass, Scale, Filter, Info, Eye, Briefcase, FileText, AlertOctagon, Timer, Radio, ArrowUpRight, BookMarked, Calculator, PenTool, Lightbulb, Thermometer, Paperclip, Users, Heart, MessageCircle, Share2, Award, Trophy, Hash, ThumbsUp, ThumbsDown, Zap as ZapIcon, Loader2, RefreshCcw, FileSpreadsheet, AlertCircle, Mic, MicOff, StopCircle, Swords, Skull, Flame as FlameIcon, Palette, Gavel, RefreshCw, BarChart, Volume2, Wind, ThermometerSnowflake, Brain, Crown, Medal, Map, Save, TrendingDown, Sigma, Grip, Crosshair, HelpCircle, FileText as FileTextIcon, Link as LinkIcon } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from './components/UI';
 import { EquityCurve, WinLossChart, PairPerformanceChart, DayOfWeekChart, StrategyChart, HourlyPerformanceChart, LongShortChart, TradeCalendar } from './components/Charts';
-import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation, reframeNegativeThought } from './services/geminiService';
+import { analyzeTradePsychology, analyzeTradeScreenshot, generatePerformanceReview, getLiveMarketNews, chatWithTradeCoach, parseTradeFromNaturalLanguage, generateTradingStrategy, critiqueTradingStrategy, analyzeDeepPsychology, generateStrategyChecklist, analyzeStrategyEdgeCases, transcribeAudioNote, validateTradeAgainstStrategy, generateChallengeMotivation, reframeNegativeThought, generateWeeklyReportInsight } from './services/geminiService';
 import { Trade, Account, DisciplineLog, CalendarEvent, TradeDirection, TradeOutcome, TradingSession, ChatMessage, DateRange, Challenge, ChallengeDay, ChallengeTask, PlaybookEntry } from './types';
 import { 
     subscribeToAuth, loginUser, logoutUser, registerUser, subscribeToTrades, 
@@ -22,7 +22,9 @@ export const ThemeContext = React.createContext({
   toggleTheme: () => {},
 });
 
-// --- HELPER UTILS ---
+// --- HELPERS ---
+const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
 const compressImage = (base64Str: string, maxWidth = 1024, maxHeight = 1024) => {
   return new Promise<string>((resolve) => {
     const img = new Image();
@@ -673,6 +675,93 @@ const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (
                      <Button variant="neon" className="w-full mt-2" onClick={handleSubmit}>Create Account</Button>
                  </div>
              </Card>
+        </div>
+    );
+};
+
+const HeatmapShareModal = ({ isOpen, onClose, trades, date }: { isOpen: boolean, onClose: () => void, trades: Trade[], date: Date }) => {
+    if (!isOpen) return null;
+    const captureRef = useRef<HTMLDivElement>(null);
+
+    const handleDownload = async () => {
+        if (!captureRef.current) return;
+        try {
+            const canvas = await html2canvas(captureRef.current, {
+                backgroundColor: '#05070A',
+                scale: 2 // High res
+            });
+            const link = document.createElement('a');
+            link.download = `TradeFlow_Heatmap_${date.toISOString().slice(0,7)}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        } catch (e) {
+            console.error("Download failed", e);
+        }
+    };
+
+    const monthTrades = trades.filter((t) => {
+        const d = new Date(t.date);
+        return d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
+    });
+    const pnl = monthTrades.reduce((a, b) => a + (b.pnl || 0), 0);
+    const wins = monthTrades.filter((t) => t.outcome === TradeOutcome.WIN).length;
+    const total = monthTrades.length;
+    const wr = total > 0 ? (wins/total * 100).toFixed(1) : '0.0';
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="w-full max-w-xl">
+                 <div ref={captureRef} className="bg-[#0B0F19] p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
+                     {/* Background styling for share card */}
+                     <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none"/>
+                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"/>
+                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
+                     
+                     <div className="flex justify-between items-center mb-6 relative z-10">
+                        <div className="flex items-center gap-3">
+                            <AppLogo className="w-10 h-10" />
+                            <div>
+                                <h3 className="font-display font-bold text-2xl text-white tracking-tight">TradeFlow</h3>
+                                <p className="text-cyan-400 text-xs font-bold uppercase tracking-widest">Performance Report</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-2xl font-bold text-white font-display">
+                                {date.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                            </div>
+                        </div>
+                     </div>
+
+                     <div className="h-72 bg-black/20 rounded-2xl p-4 border border-white/5 mb-6 relative z-10">
+                        <TradeCalendar trades={trades} currentDate={date} />
+                     </div>
+                     
+                     {/* Footer Stats for the month */}
+                     <div className="grid grid-cols-3 gap-4 relative z-10">
+                        <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/5 backdrop-blur-md">
+                            <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Net PnL</div>
+                            <div className={`text-xl font-bold font-mono ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {formatCurrency(pnl)}
+                            </div>
+                        </div>
+                        <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/5 backdrop-blur-md">
+                            <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Win Rate</div>
+                            <div className="text-xl font-bold text-cyan-400 font-mono">{wr}%</div>
+                        </div>
+                        <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/5 backdrop-blur-md">
+                            <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Trades</div>
+                            <div className="text-xl font-bold text-white font-mono">{total}</div>
+                        </div>
+                     </div>
+                 </div>
+
+                 <div className="flex justify-end gap-3 mt-6">
+                    <Button variant="ghost" onClick={onClose}>Close</Button>
+                    <Button variant="neon" onClick={handleDownload} className="gap-2">
+                        <Download size={18} /> Export Image
+                    </Button>
+                 </div>
+            </div>
         </div>
     );
 };
@@ -1565,6 +1654,10 @@ const App: React.FC = () => {
   const [selectedPsychoTradeId, setSelectedPsychoTradeId] = useState<string>('');
   const [psychoAnalysisResult, setPsychoAnalysisResult] = useState<string | null>(null);
   const [isAnalyzingPsycho, setIsAnalyzingPsycho] = useState(false);
+  
+  // Heatmap State
+  const [heatmapDate, setHeatmapDate] = useState(new Date());
+  const [showHeatmapShare, setShowHeatmapShare] = useState(false);
 
   // AI Coach State
   const [coachMessages, setCoachMessages] = useState<ChatMessage[]>([]);
@@ -2200,6 +2293,12 @@ const App: React.FC = () => {
 
   const handleLogout = async () => { await logoutUser(); setTrades([]); setAccounts([]); };
   
+  const navigateHeatmap = (direction: number) => {
+      const newDate = new Date(heatmapDate);
+      newDate.setMonth(newDate.getMonth() + direction);
+      setHeatmapDate(newDate);
+  };
+  
   // ==========================================
   // FIX: MOVED HOOKS AND DEPENDENCIES ABOVE CONDITIONAL RETURN
   // ==========================================
@@ -2741,10 +2840,43 @@ const App: React.FC = () => {
                             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><TrendingUp className="text-cyan-500"/> Equity Curve</h3>
                             <EquityCurve trades={filteredTrades} />
                         </Card>
-                        <Card className="lg:col-span-1 h-[420px] bg-slate-900/20 border-white/5">
-                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><CalendarIcon className="text-slate-400"/> Monthly Heatmap</h3>
-                            <div className="h-[340px] overflow-hidden">
-                                <TradeCalendar trades={filteredTrades} />
+                        
+                        {/* IMPROVED HEATMAP SECTION */}
+                        <Card className="lg:col-span-1 min-h-[420px] bg-slate-900/20 border-white/5">
+                            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/20">
+                                        <CalendarIcon size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-lg leading-tight">Monthly Performance</h3>
+                                        <p className="text-xs text-slate-500">PnL Heatmap Visualization</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-white/5">
+                                    <Button variant="ghost" size="sm" onClick={() => navigateHeatmap(-1)} className="h-8 w-8 p-0">
+                                        <ChevronLeft size={16}/>
+                                    </Button>
+                                    
+                                    <div className="px-4 text-center font-mono font-bold text-sm min-w-[140px]">
+                                        {heatmapDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                    </div>
+                                    
+                                    <Button variant="ghost" size="sm" onClick={() => navigateHeatmap(1)} className="h-8 w-8 p-0">
+                                        <ChevronRight size={16}/>
+                                    </Button>
+                                    
+                                    <div className="w-px h-4 bg-slate-700 mx-1"/>
+                                    
+                                    <Button variant="ghost" size="sm" onClick={() => setShowHeatmapShare(true)} title="Share Report" className="h-8 w-8 p-0 hover:text-cyan-400">
+                                        <Share2 size={16} />
+                                    </Button>
+                                </div>
+                            </div>
+                            
+                            <div className="h-[320px]">
+                                <TradeCalendar trades={filteredTrades} currentDate={heatmapDate} />
                             </div>
                         </Card>
                     </div>
@@ -3503,14 +3635,15 @@ const App: React.FC = () => {
         <TradeDetailsModal trade={selectedTrade} onClose={() => setSelectedTrade(null)} onDelete={deleteTradeFromDb} onEdit={(t) => { setSelectedTrade(null); setEditingTrade(t); setIsAddTradeOpen(true); }} onAnalyze={handleAnalyzeTrade} />
         <ConnectBrokerModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} />
         <AddAccountModal isOpen={isAddAccountOpen} onClose={() => setIsAddAccountOpen(false)} onAdd={handleAddAccount} />
-        
+        <HeatmapShareModal 
+            isOpen={showHeatmapShare} 
+            onClose={() => setShowHeatmapShare(false)} 
+            trades={filteredTrades} 
+            date={heatmapDate} 
+        />
       </div>
     </ThemeContext.Provider>
   );
 };
-
-function formatCurrency(num: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
-}
 
 export default App;
